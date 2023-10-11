@@ -24,6 +24,18 @@ public class BlockStream : DataStream
         m_stream = m_block.ToStream();
     }
 
+    public override unsafe string ReadNullTerminatedString(bool wide = false)
+    {
+        if (wide)
+        {
+            return base.ReadNullTerminatedString(wide);
+        }
+
+        string retVal = new((sbyte*)(m_block.Ptr + Position));
+        Position += retVal.Length + 1;
+        return retVal;
+    }
+
     /// <summary>
     /// Loads whole file into memory and deobfuscates it if necessary.
     /// </summary>

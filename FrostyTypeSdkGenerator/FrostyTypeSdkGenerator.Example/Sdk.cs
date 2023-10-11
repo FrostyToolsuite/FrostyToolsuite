@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using Frosty.Sdk.Attributes;
+﻿using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Sdk;
 
 namespace Frosty.Sdk.Ebx;
@@ -11,7 +10,7 @@ public partial class DataContainer
 
 public partial class Asset : DataContainer
 {
-    [Attributes.EbxFieldMeta(Sdk.TypeFlags.TypeEnum.CString, 0u)]
+    [Attributes.EbxFieldMeta(Frosty.Sdk.Sdk.TypeFlags.TypeEnum.CString, 0u)]
     private CString _Name;
 }
 

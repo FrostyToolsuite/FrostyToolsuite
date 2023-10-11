@@ -72,7 +72,7 @@ internal class FieldInfo : IComparable
                 typeName = "PointerRef";
                 isClass = true;
             }
-            typeName = $"List<{typeName}>";
+            typeName = $"ObservableCollection<{typeName}>";
             sb.AppendLine($"[{nameof(EbxArrayMetaAttribute)}({(ushort)type.GetFlags()})]");
         }
         sb.AppendLine($"[{nameof(EbxFieldMetaAttribute)}({(ushort)flags}, {m_offset}, {(isClass ? $"typeof({type.GetName()})" : "null")})]");

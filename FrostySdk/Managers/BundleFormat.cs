@@ -2,8 +2,8 @@
 
 public enum BundleFormat : long
 {
-    DbObject,
+    Kelvin,
     SuperBundleManifest,
-    Manifest2019 = 2651454669,
-    Kelvin
+    Dynamic2018 = 3903225206,
+    Manifest2019 = 2651454669
 }

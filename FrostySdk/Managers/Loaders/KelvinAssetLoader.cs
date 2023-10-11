@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,53 +14,6 @@ namespace Frosty.Sdk.Managers.Loaders;
 
 public class KelvinAssetLoader : IAssetLoader
 {
-    public void Load()
-    {
-        foreach (SuperBundleInfo sbInfo in FileSystemManager.EnumerateSuperBundles())
-        {
-            foreach (KeyValuePair<int, InstallChunkType> installChunk in sbInfo.InstallChunks)
-            {
-                if (installChunk.Value.HasFlag(InstallChunkType.Default))
-                {
-                    string tocPath = FileSystemManager.ResolvePath(true, $"{sbInfo.Name}.toc");
-                    if (string.IsNullOrEmpty(tocPath))
-                    {
-                        tocPath = FileSystemManager.ResolvePath(false, $"{sbInfo.Name}.toc");
-                        if (string.IsNullOrEmpty(tocPath))
-                        {
-                            continue;
-                        }
-                    }
-                    
-                    int superBundleId = AssetManager.AddSuperBundle(sbInfo.Name);
-
-                    LoadToc(superBundleId, tocPath);
-                }
-                
-                if (installChunk.Value.HasFlag(InstallChunkType.Split))
-                {
-                    InstallChunkInfo installChunkInfo = FileSystemManager.GetInstallChunkInfo(installChunk.Key);
-
-                    string sbName = $"{installChunkInfo.InstallBundle}{sbInfo.Name[sbInfo.Name.IndexOf("/", StringComparison.Ordinal)..]}";
-
-                    string tocPath = FileSystemManager.ResolvePath(true, $"{sbName}.toc");
-                    if (string.IsNullOrEmpty(tocPath))
-                    {
-                        tocPath = FileSystemManager.ResolvePath(false, $"{sbName}.toc");
-                        if (string.IsNullOrEmpty(tocPath))
-                        {
-                            continue;
-                        }
-                    }
-                    
-                    int superBundleId = AssetManager.AddSuperBundle(sbInfo.Name);
-                
-                    LoadToc(superBundleId, tocPath);
-                }
-            }
-        }
-    }
-
     private readonly struct FileIdentifier
     {
         public readonly int FileIndex;
@@ -74,9 +28,44 @@ public class KelvinAssetLoader : IAssetLoader
         }
     }
     
-    private void LoadToc(int superBundleId, string tocPath)
+    public void Load()
     {
-        using (BlockStream stream = BlockStream.FromFile(tocPath, true))
+        foreach (SuperBundleInfo sbInfo in FileSystemManager.EnumerateSuperBundles())
+        {
+            foreach (SuperBundleInstallChunk sbIc in sbInfo.InstallChunks)
+            {
+                bool found = false;
+                foreach (FileSystemSource source in FileSystemManager.Sources)
+                {
+                    switch (LoadSuperBundle(source, sbIc))
+                    {
+                        case Code.Continue:
+                            found = true;
+                            continue;
+                        case Code.NotFound:
+                            continue;
+                        case Code.Stop:
+                            found = true;
+                            break;
+                    }
+                }
+
+                if (!found)
+                {
+                    AssetManager.Logger?.Report("Sdk", $"Couldn't find SuperBundle {sbIc.Name}");
+                }
+            }
+        }
+    }
+    
+    private Code LoadSuperBundle(FileSystemSource inSource, SuperBundleInstallChunk inSbIc)
+    {
+        if (!inSource.TryResolvePath($"{inSbIc.Name}.toc", out string? path))
+        {
+            return Code.NotFound;
+        }
+
+        using (BlockStream stream = BlockStream.FromFile(path, true))
         {
             uint magic = stream.ReadUInt32();
             uint bundlesOffset = stream.ReadUInt32();
@@ -105,7 +94,7 @@ public class KelvinAssetLoader : IAssetLoader
                     stream.Position = bundleOffset;
     
                     string name = ReadString(stream, stream.ReadInt32());
-    
+
                     List<FileIdentifier> files = new();
                     while (true)
                     {
@@ -121,7 +110,14 @@ public class KelvinAssetLoader : IAssetLoader
                     }
     
                     stream.Position = curPos;
+                    
+                    if (inSbIc.BundleMapping.ContainsKey(name))
+                    {
+                        continue;
+                    }
     
+                    BundleInfo bundle = AssetManager.AddBundle(name, inSbIc);
+                    
                     int index = 0;
                     FileIdentifier resourceInfo = files[index];
 
@@ -129,11 +125,9 @@ public class KelvinAssetLoader : IAssetLoader
                         FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(resourceInfo.FileIndex)),
                         resourceInfo.Offset, (int)resourceInfo.Size);
     
-                    BinaryBundle bundle = BinaryBundle.Deserialize(dataStream);
-            
-                    int bundleId = AssetManager.AddBundle(name, superBundleId);
+                    BinaryBundle bundleMeta = BinaryBundle.Deserialize(dataStream);
     
-                    foreach (EbxAssetEntry ebx in bundle.EbxList)
+                    foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
                     {
                          if (dataStream.Position == resourceInfo.Size)
                          {
@@ -145,14 +139,14 @@ public class KelvinAssetLoader : IAssetLoader
                          }
                 
                          uint offset = (uint)dataStream.Position;
-                         ebx.Size = DbObjectAssetLoader.GetSize(dataStream, ebx.OriginalSize);
+                         uint size = (uint)Helper.GetSize(dataStream, ebx.OriginalSize);
 
-                         ebx.FileInfos.Add(new PathFileInfo(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
-                             resourceInfo.Offset + offset, (uint)ebx.Size, 0));
+                         ebx.FileInfos.Add(new KelvinFileInfo(resourceInfo.FileIndex,
+                             resourceInfo.Offset + offset, size, 0));
                 
-                         AssetManager.AddEbx(ebx, bundleId);
+                         AssetManager.AddEbx(ebx, bundle.Id);
                     }
-                    foreach (ResAssetEntry res in bundle.ResList)
+                    foreach (ResAssetEntry res in bundleMeta.ResList)
                     {
                          if (dataStream.Position == resourceInfo.Size)
                          {
@@ -164,14 +158,14 @@ public class KelvinAssetLoader : IAssetLoader
                          }
                          
                          uint offset = (uint)dataStream.Position;
-                         res.Size = DbObjectAssetLoader.GetSize(dataStream, res.OriginalSize);
+                         uint size = (uint)Helper.GetSize(dataStream, res.OriginalSize);
 
-                         res.FileInfos.Add(new PathFileInfo(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
-                             resourceInfo.Offset + offset, (uint)res.Size, 0));
+                         res.FileInfos.Add(new KelvinFileInfo(resourceInfo.FileIndex,
+                             resourceInfo.Offset + offset, size, 0));
                         
-                         AssetManager.AddRes(res, bundleId);
+                         AssetManager.AddRes(res, bundle.Id);
                     }
-                    foreach (ChunkAssetEntry chunk in bundle.ChunkList)
+                    foreach (ChunkAssetEntry chunk in bundleMeta.ChunkList)
                     {
                          if (dataStream.Position == resourceInfo.Size)
                          {
@@ -183,13 +177,13 @@ public class KelvinAssetLoader : IAssetLoader
                          }
 
                          uint offset = (uint)dataStream.Position;
-                         chunk.Size = DbObjectAssetLoader.GetSize(dataStream,
+                         uint size = (uint)Helper.GetSize(dataStream,
                              (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize);
 
-                         chunk.FileInfos.Add(new PathFileInfo(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
-                             resourceInfo.Offset + offset, (uint)chunk.Size, chunk.LogicalOffset));
+                         chunk.FileInfos.Add(new KelvinFileInfo(resourceInfo.FileIndex,
+                             resourceInfo.Offset + offset, size, chunk.LogicalOffset));
                         
-                         AssetManager.AddChunk(chunk, bundleId);
+                         AssetManager.AddChunk(chunk, bundle.Id);
                     }
     
                     dataStream.Dispose();
@@ -216,9 +210,9 @@ public class KelvinAssetLoader : IAssetLoader
                     uint dataOffset = stream.ReadUInt32();
                     uint dataSize = stream.ReadUInt32();
     
-                    ChunkAssetEntry chunk = new(guid, Sha1.Zero, dataSize, 0, 0, superBundleId);
+                    ChunkAssetEntry chunk = new(guid, Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
     
-                    chunk.FileInfos.Add(new PathFileInfo(FileSystemManager.GetFilePath(fileIndex), dataOffset, dataSize, 0));
+                    chunk.FileInfos.Add(new KelvinFileInfo(fileIndex, dataOffset, dataSize, 0));
                     
                     AssetManager.AddSuperBundleChunk(chunk);
                     
@@ -226,6 +220,8 @@ public class KelvinAssetLoader : IAssetLoader
                 }
             }
         }
+
+        return Code.Stop;
     }
     
     private string ReadString(DataStream reader, int offset)

@@ -138,6 +138,60 @@ public static class Cas
         return outBuffer;
     }
 
+    public static long GetUncompressedSize(DataStream inStream)
+    {
+        long uncompressedSize = 0;
+        while (inStream.Position < inStream.Length)
+        {
+            ulong packed = inStream.ReadUInt64(Endian.Big);
+            int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
+            CompressionType compressionType = (CompressionType)(packed >> 24);
+            Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
+            int bufferSize = (int)(packed & 0x000FFFFF);
+
+            if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
+            {
+                bufferSize = decompressedSize;
+            }
+
+            uncompressedSize += decompressedSize;
+
+            inStream.Position += bufferSize;
+        }
+
+        return uncompressedSize;
+    }
+
+    public static long GetCompressedSize(DataStream inStream, long inUncompressedSize)
+    {
+        long compressedSize = 0;
+        while (inStream.Position < inStream.Length)
+        {
+            ulong packed = inStream.ReadUInt64(Endian.Big);
+            int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
+            CompressionType compressionType = (CompressionType)(packed >> 24);
+            Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
+            int bufferSize = (int)(packed & 0x000FFFFF);
+
+            if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
+            {
+                bufferSize = decompressedSize;
+            }
+
+            compressedSize += bufferSize + sizeof(ulong);
+
+            inStream.Position += bufferSize;
+            
+            inUncompressedSize -= decompressedSize;
+            if (inUncompressedSize <= 0)
+            {
+                break;
+            }
+        }
+
+        return compressedSize;
+    }
+    
     private static unsafe void ReadBlock(DataStream inStream, Block<byte>? outBuffer)
     {
         ulong packed = inStream.ReadUInt64(Endian.Big);
@@ -240,23 +294,34 @@ public static class Cas
                 // we already read the data into the outBuffer so nothing to do
                 break;
             case CompressionType.ZLib:
-                //ZLib.Decompress(compressedBuffer, ref outBuffer);
+                CompressionZLib zlib = new();
+                zlib.Decompress(inCompressedBuffer, ref outBuffer);
                 break;
             case CompressionType.ZStd:
-                //ZStd.Decompress(compressedBuffer, ref outBuffer, flags != 0 ? CompressionFlags.ZStdUseDicts : CompressionFlags.None);
+                CompressionZStd zstd = new();
+                zstd.Decompress(inCompressedBuffer, ref outBuffer, inFlags != 0 ? CompressionFlags.ZStdUseDicts : CompressionFlags.None);
                 break;
             case CompressionType.LZ4:
                 //LZ4.Decompress(compressedBuffer, ref outBuffer);
                 break;
             case CompressionType.OodleKraken:
-                //Oodle.Decompress(compressedBuffer, ref outBuffer, CompressionFlags.OodleKraken);
+            {
+                CompressionOodle oodle = new();
+                oodle.Decompress(inCompressedBuffer, ref outBuffer, CompressionFlags.OodleKraken);
                 break;
+            }
             case CompressionType.OodleSelkie:
-                //Oodle.Decompress(compressedBuffer, ref outBuffer, CompressionFlags.OodleSelkie);
+            {
+                CompressionOodle oodle = new();
+                oodle.Decompress(inCompressedBuffer, ref outBuffer, CompressionFlags.OodleSelkie);
                 break;
+            }
             case CompressionType.OodleLeviathan:
-                //Oodle.Decompress(compressedBuffer, ref outBuffer, CompressionFlags.OodleLeviathan);
+            {
+                CompressionOodle oodle = new();
+                oodle.Decompress(inCompressedBuffer, ref outBuffer, CompressionFlags.OodleLeviathan);
                 break;
+            }
             default:
                 throw new NotImplementedException($"Compression type: {inCompressionType}");
         }

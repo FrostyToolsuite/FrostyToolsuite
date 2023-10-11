@@ -23,7 +23,7 @@ public interface IFileInfo
             case CasFileInfo:
                 stream.WriteByte(0);
                 break;
-            case PathFileInfo:
+            case KelvinFileInfo:
                 stream.WriteByte(1);
                 break;
             default:
@@ -40,7 +40,7 @@ public interface IFileInfo
             case 0:
                 return CasFileInfo.DeserializeInternal(stream);
             case 1:
-                return PathFileInfo.DeserializeInternal(stream);
+                return KelvinFileInfo.DeserializeInternal(stream);
             default:
                 throw new InvalidDataException();
         }

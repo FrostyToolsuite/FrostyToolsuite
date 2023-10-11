@@ -5,8 +5,6 @@ namespace Frosty.Sdk.Managers.Entries;
 
 public class ChunkAssetEntry : AssetEntry
 {
-    public override string Name => Id.ToString();
-    
     public override string Type => "Chunk";
     
     public override string AssetType => "chunk";
@@ -29,15 +27,16 @@ public class ChunkAssetEntry : AssetEntry
     /// <summary>
     /// SuperBundles that contain this <see cref="ChunkAssetEntry"/>.
     /// </summary>
-    public readonly HashSet<int> SuperBundles = new();
+    public readonly HashSet<int> SuperBundleInstallChunks = new();
 
-    public ChunkAssetEntry(Guid inChunkId, Sha1 inSha1, long inSize, uint inLogicalOffset, uint inLogicalSize, params int[] superBundleIds)
-        : base(inSha1, inSize, inLogicalOffset + inLogicalSize)
+    public ChunkAssetEntry(Guid inChunkId, Sha1 inSha1, uint inLogicalOffset, uint inLogicalSize, params int[] superBundleIds)
+        : base(inSha1, inLogicalOffset + inLogicalSize)
     {
         Id = inChunkId;
+        Name = Id.ToString();
         LogicalOffset = inLogicalOffset;
         LogicalSize = inLogicalSize;
-        SuperBundles.UnionWith(superBundleIds);
+        SuperBundleInstallChunks.UnionWith(superBundleIds);
     }
 
     /// <summary>
@@ -45,5 +44,5 @@ public class ChunkAssetEntry : AssetEntry
     /// </summary>
     /// <param name="sbId">The id of the SuperBundle to check.</param>
     /// <returns>True if the Asset is in the SuperBundle.</returns>
-    public bool IsInSuperBundle(int sbId) => SuperBundles.Contains(sbId);
+    public bool IsInSuperBundle(int sbId) => SuperBundleInstallChunks.Contains(sbId);
 }

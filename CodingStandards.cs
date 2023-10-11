@@ -1,4 +1,3 @@
-
 // namespaces should be file scoped
 namespace Frosty.CodingStandards;
 
@@ -11,20 +10,20 @@ namespace Frosty.CodingStandards;
 // small notes used within functions, shouldn't be capitalized or period at the end
 
 /*
-    * Longer description. First letter should be capitalized with period at the end.
-    */
+ * Longer description. First letter should be capitalized with period at the end.
+ */
 
 /*
-    * Classes should be laid out like this,
-    *
-    * - Public member variables
-    * - Private member variables
-    * - Constructors
-    * - Public Functions
-    * - Private Functions
-    *
-    * Static and override functions/variables should always be at the top of each section.
-    */
+ * Classes should be laid out like this,
+ *
+ * - Public member variables
+ * - Private member variables
+ * - Constructors
+ * - Public Functions
+ * - Private Functions
+ *
+ * Static and override functions/variables should always be at the top of each section.
+ */
 public class StandardClass
 {
     // public member variables should be capitalized
@@ -74,18 +73,21 @@ public class StandardClass
         // }
         
         // using statements should be surrounded with brackets on new lines
+        // if 2 using are necessary they should share brackets
         using (Stream stream = new MemoryStream())
+        using (Stream someOtherstream = new MemoryStream())
         {
             byte[] array = new byte[2];
+            someOtherstream.Read(array, 0, 2);
             stream.Write(array, 0, 2);
         }
     }
 }
 
 /*
-    * For UI the MVVM Community Toolkit should be used.
-    * ViewModels should inherit from ObservableObject.
-*/
+ * For UI the MVVM Community Toolkit should be used.
+ * ViewModels should inherit from ObservableObject.
+ */
 public class ViewModel : ObservableObject
 {
     // properties that need to implement INotifyPropertyChanged should have the ObservableProperty attribute

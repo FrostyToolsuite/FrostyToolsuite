@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using Frosty.Sdk.DbObjectElements;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
@@ -16,17 +18,15 @@ public class ManifestAssetLoader : IAssetLoader
         // This format has all SuperBundles stripped
         // all of the bundles and chunks of all SuperBundles are put into the manifest
         // afaik u cant reconstruct the SuperBundles, so this might make things a bit ugly
-        // They also seem to have catalog files which entries are not used, but they still make a sanity check for the offsets and indices in the file
+        // They also have catalog files which entries are not used, but they still make a sanity check for the offsets and indices in the file
         
-        AssetManager.AddSuperBundle("Manifest");
+        DbObjectDict manifest = FileSystemManager.SuperBundleManifest!;
         
-        DbObjectDict manifest = FileSystemManager.Manifest!;
-        
-        CasFileIdentifier file = CasFileIdentifier.FromFileIdentifierV2(manifest.AsUInt("file"));
+        CasFileIdentifier file = CasFileIdentifier.FromManifestFileIdentifier(manifest.AsUInt("file"));
         
         string path = FileSystemManager.GetFilePath(file);
         
-        using (BlockStream stream = BlockStream.FromFile(FileSystemManager.ResolvePath(path), manifest.AsUInt("offset"), manifest.AsInt("size")))
+        using (BlockStream stream = BlockStream.FromFile(path, manifest.AsUInt("offset"), manifest.AsInt("size")))
         {
             uint resourceInfoCount = stream.ReadUInt32();
             uint bundleCount = stream.ReadUInt32();
@@ -37,9 +37,11 @@ public class ManifestAssetLoader : IAssetLoader
             // resource infos
             for (int i = 0; i < resourceInfoCount; i++)
             {
-                files[i] = (CasFileIdentifier.FromFileIdentifierV2(stream.ReadUInt32()), stream.ReadUInt32(),
+                files[i] = (CasFileIdentifier.FromManifestFileIdentifier(stream.ReadUInt32()), stream.ReadUInt32(),
                     (uint)stream.ReadInt64());
             }
+
+            Dictionary<int, HashSet<int>> mapping = new();
             
             // bundles
             for (int i = 0; i < bundleCount; i++)
@@ -49,26 +51,55 @@ public class ManifestAssetLoader : IAssetLoader
                 int resourceCount = stream.ReadInt32();
         
                 // unknown, always 0
-                stream.ReadInt32();
-                stream.ReadInt32();
+                stream.Position += sizeof(ulong);
                 
                 (CasFileIdentifier, uint, long) resourceInfo = files[startIndex];
-                BinaryBundle bundle;
-                using (BlockStream bundleStream = BlockStream.FromFile(FileSystemManager.ResolvePath(
-                           FileSystemManager.GetFilePath(resourceInfo.Item1)), resourceInfo.Item2, (int)resourceInfo.Item3))
+
+                // we use the installChunk of the bundle to get a superBundle and SuperBundleInstallChunk 
+                InstallChunkInfo ic = FileSystemManager.GetInstallChunkInfo(resourceInfo.Item1.InstallChunkIndex);
+                string superbundle = ic.SuperBundles.FirstOrDefault() ?? string.Empty;
+                Debug.Assert(!string.IsNullOrEmpty(superbundle), "no super bundle found for install chunk");
+                // hack we just assume there are no splitSuperBundles
+                SuperBundleInstallChunk sbIc = FileSystemManager.GetSuperBundleInstallChunk(superbundle);
+                
+                BinaryBundle bundleMeta;
+                using (BlockStream bundleStream = BlockStream.FromFile(
+                           FileSystemManager.GetFilePath(resourceInfo.Item1), resourceInfo.Item2,
+                           (int)resourceInfo.Item3))
                 {
-                     bundle = BinaryBundle.Deserialize(bundleStream);
+                     bundleMeta = BinaryBundle.Deserialize(bundleStream);
+                }
+
+                // get name since they are hashed
+                bool needToGetName = !ProfilesLibrary.SharedBundles.TryGetValue(nameHash, out string? name);
+                foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
+                {
+                    if (needToGetName)
+                    {
+                        // blueprint and sublevel bundles always have an ebx with the same name
+                        string potentialName = $"{FileSystemManager.GamePlatform}/{ebx.Name}";
+                        int hash = Utils.Utils.HashString(potentialName, true);
+                        if (nameHash == hash)
+                        {
+                            name = potentialName;
+                            break;
+                        }
+                    }
                 }
                 
-                if (!ProfilesLibrary.SharedBundles.TryGetValue(nameHash, out string? name))
-                {
-                    // we get the name while processing the ebx, since blueprint/sublevel bundles always have an ebx asset with the same name
-                    name = nameHash.ToString("x8");
-                }
-            
-                int bundleId = AssetManager.AddBundle(name, 0);
+                Debug.Assert(!string.IsNullOrEmpty(name), "couldn't resolve bundle name");
 
-                foreach (EbxAssetEntry ebx in bundle.EbxList)
+                // if we couldn't get a name just use the nameHash
+                if (string.IsNullOrEmpty(name))
+                {
+                    name = nameHash.ToString("X8");
+                }
+
+                BundleInfo bundle = AssetManager.AddBundle(name, sbIc);
+                
+                // load the assets
+                // we use the file infos from the catalogs, since its easier even if they are not used by the game
+                foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
                 {
                     IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(ebx.Sha1);
                     if (fileInfos is not null)
@@ -76,10 +107,10 @@ public class ManifestAssetLoader : IAssetLoader
                         ebx.FileInfos.UnionWith(fileInfos);
                     }
                     
-                    AssetManager.AddEbx(ebx, bundleId);
+                    AssetManager.AddEbx(ebx, bundle.Id);
                 }
 
-                foreach (ResAssetEntry res in bundle.ResList)
+                foreach (ResAssetEntry res in bundleMeta.ResList)
                 {
                     IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(res.Sha1);
                     if (fileInfos is not null)
@@ -87,10 +118,10 @@ public class ManifestAssetLoader : IAssetLoader
                         res.FileInfos.UnionWith(fileInfos);
                     }
 
-                    AssetManager.AddRes(res, bundleId);
+                    AssetManager.AddRes(res, bundle.Id);
                 }
 
-                foreach (ChunkAssetEntry chunk in bundle.ChunkList)
+                foreach (ChunkAssetEntry chunk in bundleMeta.ChunkList)
                 {
                     IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(chunk.Sha1);
                     if (fileInfos is not null)
@@ -98,7 +129,7 @@ public class ManifestAssetLoader : IAssetLoader
                         chunk.FileInfos.UnionWith(fileInfos);
                     }
 
-                    AssetManager.AddChunk(chunk, bundleId);
+                    AssetManager.AddChunk(chunk, bundle.Id);
                 }
             }
             
@@ -108,12 +139,12 @@ public class ManifestAssetLoader : IAssetLoader
                 Guid chunkId = stream.ReadGuid();
                 (CasFileIdentifier, uint, long) resourceInfo = files[stream.ReadInt32()];
 
-                ChunkAssetEntry entry = new(chunkId, Sha1.Zero, resourceInfo.Item3, 0, 0, 0);
+                //ChunkAssetEntry entry = new(chunkId, Sha1.Zero, resourceInfo.Item3, 0, 0, 0);
 
-                entry.FileInfos.Add(
-                    new CasFileInfo(resourceInfo.Item1, resourceInfo.Item2, (uint)resourceInfo.Item3, 0));
+                //entry.FileInfos.Add(
+                    //new CasFileInfo(resourceInfo.Item1, resourceInfo.Item2, (uint)resourceInfo.Item3, 0));
 
-                AssetManager.AddSuperBundleChunk(entry);
+                //AssetManager.AddSuperBundleChunk(entry);
             }
         }
     }

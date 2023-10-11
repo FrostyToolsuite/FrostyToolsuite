@@ -163,7 +163,7 @@ public unsafe class DataStream : IDisposable
 
     #region -- Strings --
     
-    public string ReadNullTerminatedString(bool wide = false)
+    public virtual string ReadNullTerminatedString(bool wide = false)
     {
         m_stringBuilder.Clear();
         while (true)
@@ -276,6 +276,11 @@ public unsafe class DataStream : IDisposable
     public void WriteSByte(sbyte value)
     {
         WriteByte((byte)value);
+    }
+
+    public void WriteBoolean(bool value)
+    {
+        m_stream.WriteByte((byte)(value ? 1 : 0));
     }
 
     public void WriteChar(char value, bool wide = false)

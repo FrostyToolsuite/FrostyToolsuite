@@ -14,8 +14,6 @@ public class Profile
 
     public int DataVersion { get; set; }
     public string FrostbiteVersion { get; set; } = "0.0.0";
-    
-    public List<FileSystemSource> Sources { get; set; } = new();
 
     public int EbxVersion { get; set; }
     public bool RequiresKey { get; set; }

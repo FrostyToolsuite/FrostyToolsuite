@@ -74,7 +74,7 @@ public class TypeSdkGenerator
         StringBuilder sb = new();
         
         sb.AppendLine("using System;");
-        sb.AppendLine("using System.Collections.Generic;");
+        sb.AppendLine("using System.Collections.ObjectModel;");
         sb.AppendLine("using Frosty.Sdk.Attributes;");
         sb.AppendLine("using Frosty.Sdk.Managers;");
         sb.AppendLine("using System.Reflection;");

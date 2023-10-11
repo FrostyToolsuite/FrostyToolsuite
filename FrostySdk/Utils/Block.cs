@@ -239,6 +239,15 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         return new Span<T>(Ptr, Size);
     }
 
+    public ReadOnlySpan<T> ToReadOnlySpan()
+    {
+        if (!m_usable)
+        {
+            throw new ObjectDisposedException(ToString());
+        }
+        return new ReadOnlySpan<T>(Ptr, Size);
+    }
+
     public Block<TOther> ToBlock<TOther>() where TOther : unmanaged
     {
         if (!m_usable)
@@ -324,6 +333,11 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
     public static implicit operator Span<T>(Block<T> inBlock)
     {
         return inBlock.ToSpan();
+    }
+
+    public static implicit operator ReadOnlySpan<T>(Block<T> inBlock)
+    {
+        return inBlock.ToReadOnlySpan();
     }
     
     /// <summary>

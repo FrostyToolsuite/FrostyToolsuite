@@ -6,22 +6,9 @@ namespace Frosty.Sdk.Managers.Entries;
 
 public class EbxAssetEntry : AssetEntry
 {
-    public override string Name
-    {
-        get
-        {
-            // TODO: @techdebt find better method to move blueprint bundles to sub-folder, this will most likely break writing.
-            if (ProfilesLibrary.IsLoaded(ProfileVersion.Battlefield2042) &&
-                (base.Name.StartsWith("cd_") || base.Name.StartsWith("md_") && !base.Name.Contains("win32/")))
-            {
-                return $"win32/{base.Name}";
-            }
-
-            return base.Name;
-        }
-    }
-    
     public override string AssetType => "ebx";
+
+    public int NameHash;
     
     /// <summary>
     /// The <see cref="Guid"/> of this <see cref="EbxAssetEntry"/>.
@@ -33,10 +20,18 @@ public class EbxAssetEntry : AssetEntry
     /// </summary>
     public readonly HashSet<Guid> DependentAssets = new();
 
-    public EbxAssetEntry(string inName, Sha1 inSha1, long inSize, long inOriginalSize)
-        : base(inSha1, inSize, inOriginalSize)
+    public EbxAssetEntry(string inName, Sha1 inSha1, long inOriginalSize)
+        : base(inSha1, inOriginalSize)
     {
-        base.Name = inName;
+        Name = inName;
+        NameHash = Utils.Utils.HashString(inName, true);
+    }
+    
+    public EbxAssetEntry(string inName, int inNameHash, Sha1 inSha1, long inOriginalSize)
+        : base(inSha1, inOriginalSize)
+    {
+        Name = inName;
+        NameHash = inNameHash;
     }
     
     public IEnumerable<Guid> EnumerateDependencies()

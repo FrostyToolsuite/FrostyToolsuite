@@ -28,7 +28,7 @@ public class CasResourceInfo
         m_logicalOffset = inLogicalOffset;
     }
 
-    public string GetPath() => FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(m_casFileIdentifier));
+    public string GetPath() => FileSystemManager.GetFilePath(m_casFileIdentifier);
 
     protected uint GetOffset() => m_offset;
     

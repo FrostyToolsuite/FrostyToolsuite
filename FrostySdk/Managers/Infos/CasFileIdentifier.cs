@@ -23,7 +23,7 @@ public readonly struct CasFileIdentifier
         return (uint)((file.IsPatch ? 1 << 16 : 0) | (file.InstallChunkIndex << 8) | (file.CasIndex));
     }
     
-    public static CasFileIdentifier FromFileIdentifierV2(uint file)
+    public static CasFileIdentifier FromManifestFileIdentifier(uint file)
     {
         return new CasFileIdentifier((file & 0x100) != 0, (int)(file >> 12), (int)((file >> 0) & 0xFF) + 1);
     }

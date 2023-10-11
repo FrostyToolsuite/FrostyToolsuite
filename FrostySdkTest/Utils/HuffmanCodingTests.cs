@@ -9,8 +9,7 @@ namespace FrostySdkTest.Utils
 {
     public class HuffmanEncodingTests
     {
-
-        private static readonly object[] EncodingDecodingTestValues =
+        private static readonly object[] s_encodingDecodingTestValues =
         {
             new object[] { false, 25 },
             new object[] { true, 22 }
@@ -21,7 +20,7 @@ namespace FrostySdkTest.Utils
         /// </summary>
         /// <param name="compressResults"></param>
         /// <param name="encodedByteSize"></param>
-        [TestCaseSource(nameof(EncodingDecodingTestValues))]
+        [TestCaseSource(nameof(s_encodingDecodingTestValues))]
         public void TextEncodingDecoding(bool compressResults, int encodedByteSize)
         {
             string[] texts = { "These are ", "", "some ", "Test Texts", " for tests ", "some ", " these are" };

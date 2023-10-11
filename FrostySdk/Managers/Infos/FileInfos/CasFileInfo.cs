@@ -11,6 +11,8 @@ public class CasFileInfo : IFileInfo
     
     private CasResourceInfo? m_base;
     private CasResourceInfo? m_delta;
+
+    private CasFileInfo m_duplicate;
     
     public CasFileInfo(CasResourceInfo? inBase, CasResourceInfo? inDelta = null)
     {
@@ -28,11 +30,39 @@ public class CasFileInfo : IFileInfo
         m_base = new CasCryptoResourceInfo(inCasFileIdentifier, inOffset, inSize, inLogicalOffset, inKeyId);
     }
 
-    public bool IsComplete() => true;
+    public bool IsComplete() => m_delta is null;
     public long GetSize() => m_base?.GetSize() ?? 0;
+
+    public long GetOriginalSize()
+    {
+        if (m_base is null)
+        {
+            throw new Exception("Base CasResourceInfo can't be null.");
+        }
+        
+        if (m_delta is null)
+        {
+            using (BlockStream stream = new(m_base.GetRawData()))
+            {
+                return Cas.GetUncompressedSize(stream);
+            }
+        }
+
+        return -1;
+    }
     
     public Block<byte> GetRawData()
     {
+        if (m_base is null)
+        {
+            throw new Exception("Base CasResourceInfo can't be null.");
+        }
+        
+        if (m_delta is null)
+        {
+            return m_base.GetRawData();
+        }
+
         throw new NotImplementedException();
     }
 

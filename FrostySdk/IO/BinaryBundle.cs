@@ -2,9 +2,9 @@
 using System.Buffers.Binary;
 using System.IO;
 using System.Security.Cryptography;
+using Frosty.Sdk.Exceptions;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
-using Frosty.Sdk.Managers.Loaders;
 using Frosty.Sdk.Profiles;
 
 namespace Frosty.Sdk.IO;
@@ -52,7 +52,7 @@ public class BinaryBundle
         int ebxCount = stream.ReadInt32(endian);
         int resCount = stream.ReadInt32(endian);
         int chunkCount = stream.ReadInt32(endian);
-        long stringsOffset = stream.ReadUInt32(endian) + (magic == Magic.Encrypted ? 0 : startPos);
+        long stringsOffset = stream.ReadUInt32(endian) + startPos;
         stream.Position += sizeof(uint) + sizeof(int); // metaOffset + metaSize
 
         EbxList = new EbxAssetEntry[ebxCount];
@@ -66,8 +66,14 @@ public class BinaryBundle
         {
             if (stream is not BlockStream blockStream)
             {
-                throw new Exception();
+                throw new Exception("Encrypted bundle. The bundle needs to be passed in as a BlockStream.");
             }
+
+            if (!KeyManager.HasKey("BundleEncryptionKey"))
+            {
+                throw new MissingEncryptionKeyException("bundles");
+            }
+            
             blockStream.Decrypt(KeyManager.GetKey("BundleEncryptionKey"), (int)(size - 0x20), PaddingMode.None);
         }
         
@@ -87,7 +93,7 @@ public class BinaryBundle
             stream.Position = stringsOffset + nameOffset;
             string name = stream.ReadNullTerminatedString();
 
-            EbxList[i] = new EbxAssetEntry(name, sha1[j], -1, originalSize);
+            EbxList[i] = new EbxAssetEntry(name, Utils.Utils.HashString(name), sha1[j], originalSize);
 
             stream.Position = currentPos;
         }
@@ -113,7 +119,7 @@ public class BinaryBundle
             stream.Position = resRidOffset + i * sizeof(ulong);
             ulong resRid = stream.ReadUInt64();
 
-            ResList[i] = new ResAssetEntry(name, sha1[j], -1, originalSize, resRid, resType, resMeta);
+            ResList[i] = new ResAssetEntry(name, Utils.Utils.HashString(name), sha1[j], originalSize, resRid, resType, resMeta);
 
             stream.Position = currentPos;
         }
@@ -121,7 +127,7 @@ public class BinaryBundle
         stream.Position = resRidOffset + resCount * sizeof(ulong);
         for (int i = 0; i < chunkCount; i++, j++)
         {
-            ChunkList[i] = new ChunkAssetEntry(stream.ReadGuid(endian), sha1[j], -1, stream.ReadUInt32(endian),
+            ChunkList[i] = new ChunkAssetEntry(stream.ReadGuid(endian), sha1[j], stream.ReadUInt32(endian),
                 stream.ReadUInt32(endian));
         }
 
@@ -155,7 +161,7 @@ public class BinaryBundle
     }
 
     /// <summary>
-    /// Only the games using the <see cref="KelvinAssetLoader"/> use a different Magic than <see cref="Magic.Standard"/>.
+    /// Only the games using the <see cref="BundleFormat.Kelvin"/> format have their own magic, the rest uses <see cref="Magic.Standard"/>.
     /// </summary>
     /// <returns>The magic the current game uses.</returns>
     private static Magic GetMagic()
