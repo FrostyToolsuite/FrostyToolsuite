@@ -2,7 +2,7 @@
 
 public class BundleModAction
 {
-    public List<string> Ebx = new();
-    public List<string> Res = new();
-    public List<Guid> Chunks = new();
+    public HashSet<string> Ebx = new();
+    public HashSet<string> Res = new();
+    public HashSet<Guid> Chunks = new();
 }

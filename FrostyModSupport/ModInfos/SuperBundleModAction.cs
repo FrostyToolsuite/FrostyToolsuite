@@ -2,6 +2,6 @@
 
 public class SuperBundleModAction
 {
-    public List<BundleModInfo> Bundles = new();
-    public List<Guid> Chunks = new();
+    public Dictionary<int, BundleModInfo> Bundles = new();
+    public HashSet<Guid> Chunks = new();
 }
