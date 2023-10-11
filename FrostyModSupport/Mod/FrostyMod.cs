@@ -34,19 +34,19 @@ public class FrostyMod : IResourceContainer
         
     }
     
-    public static FrostyMod Load(string inPath)
+    public static FrostyMod? Load(string inPath)
     {
         using (BlockStream stream = BlockStream.FromFile(inPath, false))
         {
             // read header
             if (Magic != stream.ReadUInt64())
             {
-                // not valid need to convert old format or its not a fbmod
+                return null;
             }
 
             if (Version != stream.ReadUInt32())
             {
-                // we need to convert the mod
+                return null;
             }
 
             long dataOffset = stream.ReadInt64();
@@ -54,7 +54,7 @@ public class FrostyMod : IResourceContainer
 
             if (ProfilesLibrary.ProfileName != stream.ReadNullTerminatedString())
             {
-                // not valid for the loaded profile
+                return null;
             }
 
             if (FileSystemManager.Head != stream.ReadUInt32())
@@ -115,8 +115,7 @@ public class FrostyMod : IResourceContainer
                    inModDetails.Version.Length + 1 + inModDetails.Description.Length + 1 +
                    inModDetails.Category.Length + 1 + inModDetails.ModPageLink.Length + 1;
 
-        // TODO: dynamic increasing of block size
-        Block<byte> resources = new(0);
+        Block<byte> resources;
         using (DataStream stream = new(new MemoryStream()))
         {
             stream.WriteInt32(inResources.Length);
@@ -125,25 +124,32 @@ public class FrostyMod : IResourceContainer
             {
                 resource.Write(stream);
             }
+
+            stream.Position = 0;
+            resources = new Block<byte>((int)stream.Length);
+            stream.ReadExactly(resources);
         }
         
-        // TODO: dynamic increasing of block size
-        Block<byte> datas = new(0);
+        Block<byte> data;
         Block<byte> dataHeader = new(inData.Length * (sizeof(long) + sizeof(long)));
-        using (BlockStream stream = new(dataHeader))
+        using (BlockStream stream = new(dataHeader, true))
         using (DataStream dataStream = new(new MemoryStream()))
         {
-            foreach (Block<byte> data in inData)
+            foreach (Block<byte> subData in inData)
             {
                 stream.WriteInt64(dataStream.Position);
-                stream.WriteInt64(data.Size);
+                stream.WriteInt64(subData.Size);
                 
-                dataStream.Write(data);
+                dataStream.Write(subData);
             }
+
+            dataStream.Position = 0;
+            data = new Block<byte>((int)dataStream.Length);
+            dataStream.ReadExactly(data);
         }
         
-        Block<byte> file = new(headerSize + resources.Size + dataHeader.Size + datas.Size);
-        using (BlockStream stream = new(file))
+        Block<byte> file = new(headerSize + resources.Size + dataHeader.Size + data.Size);
+        using (BlockStream stream = new(file, true))
         {
             stream.WriteUInt64(Magic);
             stream.WriteUInt32(Version);
@@ -162,30 +168,34 @@ public class FrostyMod : IResourceContainer
             stream.WriteNullTerminatedString(inModDetails.ModPageLink);
             
             stream.Write(resources);
+            resources.Dispose();
             
             stream.Write(dataHeader);
-            stream.Write(datas);
+            stream.Write(data);
+            dataHeader.Dispose();
+            data.Dispose();
         }
 
         using (FileStream stream = new(inPath, FileMode.Create, FileAccess.Write))
         {
             stream.Write(file);
+            file.Dispose();
         }
     }
 
-    public static FrostyModDetails GetModDetails(string inPath)
+    public static FrostyModDetails? GetModDetails(string inPath)
     {
         using (BlockStream stream = BlockStream.FromFile(inPath, false))
         {
             // read header
             if (Magic != stream.ReadUInt64())
             {
-                // not valid need to convert old format or its not a fbmod
+                return null;
             }
 
             if (Version != stream.ReadUInt32())
             {
-                // we need to convert the mod
+                return null;
             }
 
             long dataOffset = stream.ReadInt64();
@@ -193,7 +203,7 @@ public class FrostyMod : IResourceContainer
 
             if (ProfilesLibrary.ProfileName != stream.ReadNullTerminatedString())
             {
-                // not valid for the loaded profile
+                return null;
             }
 
             if (FileSystemManager.Head != stream.ReadUInt32())

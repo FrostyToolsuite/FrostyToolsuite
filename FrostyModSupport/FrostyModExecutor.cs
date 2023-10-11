@@ -24,7 +24,7 @@ public class FrostyModExecutor
     /// </summary>
     /// <param name="modPackName">The name of the directory where the data is stored in the games ModData folder.</param>
     /// <param name="modPaths">The full paths of the mods.</param>
-    public void GenerateMods(string modPackName, params string[] modPaths)
+    public RetCode GenerateMods(string modPackName, params string[] modPaths)
     {
         string modDataPath = Path.Combine(FileSystemManager.BasePath, "ModData", modPackName);
         string patchPath = FileSystemManager.Sources.Count == 1
@@ -39,7 +39,7 @@ public class FrostyModExecutor
             List<ModInfo>? oldModInfos = JsonSerializer.Deserialize<List<ModInfo>>(File.ReadAllText(modInfosPath));
             if (oldModInfos?.SequenceEqual(modInfos) == true)
             {
-                return;
+                return RetCode.NoUpdateNeeded;
             }
         }
 
@@ -56,19 +56,31 @@ public class FrostyModExecutor
             string extension = Path.GetExtension(path);
             if (extension == ".fbmod")
             {
-                FrostyMod mod = FrostyMod.Load(path);
+                FrostyMod? mod = FrostyMod.Load(path);
+                if (mod is null)
+                {
+                    return RetCode.InvalidMods;
+                }
                 ProcessModResources(mod);
             }
             else if (extension == ".fbcollection")
             {
-                FrostyModCollection modCollection = FrostyModCollection.Load(path);
+                FrostyModCollection? modCollection = FrostyModCollection.Load(path);
+                if (modCollection is null)
+                {
+                    return RetCode.InvalidMods;
+                }
                 ProcessModResources(modCollection);
             }
             else
             {
-                throw new Exception();
+                return RetCode.InvalidMods;
             }
         }
+        
+        
+
+        return RetCode.Success;
     }
 
     private void GenerateBundleLookup()
@@ -223,7 +235,7 @@ public class FrostyModExecutor
 
         foreach (string path in modPaths)
         {
-            FrostyModDetails modDetails;
+            FrostyModDetails? modDetails;
 
             string extension = Path.GetExtension(path);
             if (extension == ".fbmod")
@@ -237,6 +249,11 @@ public class FrostyModExecutor
             else
             {
                 throw new Exception();
+            }
+            
+            if (modDetails is null)
+            {
+                return modInfoList;
             }
 
             ModInfo modInfo = new()

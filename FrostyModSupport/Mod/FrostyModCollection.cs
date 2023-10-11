@@ -7,7 +7,7 @@ public class FrostyModCollection : IResourceContainer
 {
     public IEnumerable<BaseModResource> Resources { get; }
     
-    public static FrostyModCollection Load(string inPath)
+    public static FrostyModCollection? Load(string inPath)
     {
         throw new NotImplementedException();
     }
