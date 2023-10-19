@@ -1,6 +1,6 @@
 namespace Frosty.ModSupport;
 
-public enum RetCode
+public enum Errors
 {
     NoUpdateNeeded = 1,
     Success = 0,

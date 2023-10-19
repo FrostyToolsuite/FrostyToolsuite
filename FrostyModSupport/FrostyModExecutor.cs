@@ -24,7 +24,7 @@ public class FrostyModExecutor
     /// </summary>
     /// <param name="modPackName">The name of the directory where the data is stored in the games ModData folder.</param>
     /// <param name="modPaths">The full paths of the mods.</param>
-    public RetCode GenerateMods(string modPackName, params string[] modPaths)
+    public Errors GenerateMods(string modPackName, params string[] modPaths)
     {
         string modDataPath = Path.Combine(FileSystemManager.BasePath, "ModData", modPackName);
         string patchPath = FileSystemManager.Sources.Count == 1
@@ -39,7 +39,7 @@ public class FrostyModExecutor
             List<ModInfo>? oldModInfos = JsonSerializer.Deserialize<List<ModInfo>>(File.ReadAllText(modInfosPath));
             if (oldModInfos?.SequenceEqual(modInfos) == true)
             {
-                return RetCode.NoUpdateNeeded;
+                return Errors.NoUpdateNeeded;
             }
         }
 
@@ -59,7 +59,11 @@ public class FrostyModExecutor
                 FrostyMod? mod = FrostyMod.Load(path);
                 if (mod is null)
                 {
-                    return RetCode.InvalidMods;
+                    return Errors.InvalidMods;
+                }
+                if (mod.Head != FileSystemManager.Head)
+                {
+                    // TODO: print warning
                 }
                 ProcessModResources(mod);
             }
@@ -68,19 +72,40 @@ public class FrostyModExecutor
                 FrostyModCollection? modCollection = FrostyModCollection.Load(path);
                 if (modCollection is null)
                 {
-                    return RetCode.InvalidMods;
+                    return Errors.InvalidMods;
                 }
-                ProcessModResources(modCollection);
+
+                foreach (FrostyMod mod in modCollection.Mods)
+                {
+                    if (mod.Head != FileSystemManager.Head)
+                    {
+                        // TODO: print warning
+                    }
+                    ProcessModResources(mod);
+                }
             }
             else
             {
-                return RetCode.InvalidMods;
+                return Errors.InvalidMods;
             }
         }
-        
-        
 
-        return RetCode.Success;
+        foreach (KeyValuePair<string, SuperBundleModInfo> sb in m_superBundleModInfos)
+        {
+            switch (FileSystemManager.BundleFormat)
+            {
+                case BundleFormat.Dynamic2018:
+                    break;
+                case BundleFormat.Manifest2019:
+                    break;
+                case BundleFormat.SuperBundleManifest:
+                    break;
+                case BundleFormat.Kelvin:
+                    break;
+            }
+        }
+
+        return Errors.Success;
     }
 
     private void GenerateBundleLookup()
@@ -149,7 +174,10 @@ public class FrostyModExecutor
                     break;
                 case ResModResource:
                     break;
-                case ChunkModResource:
+                case ChunkModResource chunk:
+                    foreach (int superBundle in chunk.AddedSuperBundles)
+                    {
+                    }
                     break;
                 case FsFileModResource:
                     break;
@@ -157,7 +185,12 @@ public class FrostyModExecutor
 
             foreach (int addedBundle in resource.AddedBundles)
             {
-                SuperBundleModInfo sb = m_superBundleModInfos[m_mapping[addedBundle]];
+                string sbName = m_mapping[addedBundle];
+                if (!m_superBundleModInfos.TryGetValue(sbName, out SuperBundleModInfo? sb))
+                {
+                    sb = new SuperBundleModInfo();
+                    m_superBundleModInfos.Add(sbName, sb);
+                }
 
                 if (!sb.Modified.Bundles.TryGetValue(addedBundle, out BundleModInfo? modInfo))
                 {
@@ -181,7 +214,12 @@ public class FrostyModExecutor
 
             foreach (int removedBundle in resource.RemovedBundles)
             {
-                SuperBundleModInfo sb = m_superBundleModInfos[m_mapping[removedBundle]];
+                string sbName = m_mapping[removedBundle];
+                if (!m_superBundleModInfos.TryGetValue(sbName, out SuperBundleModInfo? sb))
+                {
+                    sb = new SuperBundleModInfo();
+                    m_superBundleModInfos.Add(sbName, sb);
+                }
 
                 if (!sb.Modified.Bundles.TryGetValue(removedBundle, out BundleModInfo? modInfo))
                 {
@@ -205,8 +243,13 @@ public class FrostyModExecutor
 
             foreach (int modifiedBundle in modifiedBundles)
             {
-                SuperBundleModInfo sb = m_superBundleModInfos[m_mapping[modifiedBundle]];
-
+                string sbName = m_mapping[modifiedBundle];
+                if (!m_superBundleModInfos.TryGetValue(sbName, out SuperBundleModInfo? sb))
+                {
+                    sb = new SuperBundleModInfo();
+                    m_superBundleModInfos.Add(sbName, sb);
+                }
+                
                 if (!sb.Modified.Bundles.TryGetValue(modifiedBundle, out BundleModInfo? modInfo))
                 {
                     modInfo = new BundleModInfo();

@@ -1,11 +1,8 @@
-using Frosty.ModSupport.Interfaces;
-using Frosty.ModSupport.Mod.Resources;
-
 namespace Frosty.ModSupport.Mod;
 
-public class FrostyModCollection : IResourceContainer
+public class FrostyModCollection
 {
-    public IEnumerable<BaseModResource> Resources { get; }
+    public IEnumerable<FrostyMod> Mods { get; }
     
     public static FrostyModCollection? Load(string inPath)
     {

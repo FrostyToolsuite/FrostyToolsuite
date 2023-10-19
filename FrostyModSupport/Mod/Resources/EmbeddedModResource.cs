@@ -12,7 +12,7 @@ public sealed class EmbeddedModResource : BaseModResource
     {
     }
     
-    internal EmbeddedModResource(int inResourceIndex, string inName)
+    public EmbeddedModResource(int inResourceIndex, string inName)
         : base(inResourceIndex, inName, Sha1.Zero, 0, 0, 0,
             string.Empty, Enumerable.Empty<int>(), Enumerable.Empty<int>())
     {
