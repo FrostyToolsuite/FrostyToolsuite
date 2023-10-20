@@ -28,107 +28,6 @@ public static class ResourceManager
             LoadInstallChunk(installChunkInfo);
         }
     }
-    
-    private static void LoadInstallChunk(InstallChunkInfo info)
-    {
-        Dictionary<Sha1, List<CasFileInfo>>? deltaInfos = LoadEntries(info, true);
-        Dictionary<Sha1, List<CasFileInfo>>? baseInfos = LoadEntries(info, false);
-
-        if (deltaInfos is null)
-        {
-            return;
-        }
-        
-        List<CasFileInfo>? baseFileInfos = null;
-        foreach (CatPatchEntry entry in s_patchEntries)
-        {
-            bool containsBase = baseInfos?.TryGetValue(entry.BaseSha1, out baseFileInfos) == true;
-
-            if (!deltaInfos.TryGetValue(entry.DeltaSha1, out List<CasFileInfo>? deltaFileInfos))
-            {
-                throw new Exception();
-            }
-            
-            Debug.Assert(deltaFileInfos.Count == 1, "More than one Delta entry.");
-
-            CasFileInfo? baseInfo = null; 
-            if (containsBase)
-            {
-                // no idea why there are sometimes more than one base entry
-                Debug.Assert(baseFileInfos!.Count >= 1);
-                baseInfo = baseFileInfos[0];
-            }
-            
-            CasFileInfo fileInfo = new(baseInfo?.GetBase(), deltaFileInfos[0].GetBase());
-            s_resourceEntries.TryAdd(entry.Sha1, (new List<CasFileInfo>(), false));
-            s_resourceEntries[entry.Sha1].Item1.Add(fileInfo);
-        }
-        s_patchEntries.Clear();
-    }
-
-    private static Dictionary<Sha1, List<CasFileInfo>>? LoadEntries(InstallChunkInfo info, bool patch)
-    {
-        string filePath = FileSystemManager.ResolvePath(patch, $"{info.InstallBundle}/cas.cat");
-
-        if (string.IsNullOrEmpty(filePath))
-        {
-            return null;
-        }
-
-        Dictionary<Sha1, List<CasFileInfo>> retVal = new();
-        
-        int installChunkIndex = FileSystemManager.GetInstallChunkIndex(info);
-        
-        using (CatStream stream = new(filePath))
-        {
-            for (int i = 0; i < stream.ResourceCount; i++)
-            {
-                CatResourceEntry entry = stream.ReadResourceEntry();
-                CasFileIdentifier casFileIdentifier = new(patch, installChunkIndex, entry.ArchiveIndex);
-
-                CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset);
-                
-                s_resourceEntries.TryAdd(entry.Sha1, (new List<CasFileInfo>(), false));
-                s_resourceEntries[entry.Sha1].Item1.Add(fileInfo);
-
-                if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))
-                {
-                    s_sizeMap[entry.Sha1] = Math.Max(s_sizeMap[entry.Sha1], entry.Size);
-                }
-                
-                retVal.TryAdd(entry.Sha1, new List<CasFileInfo>());
-                retVal[entry.Sha1].Add(fileInfo);
-            }
-        
-            for (int i = 0; i < stream.EncryptedCount; i++)
-            {
-                CatResourceEntry entry = stream.ReadEncryptedEntry();
-                CasFileIdentifier casFileIdentifier = new(patch, installChunkIndex, entry.ArchiveIndex);
-
-                CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset,
-                    entry.KeyId);
-                
-                s_resourceEntries.TryAdd(entry.Sha1, (new List<CasFileInfo>(), false));
-                s_resourceEntries[entry.Sha1].Item1.Add(fileInfo);
-
-                if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))
-                {
-                    s_sizeMap[entry.Sha1] = Math.Max(s_sizeMap[entry.Sha1], entry.Size);
-                }
-                
-                retVal.TryAdd(entry.Sha1, new List<CasFileInfo>());
-                retVal[entry.Sha1].Add(fileInfo);
-            }
-        
-            for (int i = 0; i < stream.PatchCount; i++)
-            {
-                var entry = stream.ReadPatchEntry();
-                s_patchEntries.Add(entry);
-            }
-        }
-
-        return retVal;
-    }
 
     public static void CLearInstallChunks()
     {
@@ -250,5 +149,106 @@ public static class ResourceManager
 
         fileInfos.Item2 = true;
         return fileInfos.Item1;
+    }
+    
+    private static void LoadInstallChunk(InstallChunkInfo info)
+    {
+        Dictionary<Sha1, List<CasFileInfo>>? deltaInfos = LoadEntries(info, true);
+        Dictionary<Sha1, List<CasFileInfo>>? baseInfos = LoadEntries(info, false);
+
+        if (deltaInfos is null)
+        {
+            return;
+        }
+        
+        List<CasFileInfo>? baseFileInfos = null;
+        foreach (CatPatchEntry entry in s_patchEntries)
+        {
+            bool containsBase = baseInfos?.TryGetValue(entry.BaseSha1, out baseFileInfos) == true;
+
+            if (!deltaInfos.TryGetValue(entry.DeltaSha1, out List<CasFileInfo>? deltaFileInfos))
+            {
+                throw new Exception();
+            }
+            
+            Debug.Assert(deltaFileInfos.Count == 1, "More than one Delta entry.");
+
+            CasFileInfo? baseInfo = null; 
+            if (containsBase)
+            {
+                // no idea why there are sometimes more than one base entry
+                Debug.Assert(baseFileInfos!.Count >= 1);
+                baseInfo = baseFileInfos[0];
+            }
+            
+            CasFileInfo fileInfo = new(baseInfo?.GetBase(), deltaFileInfos[0].GetBase());
+            s_resourceEntries.TryAdd(entry.Sha1, (new List<CasFileInfo>(), false));
+            s_resourceEntries[entry.Sha1].Item1.Add(fileInfo);
+        }
+        s_patchEntries.Clear();
+    }
+
+    private static Dictionary<Sha1, List<CasFileInfo>>? LoadEntries(InstallChunkInfo info, bool patch)
+    {
+        string filePath = FileSystemManager.ResolvePath(patch, $"{info.InstallBundle}/cas.cat");
+
+        if (string.IsNullOrEmpty(filePath))
+        {
+            return null;
+        }
+
+        Dictionary<Sha1, List<CasFileInfo>> retVal = new();
+        
+        int installChunkIndex = FileSystemManager.GetInstallChunkIndex(info);
+        
+        using (CatStream stream = new(filePath))
+        {
+            for (int i = 0; i < stream.ResourceCount; i++)
+            {
+                CatResourceEntry entry = stream.ReadResourceEntry();
+                CasFileIdentifier casFileIdentifier = new(patch, installChunkIndex, entry.ArchiveIndex);
+
+                CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset);
+                
+                s_resourceEntries.TryAdd(entry.Sha1, (new List<CasFileInfo>(), false));
+                s_resourceEntries[entry.Sha1].Item1.Add(fileInfo);
+
+                if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))
+                {
+                    s_sizeMap[entry.Sha1] = Math.Max(s_sizeMap[entry.Sha1], entry.Size);
+                }
+                
+                retVal.TryAdd(entry.Sha1, new List<CasFileInfo>());
+                retVal[entry.Sha1].Add(fileInfo);
+            }
+        
+            for (int i = 0; i < stream.EncryptedCount; i++)
+            {
+                CatResourceEntry entry = stream.ReadEncryptedEntry();
+                CasFileIdentifier casFileIdentifier = new(patch, installChunkIndex, entry.ArchiveIndex);
+
+                CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset,
+                    entry.KeyId);
+                
+                s_resourceEntries.TryAdd(entry.Sha1, (new List<CasFileInfo>(), false));
+                s_resourceEntries[entry.Sha1].Item1.Add(fileInfo);
+
+                if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))
+                {
+                    s_sizeMap[entry.Sha1] = Math.Max(s_sizeMap[entry.Sha1], entry.Size);
+                }
+                
+                retVal.TryAdd(entry.Sha1, new List<CasFileInfo>());
+                retVal[entry.Sha1].Add(fileInfo);
+            }
+        
+            for (int i = 0; i < stream.PatchCount; i++)
+            {
+                var entry = stream.ReadPatchEntry();
+                s_patchEntries.Add(entry);
+            }
+        }
+
+        return retVal;
     }
 }
