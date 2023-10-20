@@ -1,9 +1,13 @@
+using System.Diagnostics;
+using System.Reflection;
 using System.Text.Json;
+using Frosty.ModSupport.Attributes;
 using Frosty.ModSupport.Interfaces;
 using Frosty.ModSupport.Mod;
 using Frosty.ModSupport.Mod.Resources;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
+using Frosty.Sdk;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
@@ -16,8 +20,12 @@ public class FrostyModExecutor
     private Dictionary<string, ResModEntry> m_modifiedRes = new();
     private Dictionary<Guid, ChunkModEntry> m_modifiedChunks = new();
 
+    private Dictionary<Sha1, FrostyMod.ResourceData> m_data = new();
+
     private Dictionary<string, SuperBundleModInfo> m_superBundleModInfos = new();
     private Dictionary<int, string> m_mapping = new();
+
+    private Dictionary<int, Type> m_handlers = new();
     
     /// <summary>
     /// Generates a directory containing the modded games data.
@@ -46,6 +54,8 @@ public class FrostyModExecutor
         // make sure the managers are initialized
         ResourceManager.Initialize();
         AssetManager.Initialize();
+
+        LoadHandlers();
 
         // create bundle lookup map
         GenerateBundleLookup();
@@ -108,6 +118,27 @@ public class FrostyModExecutor
         return Errors.Success;
     }
 
+    private void LoadHandlers()
+    {
+        foreach (string handler in Directory.EnumerateFiles("Handlers"))
+        {
+            Assembly assembly = Assembly.Load(handler);
+            foreach (Type type in assembly.ExportedTypes)
+            {
+                if (type.IsSubclassOf(typeof(IHandler)))
+                {
+                    HandlerAttribute? attribute = type.GetCustomAttribute<HandlerAttribute>();
+                    if (attribute is null)
+                    {
+                        continue;
+                    }
+                    m_handlers.TryAdd(attribute.Hash, type);
+                }
+            }
+        }
+        throw new NotImplementedException();
+    }
+
     private void GenerateBundleLookup()
     {
         foreach (SuperBundleInfo sb in FileSystemManager.EnumerateSuperBundles())
@@ -120,7 +151,6 @@ public class FrostyModExecutor
                 }
             }
         }
-
     }
 
     private void ProcessModResources(IResourceContainer container)
@@ -132,53 +162,188 @@ public class FrostyModExecutor
             {
                 case BundleModResource:
                     break;
-                case EbxModResource:
+                case EbxModResource ebx:
                 {
-                    if (resource.IsModified || !m_modifiedEbx.ContainsKey(resource.Name))
+                    bool exists;
+                    if ((exists = m_modifiedEbx.ContainsKey(resource.Name)) && !resource.HasHandler)
                     {
-                        if (resource.HasHandler)
+                        // asset was already modified by another mod so just skip to the bundle part
+                        break;
+                    }
+                    
+                    EbxModEntry modEntry;
+                    
+                    if (resource.HasHandler)
+                    {
+                        if (!m_handlers.TryGetValue(resource.HandlerHash, out Type? type))
                         {
-                            
+                            break;
+                        }
+                        
+                        if (exists)
+                        {
+                            modEntry = m_modifiedEbx[resource.Name];
+                            if (modEntry.Handler is null)
+                            {
+                                break;
+                            }
                         }
                         else
                         {
-                            if (m_modifiedEbx.TryGetValue(resource.Name, out EbxModEntry? existingEntry))
+                            modEntry = new EbxModEntry(ebx, -1);
+                            modEntry.Handler = (IHandler)Activator.CreateInstance(type)!;
+                        }
+                        
+                        modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
+                        break;
+                    }
+
+                    EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(resource.Name);
+
+                    if (resource.IsModified)
+                    {
+                        // only add asset to bundles, use base games data
+                        // TODO: get data from base game
+                        modEntry = new EbxModEntry(ebx, -1);
+                    }
+                    else
+                    {
+                        FrostyMod.ResourceData data = container.GetData(resource.ResourceIndex);
+                        Debug.Assert(m_data.TryAdd(resource.Sha1, data));
+                        modEntry = new EbxModEntry(ebx, data.Size);
+                            
+                        if (entry is not null)
+                        {
+                            // add in existing bundles
+                            foreach (int bundle in entry.Bundles)
                             {
-                                if (existingEntry.Sha1 == resource.Sha1 /*|| has handler*/)
-                                {
-                                    break;
-                                }
-
-                                m_modifiedEbx.Remove(resource.Name, out _);
-                            }
-
-                            // TODO: create EbxModEntry from resource
-
-                            EbxAssetEntry? ebxEntry = AssetManager.GetEbxAssetEntry(resource.Name);
-
-                            if (resource.ResourceIndex == -1)
-                            {
-                                // only add asset to bundles, use base games data
-                            }
-                            else if (ebxEntry is not null)
-                            {
-                                // add in existing bundles
-                                foreach (int bundle in ebxEntry.Bundles)
-                                {
-                                    modifiedBundles.Add(bundle);
-                                }
-                            }
+                                modifiedBundles.Add(bundle);
+                            }   
                         }
                     }
+                        
+                    m_modifiedEbx.Add(resource.Name, modEntry);
+                    break;
                 }
-                    break;
-                case ResModResource:
-                    break;
-                case ChunkModResource chunk:
-                    foreach (int superBundle in chunk.AddedSuperBundles)
+                case ResModResource res:
+                {
+                    bool exists;
+                    if ((exists = m_modifiedRes.ContainsKey(resource.Name)) && !resource.HasHandler)
                     {
+                        // asset was already modified by another mod so just skip to the bundle part
+                        break;
                     }
+                    
+                    ResModEntry modEntry;
+                    
+                    if (resource.HasHandler)
+                    {
+                        if (exists)
+                        {
+                            modEntry = m_modifiedRes[resource.Name];
+                            if (modEntry.Handler is null)
+                            {
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            modEntry = new ResModEntry(res, -1);
+                            // TODO: Get handler for asset
+                            // modEntry.Handler = ;
+                        }
+                        
+                        modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
+                        break;
+                    }
+
+                    ResAssetEntry? entry = AssetManager.GetResAssetEntry(resource.Name);
+
+                    if (resource.IsModified)
+                    {
+                        // only add asset to bundles, use base games data
+                        // TODO: get data from base game
+                        modEntry = new ResModEntry(res, -1);
+                    }
+                    else
+                    {
+                        FrostyMod.ResourceData data = container.GetData(resource.ResourceIndex);
+                        Debug.Assert(m_data.TryAdd(resource.Sha1, data));
+                        modEntry = new ResModEntry(res, data.Size);
+                            
+                        if (entry is not null)
+                        {
+                            // add in existing bundles
+                            foreach (int bundle in entry.Bundles)
+                            {
+                                modifiedBundles.Add(bundle);
+                            }   
+                        }
+                    }
+                        
+                    m_modifiedRes.Add(resource.Name, modEntry);
                     break;
+                }
+                case ChunkModResource chunk:
+                {
+                    Guid id = Guid.Parse(resource.Name);
+                    bool exists;
+                    if ((exists = m_modifiedChunks.ContainsKey(id)) && !resource.HasHandler)
+                    {
+                        // asset was already modified by another mod so just skip to the bundle part
+                        break;
+                    }
+                    
+                    ChunkModEntry modEntry;
+                    
+                    if (resource.HasHandler)
+                    {
+                        if (exists)
+                        {
+                            modEntry = m_modifiedChunks[id];
+                            if (modEntry.Handler is null)
+                            {
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            modEntry = new ChunkModEntry(chunk, -1);
+                            // TODO: Get handler for asset
+                            // modEntry.Handler = ;
+                        }
+                        
+                        modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
+                        break;
+                    }
+
+                    ChunkAssetEntry? entry = AssetManager.GetChunkAssetEntry(id);
+
+                    if (resource.IsModified)
+                    {
+                        // only add asset to bundles, use base games data
+                        // TODO: get data from base game
+                        modEntry = new ChunkModEntry(chunk, -1);
+                    }
+                    else
+                    {
+                        FrostyMod.ResourceData data = container.GetData(resource.ResourceIndex);
+                        Debug.Assert(m_data.TryAdd(resource.Sha1, data));
+                        modEntry = new ChunkModEntry(chunk, data.Size);
+                            
+                        if (entry is not null)
+                        {
+                            // add in existing bundles
+                            foreach (int bundle in entry.Bundles)
+                            {
+                                modifiedBundles.Add(bundle);
+                            }   
+                        }
+                    }
+                        
+                    m_modifiedChunks.Add(id, modEntry);
+                    break;
+                }
                 case FsFileModResource:
                     break;
             }

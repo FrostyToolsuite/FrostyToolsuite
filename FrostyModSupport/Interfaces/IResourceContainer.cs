@@ -1,3 +1,4 @@
+using Frosty.ModSupport.Mod;
 using Frosty.ModSupport.Mod.Resources;
 using Frosty.Sdk.Utils;
 
@@ -15,5 +16,5 @@ public interface IResourceContainer
     /// </summary>
     /// <param name="inIndex">The index of the resource.</param>
     /// <returns></returns>
-    public Block<byte> GetData(int inIndex);
+    public FrostyMod.ResourceData GetData(int inIndex);
 }

@@ -11,6 +11,8 @@ public class FrostyMod : IResourceContainer
 {
     public class ResourceData
     {
+        public long Size => m_size;
+        
         private string m_fileName;
         private long m_offset;
         private int m_size;
@@ -69,9 +71,9 @@ public class FrostyMod : IResourceContainer
         m_data = inData;
     }
     
-    public Block<byte> GetData(int inIndex)
+    public ResourceData GetData(int inIndex)
     {
-        return m_data[inIndex].GetData();
+        return m_data[inIndex];
     }
     
     /// <summary>
@@ -183,10 +185,7 @@ public class FrostyMod : IResourceContainer
                 return null;
             }
 
-            if (FileSystemManager.Head != stream.ReadUInt32())
-            {
-                // made for a different version of the game, may or may not work
-            }
+            uint head = stream.ReadUInt32();
 
             return new FrostyModDetails(stream.ReadNullTerminatedString(),
                 stream.ReadNullTerminatedString(), stream.ReadNullTerminatedString(), stream.ReadNullTerminatedString(),
