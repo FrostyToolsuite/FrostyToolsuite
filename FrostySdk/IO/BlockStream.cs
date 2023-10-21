@@ -11,6 +11,7 @@ namespace Frosty.Sdk.IO;
 public class BlockStream : DataStream
 {
     private readonly Block<byte> m_block;
+    private bool m_leaveOpen;
 
     public BlockStream(int inSize)
     {
@@ -18,10 +19,11 @@ public class BlockStream : DataStream
         m_stream = m_block.ToStream();
     }
 
-    public BlockStream(Block<byte> inBuffer)
+    public BlockStream(Block<byte> inBuffer, bool inLeaveOpen = false)
     {
         m_block = inBuffer;
         m_stream = m_block.ToStream();
+        m_leaveOpen = inLeaveOpen;
     }
 
     public override unsafe string ReadNullTerminatedString(bool wide = false)
@@ -181,7 +183,10 @@ public class BlockStream : DataStream
     public override void Dispose()
     {
         base.Dispose();
-        m_block.Dispose();
+        if (!m_leaveOpen)
+        {
+            m_block.Dispose();   
+        }
         GC.SuppressFinalize(this);
     }
 
