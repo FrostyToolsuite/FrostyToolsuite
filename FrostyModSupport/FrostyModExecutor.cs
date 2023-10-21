@@ -20,7 +20,7 @@ public class FrostyModExecutor
     private Dictionary<string, ResModEntry> m_modifiedRes = new();
     private Dictionary<Guid, ChunkModEntry> m_modifiedChunks = new();
 
-    private Dictionary<Sha1, FrostyMod.ResourceData> m_data = new();
+    private Dictionary<Sha1, ResourceData> m_data = new();
 
     private Dictionary<string, SuperBundleModInfo> m_superBundleModInfos = new();
     private Dictionary<int, string> m_mapping = new();
@@ -208,7 +208,7 @@ public class FrostyModExecutor
                     }
                     else
                     {
-                        FrostyMod.ResourceData data = container.GetData(resource.ResourceIndex);
+                        ResourceData data = container.GetData(resource.ResourceIndex);
                         Debug.Assert(m_data.TryAdd(resource.Sha1, data));
                         modEntry = new EbxModEntry(ebx, data.Size);
                             
@@ -267,7 +267,7 @@ public class FrostyModExecutor
                     }
                     else
                     {
-                        FrostyMod.ResourceData data = container.GetData(resource.ResourceIndex);
+                        ResourceData data = container.GetData(resource.ResourceIndex);
                         Debug.Assert(m_data.TryAdd(resource.Sha1, data));
                         modEntry = new ResModEntry(res, data.Size);
                             
@@ -327,7 +327,7 @@ public class FrostyModExecutor
                     }
                     else
                     {
-                        FrostyMod.ResourceData data = container.GetData(resource.ResourceIndex);
+                        ResourceData data = container.GetData(resource.ResourceIndex);
                         Debug.Assert(m_data.TryAdd(resource.Sha1, data));
                         modEntry = new ChunkModEntry(chunk, data.Size);
                             
