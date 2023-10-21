@@ -25,12 +25,27 @@ public class FrostyModCollection
     private static readonly uint s_magic = 0x46434F4C;
     private static readonly uint s_version = 1;
 
-    private FrostyMod.ResourceData m_icon;
-    private FrostyMod.ResourceData[] m_screenshots;
+    private FrostyModDetails m_modDetails;
+    private ResourceData m_icon;
+    private ResourceData[] m_screenshots;
     private FrostyMod[] m_mods;
+
+    private FrostyModCollection(FrostyModDetails inModDetails, ResourceData inIcon, ResourceData[] inScreenshots,
+        FrostyMod[] inMods)
+    {
+        m_modDetails = inModDetails;
+        m_icon = inIcon;
+        m_screenshots = inScreenshots;
+        m_mods = inMods;
+    }
     
     public static FrostyModCollection? Load(string inPath)
     {
+        if (!File.Exists(inPath))
+        {
+            return null;
+        }
+        
         using (BlockStream stream = BlockStream.FromFile(inPath, false))
         {
             if (s_magic != stream.ReadUInt32())
@@ -45,7 +60,7 @@ public class FrostyModCollection
             
             uint manifestOffset = stream.ReadUInt32();
             int manifestSize = stream.ReadInt32();
-            FrostyMod.ResourceData icon = new(inPath, stream.ReadUInt32(), stream.ReadInt32());
+            ResourceData icon = new(inPath, stream.ReadUInt32(), stream.ReadInt32());
             uint screenShotsOffset = stream.ReadUInt32();
 
             stream.Position = manifestOffset;
@@ -63,22 +78,29 @@ public class FrostyModCollection
 
             stream.Position = screenShotsOffset;
             int count = stream.ReadInt32();
-            FrostyMod.ResourceData[] screenshots = new FrostyMod.ResourceData[count];
+            ResourceData[] screenshots = new ResourceData[count];
             long offset = screenShotsOffset + 4 + 4;
             for (int i = 0; i < count; i++)
             {
                 int size = stream.ReadInt32();
-                screenshots[i] = new FrostyMod.ResourceData(inPath, offset, size);
+                screenshots[i] = new ResourceData(inPath, offset, size);
                 offset += size + 4;
             }
 
             FrostyMod[] mods = new FrostyMod[manifest.Mods.Count];
             for (int i = 0; i < mods.Length; i++)
             {
-            }
-        }
+                FrostyMod? mod = FrostyMod.Load(manifest.Mods[i]);
+                if (mod is null)
+                {
+                    return null;
+                }
 
-        return default;
+                mods[i] = mod;
+            }
+
+            return new FrostyModCollection(modDetails, icon, screenshots, mods);
+        }
     }
     
     public static FrostyModDetails? GetModDetails(string inPath)

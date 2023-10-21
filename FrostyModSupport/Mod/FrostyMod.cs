@@ -9,34 +9,6 @@ namespace Frosty.ModSupport.Mod;
 
 public class FrostyMod : IResourceContainer
 {
-    public class ResourceData
-    {
-        public long Size => m_size;
-        
-        private string m_fileName;
-        private long m_offset;
-        private int m_size;
-
-        public ResourceData(string inFileName, long inOffset, int inSize)
-        {
-            m_fileName = inFileName;
-            m_offset = inOffset;
-            m_size = inSize;
-        }
-
-        public Block<byte> GetData()
-        {
-            Block<byte> retVal = new(m_size);
-            using (FileStream stream = new(m_fileName, FileMode.Open, FileAccess.Read))
-            {
-                stream.Position = m_offset;
-                stream.ReadExactly(retVal);
-            }
-
-            return retVal;
-        }
-    }
-    
     /// <summary>
     /// Mod Format Versions:
     /// <para>  FBMOD   - Initial Version</para>
@@ -67,6 +39,7 @@ public class FrostyMod : IResourceContainer
     private FrostyMod(FrostyModDetails inModDetails, uint inHead, BaseModResource[] inResources, ResourceData[] inData)
     {
         ModDetails = inModDetails;
+        Head = inHead;
         m_resources = inResources;
         m_data = inData;
     }
@@ -80,10 +53,15 @@ public class FrostyMod : IResourceContainer
     /// Loads a mod from a file.
     /// </summary>
     /// <param name="inPath">The path to the file.</param>
-    /// <returns>The mod or null if its not a fbmod/an older format fbmod/ fbmod made for another profile.</returns>
+    /// <returns>The mod or null if the file does not exist, its not a fbmod, its an older format or it was made for another profile.</returns>
     /// <exception cref="Exception">When the mod file is corrupted.</exception>
     public static FrostyMod? Load(string inPath)
     {
+        if (!File.Exists(inPath))
+        {
+            return null;
+        }
+        
         using (BlockStream stream = BlockStream.FromFile(inPath, false))
         {
             // read header
@@ -161,9 +139,14 @@ public class FrostyMod : IResourceContainer
     /// Gets the ModDetails of a mod.
     /// </summary>
     /// <param name="inPath">The file path of the mod.</param>
-    /// <returns>The <see cref="FrostyModDetails"/> of that mod.</returns>
+    /// <returns>The <see cref="FrostyModDetails"/> of that mod or null if the file doesnt exist, its not an fbmod or an older version of the format.</returns>
     public static FrostyModDetails? GetModDetails(string inPath)
     {
+        if (!File.Exists(inPath))
+        {
+            return null;
+        }
+
         using (BlockStream stream = BlockStream.FromFile(inPath, false))
         {
             // read header

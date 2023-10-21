@@ -8,9 +8,6 @@ public sealed class FrostyModDetails
     public string Description { get; }
     public string Category => string.IsNullOrEmpty(m_category) ? "Misc" : m_category;
     public string ModPageLink { get; }
-    public byte[]? Icon { get; private set; }
-
-    public readonly List<byte[]> Screenshots = new();
 
     private readonly string m_category;
 
@@ -22,16 +19,6 @@ public sealed class FrostyModDetails
         Description = inDescription;
         m_category = inCategory;
         ModPageLink = inModPageLink;
-    }
-
-    public void SetIcon(Span<byte> buffer)
-    {
-        Icon = buffer.ToArray();
-    }
-
-    public void AddScreenshot(Span<byte> buffer)
-    {
-        Screenshots.Add(buffer.ToArray());
     }
 
     public override bool Equals(object? obj)
