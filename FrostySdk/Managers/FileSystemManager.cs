@@ -194,6 +194,11 @@ public static class FileSystemManager
     {
         return s_sbIcMapping[Utils.Utils.HashString(sbIcName, true)];
     }
+
+    public static SuperBundleInstallChunk GetSuperBundleInstallChunk(int hash)
+    {
+        return s_sbIcMapping[hash];
+    }
     
     public static bool HasFileInMemoryFs(string name) => s_memoryFs.ContainsKey(name);
     public static Block<byte> GetFileFromMemoryFs(string name) => s_memoryFs[name];

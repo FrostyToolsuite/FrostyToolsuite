@@ -195,13 +195,13 @@ public static class AssetManager
     #region -- Bundle --
 
     /// <summary>
-    /// Gets the <see cref="BundleEntry"/> by name.
+    /// Gets the <see cref="BundleInfo"/> by hash.
     /// </summary>
-    /// <param name="id">The Id of the Bundle.</param>
-    /// <returns>The <see cref="BundleEntry"/> or null if it doesn't exist.</returns>
-    public static BundleInfo? GetBundleEntry(int id)
+    /// <param name="inHash">The hash of the Bundle.</param>
+    /// <returns>The <see cref="BundleInfo"/> or null if it doesn't exist.</returns>
+    public static BundleInfo? GetBundleInfo(int inHash)
     {
-        return s_bundleMapping.Count > id ? s_bundleMapping[id] : null;
+        return s_bundleMapping.TryGetValue(inHash, out BundleInfo? bundleInfo) ? bundleInfo : null;
     }
 
     #endregion
