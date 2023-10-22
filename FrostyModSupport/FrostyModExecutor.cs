@@ -17,16 +17,16 @@ namespace Frosty.ModSupport;
 
 public class FrostyModExecutor
 {
-    private Dictionary<string, EbxModEntry> m_modifiedEbx = new();
-    private Dictionary<string, ResModEntry> m_modifiedRes = new();
-    private Dictionary<Guid, ChunkModEntry> m_modifiedChunks = new();
+    private readonly Dictionary<string, EbxModEntry> m_modifiedEbx = new();
+    private readonly Dictionary<string, ResModEntry> m_modifiedRes = new();
+    private readonly Dictionary<Guid, ChunkModEntry> m_modifiedChunks = new();
 
-    private Dictionary<Sha1, ResourceData> m_data = new();
+    private readonly Dictionary<Sha1, ResourceData> m_data = new();
 
-    private Dictionary<int, SuperBundleModInfo> m_superBundleModInfos = new();
-    private Dictionary<int, int> m_bundleToSuperBundleMapping = new();
+    private readonly Dictionary<int, SuperBundleModInfo> m_superBundleModInfos = new();
+    private readonly Dictionary<int, int> m_bundleToSuperBundleMapping = new();
 
-    private Dictionary<int, Type> m_handlers = new();
+    private readonly Dictionary<int, Type> m_handlers = new();
     
     /// <summary>
     /// Generates a directory containing the modded games data.
@@ -123,7 +123,7 @@ public class FrostyModExecutor
             Assembly assembly = Assembly.Load(handler);
             foreach (Type type in assembly.ExportedTypes)
             {
-                if (type.IsSubclassOf(typeof(IHandler)))
+                if (typeof(IHandler).IsAssignableFrom(type))
                 {
                     HandlerAttribute? attribute = type.GetCustomAttribute<HandlerAttribute>();
                     if (attribute is null)
@@ -134,7 +134,6 @@ public class FrostyModExecutor
                 }
             }
         }
-        throw new NotImplementedException();
     }
 
     private void ProcessModResources(IResourceContainer container)
@@ -368,7 +367,10 @@ public class FrostyModExecutor
                     break;
                 }
                 case FsFileModResource:
+                {
+                    // TODO:
                     break;
+                }
             }
 
             foreach (int addedBundle in resource.AddedBundles)
