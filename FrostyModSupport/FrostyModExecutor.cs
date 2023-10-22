@@ -11,6 +11,7 @@ using Frosty.Sdk;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
+using Frosty.Sdk.Utils;
 
 namespace Frosty.ModSupport;
 
@@ -22,8 +23,8 @@ public class FrostyModExecutor
 
     private Dictionary<Sha1, ResourceData> m_data = new();
 
-    private Dictionary<string, SuperBundleModInfo> m_superBundleModInfos = new();
-    private Dictionary<int, string> m_mapping = new();
+    private Dictionary<int, SuperBundleModInfo> m_superBundleModInfos = new();
+    private Dictionary<int, int> m_bundleToSuperBundleMapping = new();
 
     private Dictionary<int, Type> m_handlers = new();
     
@@ -56,9 +57,6 @@ public class FrostyModExecutor
         AssetManager.Initialize();
 
         LoadHandlers();
-
-        // create bundle lookup map
-        GenerateBundleLookup();
         
         // process all mods
         foreach (string path in modPaths)
@@ -100,7 +98,7 @@ public class FrostyModExecutor
             }
         }
 
-        foreach (KeyValuePair<string, SuperBundleModInfo> sb in m_superBundleModInfos)
+        foreach (SuperBundleModInfo sb in m_superBundleModInfos.Values)
         {
             switch (FileSystemManager.BundleFormat)
             {
@@ -139,20 +137,6 @@ public class FrostyModExecutor
         throw new NotImplementedException();
     }
 
-    private void GenerateBundleLookup()
-    {
-        foreach (SuperBundleInfo sb in FileSystemManager.EnumerateSuperBundles())
-        {
-            foreach (SuperBundleInstallChunk sbIc in sb.InstallChunks)
-            {
-                foreach (KeyValuePair<string, BundleInfo> bundle in sbIc.BundleMapping)
-                {
-                    m_mapping.Add(bundle.Value.Id, sbIc.Name);
-                }
-            }
-        }
-    }
-
     private void ProcessModResources(IResourceContainer container)
     {
         foreach (BaseModResource resource in container.Resources)
@@ -160,8 +144,15 @@ public class FrostyModExecutor
             HashSet<int> modifiedBundles = new();
             switch (resource)
             {
-                case BundleModResource:
+                case BundleModResource bundle:
+                {
+                    SuperBundleModInfo sb = GetSuperBundleModInfo(bundle.SuperBundleHash);
+
+                    int bundleHash = Utils.HashString(bundle.Name + FileSystemManager.GetSuperBundleInstallChunk(bundle.SuperBundleHash).Name, true);
+                    sb.Added.Bundles.TryAdd(bundleHash, new BundleModInfo());
+                    m_bundleToSuperBundleMapping.TryAdd(bundleHash, bundle.SuperBundleHash);
                     break;
+                }
                 case EbxModResource ebx:
                 {
                     bool exists;
@@ -190,8 +181,10 @@ public class FrostyModExecutor
                         }
                         else
                         {
-                            modEntry = new EbxModEntry(ebx, -1);
-                            modEntry.Handler = (IHandler)Activator.CreateInstance(type)!;
+                            modEntry = new EbxModEntry(ebx, -1)
+                            {
+                                Handler = (IHandler)Activator.CreateInstance(type)!
+                            };
                         }
                         
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
@@ -238,6 +231,11 @@ public class FrostyModExecutor
                     
                     if (resource.HasHandler)
                     {
+                        if (!m_handlers.TryGetValue(resource.HandlerHash, out Type? type))
+                        {
+                            break;
+                        }
+                        
                         if (exists)
                         {
                             modEntry = m_modifiedRes[resource.Name];
@@ -248,9 +246,10 @@ public class FrostyModExecutor
                         }
                         else
                         {
-                            modEntry = new ResModEntry(res, -1);
-                            // TODO: Get handler for asset
-                            // modEntry.Handler = ;
+                            modEntry = new ResModEntry(res, -1)
+                            {
+                                Handler = (IHandler)Activator.CreateInstance(type)!
+                            };
                         }
                         
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
@@ -298,6 +297,11 @@ public class FrostyModExecutor
                     
                     if (resource.HasHandler)
                     {
+                        if (!m_handlers.TryGetValue(resource.HandlerHash, out Type? type))
+                        {
+                            break;
+                        }
+                        
                         if (exists)
                         {
                             modEntry = m_modifiedChunks[id];
@@ -308,9 +312,10 @@ public class FrostyModExecutor
                         }
                         else
                         {
-                            modEntry = new ChunkModEntry(chunk, -1);
-                            // TODO: Get handler for asset
-                            // modEntry.Handler = ;
+                            modEntry = new ChunkModEntry(chunk, -1)
+                            {
+                                Handler = (IHandler)Activator.CreateInstance(type)!
+                            };
                         }
                         
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
@@ -337,8 +342,26 @@ public class FrostyModExecutor
                             foreach (int bundle in entry.Bundles)
                             {
                                 modifiedBundles.Add(bundle);
-                            }   
+                            }
+
+                            foreach (int superBundle in entry.SuperBundleInstallChunks)
+                            {
+                                SuperBundleModInfo sb = GetSuperBundleModInfo(superBundle);
+                                sb.Modified.Chunks.Add(id);
+                            }
                         }
+                    }
+
+                    foreach (int superBundle in chunk.AddedSuperBundles)
+                    {
+                        SuperBundleModInfo sb = GetSuperBundleModInfo(superBundle);
+                        sb.Added.Chunks.Add(id);
+                    }
+
+                    foreach (int superBundle in chunk.RemovedSuperBundles)
+                    {
+                        SuperBundleModInfo sb = GetSuperBundleModInfo(superBundle);
+                        sb.Removed.Chunks.Add(id);
                     }
                         
                     m_modifiedChunks.Add(id, modEntry);
@@ -350,12 +373,7 @@ public class FrostyModExecutor
 
             foreach (int addedBundle in resource.AddedBundles)
             {
-                string sbName = m_mapping[addedBundle];
-                if (!m_superBundleModInfos.TryGetValue(sbName, out SuperBundleModInfo? sb))
-                {
-                    sb = new SuperBundleModInfo();
-                    m_superBundleModInfos.Add(sbName, sb);
-                }
+                SuperBundleModInfo sb = GetSuperBundleModInfoFromBundle(addedBundle);
 
                 if (!sb.Modified.Bundles.TryGetValue(addedBundle, out BundleModInfo? modInfo))
                 {
@@ -379,12 +397,7 @@ public class FrostyModExecutor
 
             foreach (int removedBundle in resource.RemovedBundles)
             {
-                string sbName = m_mapping[removedBundle];
-                if (!m_superBundleModInfos.TryGetValue(sbName, out SuperBundleModInfo? sb))
-                {
-                    sb = new SuperBundleModInfo();
-                    m_superBundleModInfos.Add(sbName, sb);
-                }
+                SuperBundleModInfo sb = GetSuperBundleModInfoFromBundle(removedBundle);
 
                 if (!sb.Modified.Bundles.TryGetValue(removedBundle, out BundleModInfo? modInfo))
                 {
@@ -408,13 +421,8 @@ public class FrostyModExecutor
 
             foreach (int modifiedBundle in modifiedBundles)
             {
-                string sbName = m_mapping[modifiedBundle];
-                if (!m_superBundleModInfos.TryGetValue(sbName, out SuperBundleModInfo? sb))
-                {
-                    sb = new SuperBundleModInfo();
-                    m_superBundleModInfos.Add(sbName, sb);
-                }
-                
+                SuperBundleModInfo sb = GetSuperBundleModInfoFromBundle(modifiedBundle);
+
                 if (!sb.Modified.Bundles.TryGetValue(modifiedBundle, out BundleModInfo? modInfo))
                 {
                     modInfo = new BundleModInfo();
@@ -436,7 +444,38 @@ public class FrostyModExecutor
             }
         }
     }
-    
+
+    private SuperBundleModInfo GetSuperBundleModInfoFromBundle(int inBundle)
+    {
+        BundleInfo? bundle = AssetManager.GetBundleInfo(inBundle);
+        int superBundle;
+        if (bundle is null)
+        {
+            if (!m_bundleToSuperBundleMapping.TryGetValue(inBundle, out superBundle))
+            {
+                // change this to a Error at some point
+                throw new Exception("Asset was added to Bundle, which doesnt exist.");
+            }
+        }
+        else
+        {
+            superBundle = Utils.HashString(bundle.Parent.Name);
+        }
+
+        return GetSuperBundleModInfo(superBundle);
+    }
+
+    private SuperBundleModInfo GetSuperBundleModInfo(int superBundle)
+    {
+        if (!m_superBundleModInfos.TryGetValue(superBundle, out SuperBundleModInfo? sb))
+        {
+            sb = new SuperBundleModInfo();
+            m_superBundleModInfos.Add(superBundle, sb);
+        }
+
+        return sb;
+    }
+
     private static List<ModInfo> GenerateModInfoList(IEnumerable<string> modPaths)
     {
         List<ModInfo> modInfoList = new();

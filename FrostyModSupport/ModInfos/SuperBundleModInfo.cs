@@ -5,5 +5,4 @@ public class SuperBundleModInfo
     public SuperBundleModAction Added = new();
     public SuperBundleModAction Removed = new();
     public SuperBundleModAction Modified = new();
-    public string Name;
 }
