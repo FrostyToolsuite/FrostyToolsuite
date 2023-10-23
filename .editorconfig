@@ -1,0 +1,169 @@
+root = true
+
+# This file will both effect Visual Studio and Rider, do not remove anything even IDE is warning you
+# Use Rider or ReSharper for better EditorConfig support
+
+###############################
+# Core EditorConfig Options   #
+###############################
+
+# All files
+[*]
+indent_style = space
+insert_final_newline = false
+end_of_line = lf
+charset = utf-8
+
+###############################
+# JetBrains Options           #
+###############################
+
+# Indent options
+resharper_indent_nested_fixed_stmt = true
+resharper_indent_nested_foreach_stmt = true
+resharper_indent_nested_for_stmt = true
+resharper_indent_nested_lock_stmt = true
+resharper_indent_nested_usings_stmt = true
+resharper_indent_nested_while_stmt = true
+
+# Warping options
+resharper_keep_existing_attribute_arrangement = false
+resharper_place_accessorholder_attribute_on_same_line = false
+resharper_place_accessor_attribute_on_same_line = false
+resharper_place_field_attribute_on_same_line = false
+resharper_place_method_attribute_on_same_line = false
+resharper_place_type_attribute_on_same_line = false
+
+# XML options
+resharper_xmldoc_indent_size = 2
+resharper_xmldoc_tab_width = 2
+resharper_xmldoc_attribute_indent = align_by_first_attribute
+resharper_xmldoc_space_before_self_closing = true
+
+# XAML options
+resharper_xml_indent_size = 2
+resharper_xml_pi_attribute_style = on_single_line
+resharper_xml_tab_width = 2
+
+# Other options
+resharper_csharp_type_declaration_braces = next_line
+resharper_csharp_brace_style = next_line
+resharper_type_declaration_braces = next_line
+resharper_brace_style = next_line
+
+###############################
+# Core EditorConfig Options   #
+###############################
+
+# XML project files
+[*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
+indent_size = 2
+
+# XML config files
+[*.{props,targets,ruleset,config,nuspec,resx,vsixmanifest,vsct}]
+indent_size = 2
+
+# XAML files
+[*.{appxmanifest,axaml,build,dtd,paml,xaml,xamlx,xoml,xsd}]
+indent_size = 2
+
+# Code files
+[*.{cs,csx,vb,vbx}]
+indent_size = 4
+trim_trailing_whitespace = true
+
+###############################
+# .NET Formatting Rules       #
+###############################
+[*.cs]
+
+# Directive options
+dotnet_separate_import_directive_groups = false
+
+###############################
+# C# Formatting Rules         #
+###############################
+
+# New-line options
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_between_query_expression_clauses = true
+
+# Indentation options
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_indent_labels = flush_left
+csharp_indent_block_contents = true
+csharp_indent_braces = false
+csharp_indent_case_contents_when_block = false
+
+# Spacing options
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_before_colon_in_inheritance_clause = true
+csharp_space_after_colon_in_inheritance_clause = true
+csharp_space_around_binary_operators = before_and_after
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_method_declaration_empty_parameter_list_parentheses = false
+csharp_space_between_method_declaration_name_and_open_parenthesis = false
+csharp_space_between_method_call_empty_parameter_list_parentheses = false
+csharp_space_between_method_call_name_and_opening_parenthesis = false
+csharp_space_after_comma = true
+csharp_space_before_comma = false
+csharp_space_after_dot = false
+csharp_space_before_dot = false
+csharp_space_after_semicolon_in_for_statement = true
+csharp_space_before_semicolon_in_for_statement = false
+csharp_space_around_declaration_statements = false
+csharp_space_before_open_square_brackets = false
+csharp_space_between_empty_square_brackets = false
+csharp_space_between_square_brackets = false
+# Wrap options
+csharp_preserve_single_line_statements = false
+
+# Other options
+csharp_using_directive_placement = outside_namespace
+csharp_style_namespace_declarations = file_scoped:error # This actually support by Rider, don't remove it.
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true
+csharp_prefer_braces = true:warning
+csharp_prefer_simple_using_statement = false
+csharp_preferred_modifier_order = public, private, protected, internal, file, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:suggestion # This actually support by Rider, don't remove it.
+csharp_style_var_elsewhere = false
+csharp_style_var_for_built_in_types = false
+csharp_style_var_when_type_is_apparent = false
+
+###############################
+# Naming Conventions          #
+###############################
+
+# Style Definitions
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+dotnet_naming_style.constant_case_style.capitalization = camel_case
+dotnet_naming_style.constant_case_style.required_prefix = c_
+dotnet_naming_style.static_case_style.capitalization = camel_case
+dotnet_naming_style.static_case_style.required_prefix = s_
+
+# Use PascalCase for public symbols
+dotnet_naming_symbols.public_symbols.applicable_kinds = property,method,field,event,delegate
+dotnet_naming_symbols.public_symbols.applicable_accessibilities = public
+dotnet_naming_symbols.public_symbols.required_modifiers = readonly
+dotnet_naming_rule.public_members.symbols = public_symbols
+dotnet_naming_rule.public_members.style = pascal_case_style
+dotnet_naming_rule.public_members.severity = warning
+
+# Use camelCase and c_ prefix for constant symbols
+dotnet_naming_symbols.constant_symbols.applicable_kinds = field
+dotnet_naming_symbols.constant_symbols.required_modifiers = const
+dotnet_naming_rule.constant_members.symbols = constant_symbols
+dotnet_naming_rule.constant_members.style = constant_case_style
+dotnet_naming_rule.constant_members.severity = warning
+
+# Use camelCase and s_ prefix for static symbols
+dotnet_naming_symbols.static_symbols.applicable_kinds = field
+dotnet_naming_symbols.static_symbols.required_modifiers = static
+dotnet_naming_rule.static_members.symbols = static_symbols
+dotnet_naming_rule.static_members.style = static_case_style
+dotnet_naming_rule.static_members.severity = warning
