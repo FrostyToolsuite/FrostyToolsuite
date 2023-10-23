@@ -92,10 +92,6 @@ public class FrostyModExecutor
                     ProcessModResources(mod);
                 }
             }
-            else
-            {
-                return Errors.InvalidMods;
-            }
         }
 
         foreach (SuperBundleModInfo sb in m_superBundleModInfos.Values)
@@ -167,7 +163,7 @@ public class FrostyModExecutor
                     {
                         if (!m_handlers.TryGetValue(resource.HandlerHash, out Type? type))
                         {
-                            break;
+                            continue;
                         }
                         
                         if (exists)
@@ -184,6 +180,7 @@ public class FrostyModExecutor
                             {
                                 Handler = (IHandler)Activator.CreateInstance(type)!
                             };
+                            m_modifiedEbx.Add(resource.Name, modEntry);
                         }
                         
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
@@ -213,7 +210,6 @@ public class FrostyModExecutor
                             }   
                         }
                     }
-                        
                     m_modifiedEbx.Add(resource.Name, modEntry);
                     break;
                 }
@@ -232,7 +228,7 @@ public class FrostyModExecutor
                     {
                         if (!m_handlers.TryGetValue(resource.HandlerHash, out Type? type))
                         {
-                            break;
+                            continue;
                         }
                         
                         if (exists)
@@ -249,6 +245,7 @@ public class FrostyModExecutor
                             {
                                 Handler = (IHandler)Activator.CreateInstance(type)!
                             };
+                            m_modifiedRes.Add(resource.Name, modEntry);
                         }
                         
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
@@ -275,10 +272,9 @@ public class FrostyModExecutor
                             foreach (int bundle in entry.Bundles)
                             {
                                 modifiedBundles.Add(bundle);
-                            }   
+                            }
                         }
                     }
-                        
                     m_modifiedRes.Add(resource.Name, modEntry);
                     break;
                 }
@@ -298,7 +294,7 @@ public class FrostyModExecutor
                     {
                         if (!m_handlers.TryGetValue(resource.HandlerHash, out Type? type))
                         {
-                            break;
+                            continue;
                         }
                         
                         if (exists)
@@ -315,6 +311,7 @@ public class FrostyModExecutor
                             {
                                 Handler = (IHandler)Activator.CreateInstance(type)!
                             };
+                            m_modifiedChunks.Add(id, modEntry);
                         }
                         
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
@@ -362,7 +359,6 @@ public class FrostyModExecutor
                         SuperBundleModInfo sb = GetSuperBundleModInfo(superBundle);
                         sb.Removed.Chunks.Add(id);
                     }
-                        
                     m_modifiedChunks.Add(id, modEntry);
                     break;
                 }
@@ -497,7 +493,7 @@ public class FrostyModExecutor
             }
             else
             {
-                throw new Exception();
+                continue;
             }
             
             if (modDetails is null)
