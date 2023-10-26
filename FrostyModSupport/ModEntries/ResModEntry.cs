@@ -4,7 +4,7 @@ using Frosty.Sdk;
 
 namespace Frosty.ModSupport.ModEntries;
 
-public class ResModEntry
+public class ResModEntry : IModEntry
 {
     public string Name { get; }
     public Sha1 Sha1 { get; }

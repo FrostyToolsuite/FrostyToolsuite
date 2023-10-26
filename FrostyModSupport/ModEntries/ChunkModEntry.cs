@@ -4,7 +4,7 @@ using Frosty.Sdk;
 
 namespace Frosty.ModSupport.ModEntries;
 
-public class ChunkModEntry
+public class ChunkModEntry : IModEntry
 {
     public Guid Id { get; }
     public Sha1 Sha1 { get; }

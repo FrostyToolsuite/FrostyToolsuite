@@ -21,7 +21,10 @@ public class FrostyModExecutor
     private readonly Dictionary<string, ResModEntry> m_modifiedRes = new();
     private readonly Dictionary<Guid, ChunkModEntry> m_modifiedChunks = new();
 
+    private readonly List<IModEntry> m_handlerAssets = new();
+
     private readonly Dictionary<Sha1, ResourceData> m_data = new();
+    private readonly Dictionary<Sha1, Block<byte>> m_data2 = new();
 
     private readonly Dictionary<int, SuperBundleModInfo> m_superBundleModInfos = new();
     private readonly Dictionary<int, int> m_bundleToSuperBundleMapping = new();
@@ -93,9 +96,19 @@ public class FrostyModExecutor
                 }
             }
         }
-
-        foreach (SuperBundleModInfo sb in m_superBundleModInfos.Values)
+        
+        // apply handlers
+        foreach (IModEntry entry in m_handlerAssets)
         {
+            // entry.Handler will never be null, since the assets added to m_handlerAssets always have a handler set
+            entry.Handler!.Modify(entry, out Block<byte> data);
+            Debug.Assert(m_data2.TryAdd(entry.Sha1, data));
+        }
+        
+        foreach (KeyValuePair<int, SuperBundleModInfo> sb in m_superBundleModInfos)
+        {
+            SuperBundleInstallChunk sbic = FileSystemManager.GetSuperBundleInstallChunk(sb.Key);
+            
             switch (FileSystemManager.BundleFormat)
             {
                 case BundleFormat.Dynamic2018:
@@ -181,6 +194,7 @@ public class FrostyModExecutor
                                 Handler = (IHandler)Activator.CreateInstance(type)!
                             };
                             m_modifiedEbx.Add(resource.Name, modEntry);
+                            m_handlerAssets.Add(modEntry);
                         }
                         
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
@@ -189,11 +203,19 @@ public class FrostyModExecutor
 
                     EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(resource.Name);
 
-                    if (resource.IsModified)
+                    if (!resource.IsModified)
                     {
+                        // asset needs to exist if it is not modified by the game
+                        if (entry is null)
+                        {
+                            // we skip the bundle part here
+                            continue;
+                        }
+                        
                         // only add asset to bundles, use base games data
-                        // TODO: get data from base game
-                        modEntry = new EbxModEntry(ebx, -1);
+                        Block<byte> data = AssetManager.GetRawAsset(entry);
+                        Debug.Assert(m_data2.TryAdd(entry.Sha1, data));
+                        modEntry = new EbxModEntry(ebx, data.Size);
                     }
                     else
                     {
@@ -246,6 +268,7 @@ public class FrostyModExecutor
                                 Handler = (IHandler)Activator.CreateInstance(type)!
                             };
                             m_modifiedRes.Add(resource.Name, modEntry);
+                            m_handlerAssets.Add(modEntry);
                         }
                         
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
@@ -254,11 +277,19 @@ public class FrostyModExecutor
 
                     ResAssetEntry? entry = AssetManager.GetResAssetEntry(resource.Name);
 
-                    if (resource.IsModified)
+                    if (!resource.IsModified)
                     {
+                        // asset needs to exist if it is not modified by the game
+                        if (entry is null)
+                        {
+                            // we skip the bundle part here
+                            continue;
+                        }
+                        
                         // only add asset to bundles, use base games data
-                        // TODO: get data from base game
-                        modEntry = new ResModEntry(res, -1);
+                        Block<byte> data = AssetManager.GetRawAsset(entry);
+                        Debug.Assert(m_data2.TryAdd(entry.Sha1, data));
+                        modEntry = new ResModEntry(res, data.Size);
                     }
                     else
                     {
@@ -312,6 +343,7 @@ public class FrostyModExecutor
                                 Handler = (IHandler)Activator.CreateInstance(type)!
                             };
                             m_modifiedChunks.Add(id, modEntry);
+                            m_handlerAssets.Add(modEntry);
                         }
                         
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
@@ -320,11 +352,19 @@ public class FrostyModExecutor
 
                     ChunkAssetEntry? entry = AssetManager.GetChunkAssetEntry(id);
 
-                    if (resource.IsModified)
+                    if (!resource.IsModified)
                     {
+                        // asset needs to exist if it is not modified by the game
+                        if (entry is null)
+                        {
+                            // we skip the bundle part here
+                            continue;
+                        }
+                        
                         // only add asset to bundles, use base games data
-                        // TODO: get data from base game
-                        modEntry = new ChunkModEntry(chunk, -1);
+                        Block<byte> data = AssetManager.GetRawAsset(entry);
+                        Debug.Assert(m_data2.TryAdd(entry.Sha1, data));
+                        modEntry = new ChunkModEntry(chunk, data.Size);
                     }
                     else
                     {
@@ -513,5 +553,20 @@ public class FrostyModExecutor
             modInfoList.Add(modInfo);
         }
         return modInfoList;
+    }
+
+    private Block<byte> GetData(Sha1 sha1)
+    {
+        if (m_data.TryGetValue(sha1, out ResourceData? data))
+        {
+            return data.GetData();
+        }
+
+        if (m_data2.TryGetValue(sha1, out Block<byte>? block))
+        {
+            return block;
+        }
+
+        throw new Exception();
     }
 }
