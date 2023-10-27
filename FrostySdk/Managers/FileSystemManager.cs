@@ -35,7 +35,7 @@ public static class FileSystemManager
     private static readonly List<InstallChunkInfo> s_installChunks = new();
     private static readonly Dictionary<int, SuperBundleInstallChunk> s_sbIcMapping = new();
     private static readonly List<string> s_casFiles = new();
-    
+
     private static Type? s_deobfuscator;
     private static readonly Dictionary<string, Block<byte>> s_memoryFs = new();
 
@@ -67,7 +67,7 @@ public static class FileSystemManager
         {
             Sources.RemoveAt(0);
         }
-        
+
         if (Directory.Exists($"{BasePath}/Update"))
         {
             foreach (string dlc in Directory.EnumerateDirectories($"{BasePath}/Update"))
@@ -79,7 +79,7 @@ public static class FileSystemManager
                 }
                 else
                 {
-                    Sources.Insert(0, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));   
+                    Sources.Insert(0, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));
                 }
             }
         }
@@ -88,7 +88,7 @@ public static class FileSystemManager
         {
             return false;
         }
-        
+
         IsInitialized = true;
         return true;
     }
@@ -137,25 +137,25 @@ public static class FileSystemManager
 
         return string.Empty;
     }
-    
+
     public static string GetFilePath(CasFileIdentifier casFileIdentifier)
     {
         InstallChunkInfo installChunkInfo = s_installChunks[s_persistentIndexMapping[casFileIdentifier.InstallChunkIndex]];
         if (casFileIdentifier.IsPatch)
         {
-            FileSystemSource.Patch.ResolvePath(
+            return FileSystemSource.Patch.ResolvePath(
                 $"{installChunkInfo.InstallBundle}/cas_{casFileIdentifier.CasIndex:D2}.cas");
         }
 
         return FileSystemSource.Base.ResolvePath(
             $"{installChunkInfo.InstallBundle}/cas_{casFileIdentifier.CasIndex:D2}.cas");
     }
-    
+
     public static string GetFilePath(int casIndex)
     {
         return s_casFiles[casIndex];
     }
-    
+
     public static IDeobfuscator? CreateDeobfuscator() => s_deobfuscator != null ? (IDeobfuscator?)Activator.CreateInstance(s_deobfuscator) : null;
 
     public static IEnumerable<SuperBundleInfo> EnumerateSuperBundles()
@@ -165,7 +165,7 @@ public static class FileSystemManager
             yield return sbInfo;
         }
     }
-    
+
     public static IEnumerable<InstallChunkInfo> EnumerateInstallChunks()
     {
         foreach (InstallChunkInfo installChunkInfo in s_installChunks)
@@ -178,7 +178,7 @@ public static class FileSystemManager
     {
         return s_installChunks[s_persistentIndexMapping[index]];
     }
-    
+
     public static InstallChunkInfo GetInstallChunkInfo(Guid id)
     {
         return s_installChunks.FirstOrDefault(ic => ic.Id == id) ?? throw new KeyNotFoundException();
@@ -194,10 +194,10 @@ public static class FileSystemManager
     {
         return s_sbIcMapping[Utils.Utils.HashString(sbIcName, true)];
     }
-    
+
     public static bool HasFileInMemoryFs(string name) => s_memoryFs.ContainsKey(name);
     public static Block<byte> GetFileFromMemoryFs(string name) => s_memoryFs[name];
-    
+
     private static bool LoadInitFs(string name, bool isBase = false)
     {
         ParseGamePlatform(name.Remove(0, 7));
@@ -209,13 +209,13 @@ public static class FileSystemManager
         }
         else
         {
-            path = ResolvePath(name);   
+            path = ResolvePath(name);
         }
         if (string.IsNullOrEmpty(path))
         {
             return false;
         }
-        
+
         DbObject? initFs = DbObject.Deserialize(path);
 
         if (initFs is null)
@@ -229,16 +229,16 @@ public static class FileSystemManager
             {
                 return false;
             }
-            
+
             if (!KeyManager.HasKey("InitFsKey"))
             {
                 return false;
             }
-            
+
             using (BlockStream stream = new(new Block<byte>(initFs.AsDict().AsBlob("encrypted"))))
             {
                 stream.Decrypt(KeyManager.GetKey("InitFsKey"), PaddingMode.PKCS7);
-                
+
                 initFs = DbObject.Deserialize(stream);
 
                 if (initFs is null)
@@ -260,7 +260,7 @@ public static class FileSystemManager
             }
             s_memoryFs.TryAdd(fileName, new Block<byte>(file.AsBlob("payload")));
         }
-        
+
         return true;
     }
 
@@ -297,7 +297,7 @@ public static class FileSystemManager
                 throw new NotImplementedException($"GamePlatform not implemented: {platform}");
         }
     }
-    
+
     private static bool ProcessLayouts()
     {
         string baseLayoutPath = ResolvePath(false, "layout.toc");
@@ -307,7 +307,7 @@ public static class FileSystemManager
         {
             return false;
         }
-        
+
         // Process base layout.toc
         DbObjectDict? baseLayout = DbObject.Deserialize(baseLayoutPath)?.AsDict();
 
@@ -321,7 +321,7 @@ public static class FileSystemManager
         {
             BundleFormat = BundleFormat.Kelvin;
         }
-        
+
         foreach (DbObject superBundle in baseLayout.AsDict().AsList("superBundles"))
         {
             string name = superBundle.AsDict().AsString("name");
@@ -337,7 +337,7 @@ public static class FileSystemManager
             {
                 return false;
             }
-            
+
             foreach (DbObject superBundle in patchLayout.AsList("superBundles"))
             {
                 // Merge super bundles
@@ -359,7 +359,7 @@ public static class FileSystemManager
             {
                 BundleFormat = BundleFormat.SuperBundleManifest;
             }
-            
+
             if (!LoadInitFs(patchLayout.AsList("fs")[0].AsString()))
             {
                 return false;
@@ -381,7 +381,7 @@ public static class FileSystemManager
             {
                 BundleFormat = BundleFormat.SuperBundleManifest;
             }
-            
+
             if (!LoadInitFs(baseLayout.AsList("fs")[0].AsString()))
             {
                 return false;
@@ -398,7 +398,7 @@ public static class FileSystemManager
             // Older games dont have an InstallManifest, they have one InstallChunk in the data/patch folder
             InstallChunkInfo ic = new();
             foreach (SuperBundleInfo sb in s_superBundleMapping.Values)
-            {   
+            {
                 ic.SuperBundles.Add(sb.Name);
 
                 SuperBundleInstallChunk sbIc = new(sb, ic, InstallChunkType.Default);
@@ -415,7 +415,7 @@ public static class FileSystemManager
             {
                 ParseGamePlatform(platform);
             }
-            
+
             // check for platform, else we get it from the initFs
             foreach (DbObject installChunk in installManifest.AsList("installChunks"))
             {
@@ -503,7 +503,7 @@ public static class FileSystemManager
             {
                 BundleFormat = (BundleFormat)installManifest.AsDict("settings").AsLong("bundleFormat", (long)BundleFormat.Dynamic2018);
             }
-            
+
             foreach (SuperBundleInfo sb in s_superBundleMapping.Values)
             {
                 if (sb.InstallChunks.Count == 0)

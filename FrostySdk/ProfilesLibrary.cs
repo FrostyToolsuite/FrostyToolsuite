@@ -5,14 +5,13 @@ using System.Linq;
 using System.Text.Json;
 using Frosty.Sdk.Profiles;
 using Frosty.Sdk.IO.Compression;
-using static Frosty.Sdk.Utils.Utils;
 
 namespace Frosty.Sdk;
 
 public static class ProfilesLibrary
 {
     public static bool IsInitialized { get; private set; }
-    
+
     public static string ProfileName => s_effectiveProfile?.Name ?? string.Empty;
     public static string DisplayName => s_effectiveProfile?.DisplayName ?? string.Empty;
     public static string InternalName => s_effectiveProfile?.InternalName?? string.Empty;
@@ -27,7 +26,7 @@ public static class ProfilesLibrary
     public static bool MustAddChunks => s_effectiveProfile?.MustAddChunks ?? false;
     public static bool EnableExecution => s_effectiveProfile?.EnableExecution ?? false;
     public static bool HasAntiCheat => s_effectiveProfile?.HasAntiCheat ?? false;
-    
+
     public static CompressionType EbxCompression => (CompressionType)(s_effectiveProfile?.EbxCompression ?? 0);
     public static CompressionType ResCompression => (CompressionType)(s_effectiveProfile?.ResCompression ?? 0);
     public static CompressionType ChunkCompression => (CompressionType)(s_effectiveProfile?.ChunkCompression ?? 0);
@@ -47,7 +46,7 @@ public static class ProfilesLibrary
     private static Profile? s_effectiveProfile;
     private static bool s_profilesLoaded;
     private static readonly List<Profile> s_profiles = new();
-    
+
     public static void Initialize()
     {
         if (Directory.Exists("Profiles"))
@@ -84,7 +83,7 @@ public static class ProfilesLibrary
         {
             foreach (string bundle in  s_effectiveProfile.SharedBundles)
             {
-                SharedBundles.Add(HashString(bundle), bundle);
+                SharedBundles.Add(Utils.Utils.HashString(bundle, true), bundle);
             }
 
             IsInitialized = true;
