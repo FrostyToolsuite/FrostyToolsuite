@@ -15,7 +15,7 @@ using Frosty.Sdk.Utils;
 
 namespace Frosty.ModSupport;
 
-public class FrostyModExecutor
+public partial class FrostyModExecutor
 {
     private readonly Dictionary<string, EbxModEntry> m_modifiedEbx = new();
     private readonly Dictionary<string, ResModEntry> m_modifiedRes = new();
@@ -38,13 +38,15 @@ public class FrostyModExecutor
     /// <param name="modPaths">The full paths of the mods.</param>
     public Errors GenerateMods(string modPackName, params string[] modPaths)
     {
-        string modDataPath = Path.Combine(FileSystemManager.BasePath, "ModData", modPackName);
+        // define some paths we are going to need
         string patchPath = FileSystemManager.Sources.Count == 1
             ? FileSystemSource.Base.Path
             : FileSystemSource.Patch.Path;
+        string modDataPath = Path.Combine(FileSystemManager.BasePath, "ModData", modPackName, patchPath);
+        string gamePatchPath = Path.Combine(FileSystemManager.BasePath, patchPath);
 
         // check if we need to generate new data
-        string modInfosPath = Path.Combine(modDataPath, patchPath, "mods.json");
+        string modInfosPath = Path.Combine(modDataPath, "mods.json");
         List<ModInfo> modInfos = GenerateModInfoList(modPaths);
         if (File.Exists(modInfosPath))
         {
@@ -59,6 +61,7 @@ public class FrostyModExecutor
         ResourceManager.Initialize();
         AssetManager.Initialize();
 
+        // load handlers from Handlers directory
         LoadHandlers();
         
         // process all mods
@@ -105,10 +108,16 @@ public class FrostyModExecutor
             Debug.Assert(m_data2.TryAdd(entry.Sha1, data));
         }
         
+        // clear old generated mod data
+        Directory.Delete(modDataPath, true);
+        Directory.CreateDirectory(modDataPath);
+        
+        // modify the superbundles and write them to mod data
         foreach (KeyValuePair<int, SuperBundleModInfo> sb in m_superBundleModInfos)
         {
             SuperBundleInstallChunk sbic = FileSystemManager.GetSuperBundleInstallChunk(sb.Key);
             
+            // TODO: we need to write the data to cas files (should we write them per bundle or per superbundle) and store the references, so we can write them into the cat files/directly in the bundle
             switch (FileSystemManager.BundleFormat)
             {
                 case BundleFormat.Dynamic2018:
@@ -119,6 +128,17 @@ public class FrostyModExecutor
                     break;
                 case BundleFormat.Kelvin:
                     break;
+            }
+        }
+        
+        // create symbolic links for everything that is in gamePatchPath but not in modDataPath
+        foreach (string file in Directory.EnumerateFiles(gamePatchPath, string.Empty, SearchOption.AllDirectories))
+        {
+            string modPath = Path.Combine(modDataPath, Path.GetRelativePath(gamePatchPath, file));
+            if (!File.Exists(modPath))
+            {
+                // TODO: check if we need to create the directory first
+                File.CreateSymbolicLink(modPath, file);
             }
         }
 
@@ -407,6 +427,8 @@ public class FrostyModExecutor
                     // TODO:
                     break;
                 }
+                default:
+                    continue;
             }
 
             foreach (int addedBundle in resource.AddedBundles)
