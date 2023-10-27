@@ -26,7 +26,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
             Size = inSize;
         }
     }
-    
+
     public void Load()
     {
         foreach (SuperBundleInfo sbInfo in FileSystemManager.EnumerateSuperBundles())
@@ -47,6 +47,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
                             found = true;
                             break;
                     }
+
+                    break;
                 }
 
                 if (!found)
@@ -73,14 +75,14 @@ public class Dynamic2018AssetLoader : IAssetLoader
             Debug.Assert(false, "We should not be here");
             return Code.NotFound;
         }
-        
+
         // check for format flags
         bool isCas = toc.AsBoolean("cas");
         bool isDas = toc.AsBoolean("das");
 
         // path to sb file
         string sbPath = path.Replace(".toc", ".sb");
-        
+
         // load bundles
         if (toc.ContainsKey("bundles"))
         {
@@ -88,8 +90,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
             DataStream sbStream = BlockStream.FromFile(sbPath, false);
             DataStream? baseSbStream = null;
             Dictionary<int, BundleHelper>? baseBundleMapping = null;
-            
-            // is its a das superBundle it stores the bundle values in lists 
+
+            // is its a das superBundle it stores the bundle values in lists
             if (isDas)
             {
                 DbObjectDict bundles = toc.AsDict("bundles");
@@ -114,7 +116,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
                     long offset = bundleObj.AsLong("offset");
                     long size = bundleObj.AsLong("size");
-                    
+
                     // legacy flags used until fb 2014.4.11
                     // cas + delta -> casPatchType for bundle members
                     // noncas + delta -> patched bundle and bundle members
@@ -126,7 +128,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     {
                         baseSbStream ??=
                             BlockStream.FromFile(FileSystemManager.ResolvePath(false, $"{inSbIc.Name}.sb"), false);
-                    
+
                         LoadBundle(baseSbStream, offset, size, ref bundle, !isCas);
                     }
                     else if (!isCas && isDelta)
@@ -135,7 +137,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                         // we need to load the base toc to get the corresponding base bundle
                         baseBundleMapping ??= LoadBaseBundles(FileSystemManager.ResolvePath(false, $"{inSbIc.Name}.toc"));
 
-                        if (baseBundleMapping.TryGetValue(Utils.Utils.HashString(bundle.Name), out BundleHelper helper))
+                        if (baseBundleMapping.TryGetValue(Utils.Utils.HashString(bundle.Name, true), out BundleHelper helper))
                         {
                             baseSbStream ??=
                                 BlockStream.FromFile(FileSystemManager.ResolvePath(false, $"{inSbIc.Name}.sb"), false);
@@ -149,6 +151,9 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     }
                 }
             }
+
+            sbStream.Dispose();
+            baseSbStream?.Dispose();
         }
 
         // load chunks
@@ -166,7 +171,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     baseChunks.Add(obj.AsDict().AsGuid("id"));
                 }
             }
-            
+
             foreach (DbObject obj in toc.AsList("chunks"))
             {
                 DbObjectDict chunkObj = obj.AsDict();
@@ -187,7 +192,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 }
 
                 bool b = baseChunks.Remove(entry.Id);
-                
+
                 AssetManager.AddSuperBundleChunk(entry);
 
                 if (entry.LogicalSize == 0)
@@ -196,7 +201,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     // entry.OriginalSize = entry.FileInfo.GetOriginalSize();
                 }
             }
-            
+
             Debug.Assert(baseChunks.Count == 0);
         }
 
@@ -204,7 +209,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         {
             /* these are never actually used, tho the newer games check for them
             if (toc.ContainsKey("removedBundles"))
-            {   
+            {
             }
 
             if (toc.ContainsKey("removedChunks"))
@@ -213,7 +218,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
             return Code.Continue;
         }
-        
+
         return Code.Stop;
     }
 
@@ -225,7 +230,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         {
             return retVal;
         }
-        
+
         DbObjectDict? toc = DbObject.Deserialize(inPath)?.AsDict();
 
         if (toc is null || !toc.ContainsKey("bundles"))
@@ -236,7 +241,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         foreach (DbObject obj in toc.AsList("bundles"))
         {
             string name = obj.AsDict().AsString("id");
-            retVal.Add(Utils.Utils.HashString(name), new BundleHelper(name, obj.AsDict().AsLong("offset"), obj.AsDict().AsLong("size")));
+            retVal.Add(Utils.Utils.HashString(name, true), new BundleHelper(name, obj.AsDict().AsLong("offset"), obj.AsDict().AsLong("size")));
         }
 
         return retVal;
@@ -257,7 +262,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         }
 
         BinaryBundle bundleMeta = DeserializeDeltaBundle(deltaStream, baseStream);
-        
+
         // TODO: get asset refs from sb file similar to this (https://github.com/GreyDynamics/Frostbite3_Editor/blob/develop/src/tk/greydynamics/Resource/Frostbite3/Cas/NonCasBundle.java)
         // or with a cache like before
         // this is just so u can load those games for now
@@ -275,7 +280,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         {
             AssetManager.AddChunk(chunk, bundle.Id);
         }
-        
+
         // disable for now since we dont read the data after the bundle
         // Debug.Assert(deltaStream.Position == inDeltaOffset + inDeltaSize, "Didnt read delta bundle correctly.");
         // Debug.Assert((baseStream?.Position ?? 0) == inBaseOffset + inBaseSize, "Didnt read base bundle correctly.");
@@ -330,7 +335,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
             AssetManager.AddChunk(chunk, bundle.Id);
         }
     }
-    
+
     private static void LoadCasBundle(DataStream stream, BundleInfo bundle, bool isDelta)
     {
         DbObjectDict? bundleObj = DbObject.Deserialize(stream)?.AsDict();
@@ -362,7 +367,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
                 IEnumerable<IFileInfo>? fileInfos =
                     ResourceManager.GetPatchFileInfos(entry.Sha1, deltaSha1, baseSha1);
-                
+
                 if (fileInfos is not null)
                 {
                     entry.FileInfos.UnionWith(fileInfos);
@@ -445,7 +450,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
             AssetManager.AddChunk(entry, bundle.Id);
         }
     }
-    
+
     private BinaryBundle DeserializeDeltaBundle(DataStream deltaStream, DataStream? baseStream)
     {
         ulong magic = deltaStream.ReadUInt64();
@@ -456,17 +461,17 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         uint bundleSize = deltaStream.ReadUInt32(Endian.Big);
         deltaStream.ReadUInt32(Endian.Big); // size of data after binary bundle
-            
+
         long startOffset = deltaStream.Position;
 
         int patchedBundleSize = deltaStream.ReadInt32(Endian.Big);
         uint baseBundleSize = baseStream?.ReadUInt32(Endian.Big) ?? 0;
         long baseBundleOffset = baseStream?.Position ?? -1;
-        
+
         using (BlockStream stream = new(patchedBundleSize + 4))
         {
             stream.WriteInt32(patchedBundleSize, Endian.Big);
-            
+
             while (deltaStream.Position < bundleSize + startOffset)
             {
                 uint packed = deltaStream.ReadUInt32(Endian.Big);
@@ -494,7 +499,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
             {
                 baseStream.Position = baseBundleOffset + baseBundleSize;
             }
-            
+
             stream.Position = 0;
             return BinaryBundle.Deserialize(stream);
         }

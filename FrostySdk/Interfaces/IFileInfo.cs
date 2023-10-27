@@ -9,10 +9,10 @@ namespace Frosty.Sdk.Interfaces;
 public interface IFileInfo
 {
     public bool IsComplete();
-    
+
     public Block<byte> GetRawData();
-    
-    public Block<byte> GetData(int inOriginalSize = 0);
+
+    public Block<byte> GetData(int inOriginalSize);
 
     protected void SerializeInternal(DataStream stream);
 
@@ -25,6 +25,9 @@ public interface IFileInfo
                 break;
             case KelvinFileInfo:
                 stream.WriteByte(1);
+                break;
+            case NonCasFileInfo:
+                stream.WriteByte(2);
                 break;
             default:
                 throw new NotImplementedException();
@@ -41,6 +44,8 @@ public interface IFileInfo
                 return CasFileInfo.DeserializeInternal(stream);
             case 1:
                 return KelvinFileInfo.DeserializeInternal(stream);
+            case 2:
+                return NonCasFileInfo.DeserializeInternal(stream);
             default:
                 throw new InvalidDataException();
         }
