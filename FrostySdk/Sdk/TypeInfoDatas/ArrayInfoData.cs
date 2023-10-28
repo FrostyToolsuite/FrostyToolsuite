@@ -31,7 +31,7 @@ internal class ArrayInfoData : TypeInfoData
         }
         if (m_nameHash != 0)
         {
-            sb.AppendLine($"[{nameof(ArrayHashAttribute)}({(int)m_nameHash})]");
+            sb.AppendLine($"[{nameof(ArrayHashAttribute)}({m_nameHash})]");
         }
     }
 }

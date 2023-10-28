@@ -29,7 +29,7 @@ internal class TypeInfoData
             name = reader.ReadNullTerminatedString();
         }
 
-        uint nameHash = 0;
+        uint nameHash;
         if (TypeInfo.Version > 4)
         {
             nameHash = reader.ReadUInt();
