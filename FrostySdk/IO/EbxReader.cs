@@ -87,7 +87,7 @@ public class EbxReader : DataStream
             Pad(16);
         }
 
-        m_imports = new EbxImportReference[importCount]; 
+        m_imports = new EbxImportReference[importCount];
         for (int i = 0; i < importCount; i++)
         {
             EbxImportReference import = new()
@@ -248,7 +248,7 @@ public class EbxReader : DataStream
                     instanceGuid = ReadGuid();
                 }
 
-                if (typeDescriptor.Alignment != 0x04)
+                if (typeDescriptor.GetAlignment() != 0x04)
                 {
                     Position += 8;
                 }
@@ -466,7 +466,7 @@ public class EbxReader : DataStream
     protected virtual PointerRef ReadPointerRef()
     {
         uint index = ReadUInt32();
-        
+
         if ((index >> 0x1F) == 1)
         {
             EbxImportReference import = m_imports[(int)(index & 0x7FFFFFFF)];
@@ -478,8 +478,8 @@ public class EbxReader : DataStream
         {
             return new PointerRef();
         }
-        
-        
+
+
 
         return new PointerRef(m_objects[(int)(index - 1)]);
     }

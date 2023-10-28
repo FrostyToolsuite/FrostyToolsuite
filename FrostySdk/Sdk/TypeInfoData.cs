@@ -34,6 +34,10 @@ internal class TypeInfoData
         {
             nameHash = reader.ReadUInt();
         }
+        else
+        {
+            nameHash = (uint)Utils.Utils.HashString(name);
+        }
 
         TypeFlags flags = reader.ReadUShort();
 
@@ -145,14 +149,11 @@ internal class TypeInfoData
         sb.AppendLine($"[{nameof(EbxTypeMetaAttribute)}({(ushort)m_flags}, {m_alignment}, {m_size}, \"{m_nameSpace}\")]");
 
         sb.AppendLine($"[{nameof(DisplayNameAttribute)}(\"{m_name}\")]");
-        
+        sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
+
         if (!m_guid.Equals(Guid.Empty))
         {
             sb.AppendLine($"[{nameof(GuidAttribute)}(\"{m_guid}\")]");
-        }
-        if (m_nameHash != 0)
-        {
-            sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
         }
         if (m_signature != 0)
         {

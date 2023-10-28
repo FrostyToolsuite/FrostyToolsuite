@@ -9,7 +9,7 @@ namespace Frosty.Sdk;
 public static class TypeLibrary
 {
     public static bool IsInitialized { get; private set; }
-    
+
     private static readonly Dictionary<string, int> s_nameMapping = new();
     private static readonly Dictionary<uint, int> s_nameHashMapping = new();
     private static readonly Dictionary<Guid, int> s_guidMapping = new();
@@ -21,7 +21,7 @@ public static class TypeLibrary
         {
             return true;
         }
-        
+
         FileInfo fileInfo = new($"Sdk/{ProfilesLibrary.SdkFilename}.dll");
         if (!fileInfo.Exists)
         {
@@ -36,7 +36,7 @@ public static class TypeLibrary
         {
             Type type = s_types[i];
             string name = type.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name;
-            uint nameHash = type.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name);
+            uint nameHash = type.GetCustomAttribute<NameHashAttribute>()!.Hash; // every type should have that attribute
             Guid? guid = type.GetCustomAttribute<GuidAttribute>()?.Guid;
 
             s_nameMapping.Add(name, i);
@@ -50,7 +50,7 @@ public static class TypeLibrary
         IsInitialized = true;
         return true;
     }
-    
+
     public static Type? GetType(string name)
     {
         if (!s_nameMapping.TryGetValue(name, out int index))
@@ -59,7 +59,7 @@ public static class TypeLibrary
         }
         return s_types[index];
     }
-    
+
     public static Type? GetType(uint nameHash)
     {
         if (!s_nameHashMapping.TryGetValue(nameHash, out int index))
@@ -68,7 +68,7 @@ public static class TypeLibrary
         }
         return s_types[index];
     }
-    
+
     public static Type? GetType(Guid guid)
     {
         if (!s_guidMapping.TryGetValue(guid, out int index))
@@ -77,7 +77,7 @@ public static class TypeLibrary
         }
         return s_types[index];
     }
-    
+
     public static object? CreateObject(string name)
     {
         Type? type = GetType(name);
@@ -89,13 +89,13 @@ public static class TypeLibrary
         Type? type = GetType(nameHash);
         return type == null ? null : Activator.CreateInstance(type);
     }
-    
+
     public static object? CreateObject(Guid guid)
     {
         Type? type = GetType(guid);
         return type == null ? null : Activator.CreateInstance(type);
     }
-    
+
     public static object? CreateObject(Type type)
     {
         return Activator.CreateInstance(type);
@@ -104,7 +104,7 @@ public static class TypeLibrary
     public static bool IsSubClassOf(object obj, string name)
     {
         Type type = obj.GetType();
-            
+
         return IsSubClassOf(type, name);
     }
 
@@ -122,7 +122,7 @@ public static class TypeLibrary
     public static bool IsSubClassOf(string type, string name)
     {
         Type? sourceType = GetType(type);
-            
+
         return sourceType != null && IsSubClassOf(sourceType, name);
     }
 }
