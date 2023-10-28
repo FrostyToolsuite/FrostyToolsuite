@@ -30,7 +30,7 @@ public static class TypeLibrary
 
         Assembly sdk = Assembly.LoadFile(fileInfo.FullName);
 
-        s_types = sdk.GetTypes();
+        s_types = sdk.GetExportedTypes();
 
         for (int i = 0; i < s_types.Length; i++)
         {
