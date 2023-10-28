@@ -35,8 +35,15 @@ public static class TypeLibrary
         for (int i = 0; i < s_types.Length; i++)
         {
             Type type = s_types[i];
+
+            NameHashAttribute? nameHashAttribute = type.GetCustomAttribute<NameHashAttribute>();
+            if (nameHashAttribute is null)
+            {
+                // issue described in #25 we are just ignoring these cases
+                continue;
+            }
+            uint nameHash = nameHashAttribute.Hash;
             string name = type.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name;
-            uint nameHash = type.GetCustomAttribute<NameHashAttribute>()!.Hash; // every type should have that attribute
             Guid? guid = type.GetCustomAttribute<GuidAttribute>()?.Guid;
 
             s_nameMapping.Add(name, i);
