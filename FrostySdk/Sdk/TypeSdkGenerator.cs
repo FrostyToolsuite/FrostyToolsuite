@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Basic.Reference.Assemblies;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using FrostyTypeSdkGenerator;
@@ -76,9 +77,9 @@ public class TypeSdkGenerator
 
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Collections.ObjectModel;");
+        sb.AppendLine("using System.Reflection;");
         sb.AppendLine("using Frosty.Sdk.Attributes;");
         sb.AppendLine("using Frosty.Sdk.Managers;");
-        sb.AppendLine("using System.Reflection;");
         sb.AppendLine("using Frosty.Sdk;");
         sb.AppendLine();
         sb.AppendLine("[assembly: SdkVersion(" + FileSystemManager.Head + ")]");
@@ -126,17 +127,9 @@ public class TypeSdkGenerator
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);
 
         List<MetadataReference> references =
-            new() { MetadataReference.CreateFromFile(typeof(ObservableCollection<>).Assembly.Location) };
+            new() { MetadataReference.CreateFromFile(typeof(TypeLibrary).Assembly.Location) };
 
-        Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-
-        foreach (Assembly assembly in assemblies)
-        {
-            if (!assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location))
-            {
-                references.Add(MetadataReference.CreateFromFile(assembly.Location));
-            }
-        }
+        references.AddRange(Net70.References.All);
 
 
 #if EBX_TYPE_SDK_DEBUG
