@@ -19,4 +19,11 @@ public class EbxModEntry : IModEntry
         OriginalSize = inResource.OriginalSize;
         Size = inSize;
     }
+
+    public EbxModEntry(string inName, Sha1 inSha1, long inOriginalSize)
+    {
+        Name = inName;
+        Sha1 = inSha1;
+        OriginalSize = inOriginalSize;
+    }
 }

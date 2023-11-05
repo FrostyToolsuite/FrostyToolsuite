@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
+using Frosty.ModSupport.Archive;
 using Frosty.ModSupport.Attributes;
 using Frosty.ModSupport.Interfaces;
 using Frosty.ModSupport.Mod;
@@ -30,6 +31,12 @@ public partial class FrostyModExecutor
     private readonly Dictionary<int, int> m_bundleToSuperBundleMapping = new();
 
     private readonly Dictionary<int, Type> m_handlers = new();
+
+    private readonly Dictionary<Guid, InstallChunkWriter> m_installChunkWriters = new();
+
+    private string m_patchPath;
+    private string m_modDataPath;
+    private string m_gamePatchPath;
     
     /// <summary>
     /// Generates a directory containing the modded games data.
@@ -39,14 +46,14 @@ public partial class FrostyModExecutor
     public Errors GenerateMods(string modPackName, params string[] modPaths)
     {
         // define some paths we are going to need
-        string patchPath = FileSystemManager.Sources.Count == 1
+        m_patchPath = FileSystemManager.Sources.Count == 1
             ? FileSystemSource.Base.Path
             : FileSystemSource.Patch.Path;
-        string modDataPath = Path.Combine(FileSystemManager.BasePath, "ModData", modPackName, patchPath);
-        string gamePatchPath = Path.Combine(FileSystemManager.BasePath, patchPath);
+        m_modDataPath = Path.Combine(FileSystemManager.BasePath, "ModData", modPackName, m_patchPath);
+        m_gamePatchPath = Path.Combine(FileSystemManager.BasePath, m_patchPath);
 
         // check if we need to generate new data
-        string modInfosPath = Path.Combine(modDataPath, "mods.json");
+        string modInfosPath = Path.Combine(m_modDataPath, "mods.json");
         List<ModInfo> modInfos = GenerateModInfoList(modPaths);
         if (File.Exists(modInfosPath))
         {
@@ -109,15 +116,17 @@ public partial class FrostyModExecutor
         }
         
         // clear old generated mod data
-        Directory.Delete(modDataPath, true);
-        Directory.CreateDirectory(modDataPath);
+        Directory.Delete(m_modDataPath, true);
+        Directory.CreateDirectory(m_modDataPath);
         
         // modify the superbundles and write them to mod data
         foreach (KeyValuePair<int, SuperBundleModInfo> sb in m_superBundleModInfos)
         {
             SuperBundleInstallChunk sbic = FileSystemManager.GetSuperBundleInstallChunk(sb.Key);
+
+            // write all data in this superbundle to cas files in the correct install chunk
+            InstallChunkWriter installChunkWriter = WriteCasArchives(sb.Value, sbic);
             
-            // TODO: we need to write the data to cas files (should we write them per bundle or per superbundle) and store the references, so we can write them into the cat files/directly in the bundle
             switch (FileSystemManager.BundleFormat)
             {
                 case BundleFormat.Dynamic2018:
@@ -132,9 +141,9 @@ public partial class FrostyModExecutor
         }
         
         // create symbolic links for everything that is in gamePatchPath but not in modDataPath
-        foreach (string file in Directory.EnumerateFiles(gamePatchPath, string.Empty, SearchOption.AllDirectories))
+        foreach (string file in Directory.EnumerateFiles(m_gamePatchPath, string.Empty, SearchOption.AllDirectories))
         {
-            string modPath = Path.Combine(modDataPath, Path.GetRelativePath(gamePatchPath, file));
+            string modPath = Path.Combine(m_modDataPath, Path.GetRelativePath(m_gamePatchPath, file));
             if (!File.Exists(modPath))
             {
                 // TODO: check if we need to create the directory first
@@ -143,6 +152,26 @@ public partial class FrostyModExecutor
         }
 
         return Errors.Success;
+    }
+
+    private InstallChunkWriter WriteCasArchives(SuperBundleModInfo inModInfo, SuperBundleInstallChunk sbIc)
+    {
+        if (!m_installChunkWriters.TryGetValue(sbIc.InstallChunk.Id, out InstallChunkWriter? installChunkWriter))
+        {
+            m_installChunkWriters.Add(sbIc.InstallChunk.Id, installChunkWriter = new InstallChunkWriter(sbIc.InstallChunk, m_gamePatchPath, m_modDataPath));
+        }
+        
+        foreach (Sha1 sha1 in inModInfo.Data)
+        {
+            (Block<byte>, bool) data = GetData(sha1);
+            installChunkWriter.WriteData(sha1, data.Item1);
+            if (data.Item2)
+            {
+                data.Item1.Dispose();
+            }
+        }
+
+        return installChunkWriter;
     }
 
     private void LoadHandlers()
@@ -403,6 +432,7 @@ public partial class FrostyModExecutor
                             foreach (int superBundle in entry.SuperBundleInstallChunks)
                             {
                                 SuperBundleModInfo sb = GetSuperBundleModInfo(superBundle);
+                                sb.Data.Add(resource.Sha1);
                                 sb.Modified.Chunks.Add(id);
                             }
                         }
@@ -411,6 +441,7 @@ public partial class FrostyModExecutor
                     foreach (int superBundle in chunk.AddedSuperBundles)
                     {
                         SuperBundleModInfo sb = GetSuperBundleModInfo(superBundle);
+                        sb.Data.Add(resource.Sha1);
                         sb.Added.Chunks.Add(id);
                     }
 
@@ -434,6 +465,11 @@ public partial class FrostyModExecutor
             foreach (int addedBundle in resource.AddedBundles)
             {
                 SuperBundleModInfo sb = GetSuperBundleModInfoFromBundle(addedBundle);
+
+                if (resource.Sha1 != Sha1.Zero)
+                {
+                    sb.Data.Add(resource.Sha1);
+                }
 
                 if (!sb.Modified.Bundles.TryGetValue(addedBundle, out BundleModInfo? modInfo))
                 {
@@ -483,6 +519,11 @@ public partial class FrostyModExecutor
             {
                 SuperBundleModInfo sb = GetSuperBundleModInfoFromBundle(modifiedBundle);
 
+                if (resource.Sha1 != Sha1.Zero)
+                {
+                    sb.Data.Add(resource.Sha1);
+                }
+                
                 if (!sb.Modified.Bundles.TryGetValue(modifiedBundle, out BundleModInfo? modInfo))
                 {
                     modInfo = new BundleModInfo();
@@ -577,16 +618,16 @@ public partial class FrostyModExecutor
         return modInfoList;
     }
 
-    private Block<byte> GetData(Sha1 sha1)
+    private (Block<byte>, bool) GetData(Sha1 sha1)
     {
         if (m_data.TryGetValue(sha1, out ResourceData? data))
         {
-            return data.GetData();
+            return (data.GetData(), true);
         }
 
         if (m_data2.TryGetValue(sha1, out Block<byte>? block))
         {
-            return block;
+            return (block, false);
         }
 
         throw new Exception();

@@ -22,6 +22,11 @@ public readonly struct CasFileIdentifier
     {
         return (uint)((file.IsPatch ? 1 << 16 : 0) | (file.InstallChunkIndex << 8) | (file.CasIndex));
     }
+
+    public static ulong ToFileIdentifierLong(CasFileIdentifier file)
+    {
+        return (ulong)((file.IsPatch ? 1L << 48 : 0) | ((long)file.InstallChunkIndex << 16) | (file.CasIndex));
+    }
     
     public static CasFileIdentifier FromManifestFileIdentifier(uint file)
     {

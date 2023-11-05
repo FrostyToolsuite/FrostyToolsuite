@@ -25,4 +25,15 @@ public class ResModEntry : IModEntry
         ResMeta = inResource.ResMeta;
         Size = inSize;
     }
+
+    public ResModEntry(string inName, Sha1 inSha1, long inOriginalSize, ulong inResRid, uint inResType,
+        byte[] inResMeta)
+    {
+        Name = inName;
+        Sha1 = inSha1;
+        OriginalSize = inOriginalSize;
+        ResRid = inResRid;
+        ResType = inResType;
+        ResMeta = inResMeta;
+    }
 }

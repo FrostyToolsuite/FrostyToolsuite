@@ -30,4 +30,12 @@ public class ChunkModEntry : IModEntry
         Size = inSize;
         
     }
+
+    public ChunkModEntry(Guid inId, Sha1 inSha1, uint inLogicalOffset, uint inLogicalSize)
+    {
+        Id = inId;
+        Sha1 = inSha1;
+        LogicalOffset = inLogicalOffset;
+        LogicalSize = inLogicalSize;
+    }
 }
