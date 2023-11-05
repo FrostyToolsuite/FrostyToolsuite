@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Basic.Reference.Assemblies;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using FrostyTypeSdkGenerator;
@@ -21,15 +23,15 @@ public class TypeSdkGenerator
     {
         // string[] patterns =
         // {
-        //     "488b05???????? 48894108 48890d???????? 48???? C3",
-        //     "488b05???????? 48894108 48890d???????? C3",
-        //     "488b05???????? 48894108 48890d????????",
-        //     "488b05???????? 488905???????? 488d05???????? 488905???????? E9",
-        //     "48391D???????? ???? 488b4310", // new games
+        //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
+        //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? C3",
+        //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ??",
+        //     "48 8b 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? 48 8d 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E9",
+        //     "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10", // new games
         // };
-        
+
         long startAddress = process.MainModule?.BaseAddress.ToInt64() ?? 0;
-        
+
         using (MemoryReader reader = new(process, startAddress))
         {
             reader.Position = startAddress;
@@ -39,14 +41,14 @@ public class TypeSdkGenerator
             {
                 return -1;
             }
-            
-            reader.Position = offsets![0] + 3;
+
+            reader.Position = offsets[0] + 3;
             int newValue = reader.ReadInt(false);
             reader.Position = offsets[0] + 3 + newValue + 4;
             return reader.ReadLong(false);
         }
     }
-    
+
     public bool DumpTypes(Process process)
     {
         long typeInfoOffset = FindTypeInfoOffset(process);
@@ -72,19 +74,18 @@ public class TypeSdkGenerator
     public bool CreateSdk(string filePath)
     {
         StringBuilder sb = new();
-        
+
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Collections.ObjectModel;");
+        sb.AppendLine("using System.Reflection;");
         sb.AppendLine("using Frosty.Sdk.Attributes;");
         sb.AppendLine("using Frosty.Sdk.Managers;");
-        sb.AppendLine("using System.Reflection;");
         sb.AppendLine("using Frosty.Sdk;");
         sb.AppendLine();
         sb.AppendLine("[assembly: SdkVersion(" + FileSystemManager.Head + ")]");
         sb.AppendLine();
         sb.AppendLine("namespace Frosty.Sdk.Ebx;");
 
-        
         foreach (TypeInfo typeInfo in TypeInfo.TypeInfoMapping.Values)
         {
             switch (typeInfo.GetFlags().GetTypeEnum())
@@ -125,30 +126,23 @@ public class TypeSdkGenerator
 
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);
 
-        List<MetadataReference> references = new();
-        
-        Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        List<MetadataReference> references =
+            new() { MetadataReference.CreateFromFile(typeof(TypeLibrary).Assembly.Location) };
 
-        foreach (Assembly assembly in assemblies)
-        {
-            if (!assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location))
-            {
-                references.Add(MetadataReference.CreateFromFile(assembly.Location));
-            }
-        }
+        references.AddRange(Net70.References.All);
 
-        
+
 #if EBX_TYPE_SDK_DEBUG
         OptimizationLevel level = OptimizationLevel.Debug;
 #else
         OptimizationLevel level = OptimizationLevel.Release;
 #endif
-        
+
         CSharpCompilation compilation = CSharpCompilation.Create("EbxTypes", new[] { syntaxTree }, references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true, optimizationLevel: level));
-        
+
         List<AdditionalText> meta = new List<AdditionalText>();
-        
+
         if (Directory.Exists("Meta"))
         {
             foreach (string additionalTextPath in Directory.EnumerateFiles("Meta"))
@@ -160,7 +154,7 @@ public class TypeSdkGenerator
         GeneratorDriver driver = CSharpGeneratorDriver
             .Create(new SourceGenerator())
             .AddAdditionalTexts(ImmutableArray.CreateRange(meta));
-        
+
         driver.RunGeneratorsAndUpdateCompilation(
             compilation,
             out Compilation outputCompilation,
@@ -180,7 +174,7 @@ public class TypeSdkGenerator
             File.WriteAllText(tree.FilePath, tree.GetText().ToString());
         }
 #endif
-        
+
         using (FileStream stream = new(filePath, FileMode.Create, FileAccess.Write))
         {
             EmitResult result = outputCompilation.Emit(stream);
@@ -192,7 +186,7 @@ public class TypeSdkGenerator
                 return false;
             }
         }
-        
+
         return true;
     }
 }

@@ -142,7 +142,7 @@ public partial struct {structContext.Name}
 {{
     public bool Equals({structContext.Name} b)
     {{
-        return {string.Join(" && ", structContext.Fields.Select(static field => field.Type.Contains("global::System.Collections.Generic.ObservableCollection<") ? $"{field.Name}.SequenceEqual(b.{field.Name})" : $"{field.Name} == b.{field.Name}"))};
+        return {string.Join(" && ", structContext.Fields.Select(static field => field.Type.Contains("global::System.Collections.ObjectModel.ObservableCollection<") ? $"{field.Name}.SequenceEqual(b.{field.Name})" : $"{field.Name} == b.{field.Name}"))};
     }}
 
     public override bool Equals(object? obj)
@@ -354,7 +354,7 @@ public partial class {classContext.Name}
         {{
             return __id;
         }}
-        
+
         if (!string.IsNullOrEmpty({field.Name}))
         {{
             return {field.Name}.Sanitize();
@@ -378,13 +378,13 @@ public partial class {classContext.Name}
 public partial {(typeContext.IsValueType ? "struct" : "class")} {typeContext.Name}
 {{";
         bool needsConstructor =
-            typeContext.Fields.Any(static f => f.Type.Contains("global::System.Collections.Generic.ObservableCollection<"));
+            typeContext.Fields.Any(static f => f.Type.Contains("global::System.Collections.ObjectModel.ObservableCollection<"));
         string constructor = string.Empty;
         foreach (FieldContext field in typeContext.Fields)
         {
             if (needsConstructor)
             {
-                if (field.Type.Contains("global::System.Collections.Generic.ObservableCollection<"))
+                if (field.Type.Contains("global::System.Collections.ObjectModel.ObservableCollection<"))
                 {
                     constructor += $"\n        {field.Name} = new();";
                 }

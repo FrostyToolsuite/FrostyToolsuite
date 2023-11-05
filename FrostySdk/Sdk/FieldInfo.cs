@@ -17,7 +17,7 @@ internal class FieldInfo : IComparable
     private TypeFlags m_flags;
     private ushort m_offset;
     private long p_typeInfo;
-    
+
     public void Read(MemoryReader reader, uint classHash)
     {
         if (!ProfilesLibrary.HasStrippedTypeNames)
@@ -27,6 +27,10 @@ internal class FieldInfo : IComparable
         if (TypeInfo.Version > 4)
         {
             m_nameHash = reader.ReadUInt();
+        }
+        else
+        {
+            m_nameHash = (uint)Utils.Utils.HashString(m_name);
         }
         m_flags = reader.ReadUShort();
         m_offset = reader.ReadUShort();
@@ -62,7 +66,7 @@ internal class FieldInfo : IComparable
             typeName = "PointerRef";
             isClass = true;
         }
-        
+
         if (type is ArrayInfo arrayInfo)
         {
             type = arrayInfo.GetTypeInfo();
@@ -76,11 +80,8 @@ internal class FieldInfo : IComparable
             sb.AppendLine($"[{nameof(EbxArrayMetaAttribute)}({(ushort)type.GetFlags()})]");
         }
         sb.AppendLine($"[{nameof(EbxFieldMetaAttribute)}({(ushort)flags}, {m_offset}, {(isClass ? $"typeof({type.GetName()})" : "null")})]");
-        if (m_nameHash != 0)
-        {
-            sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
-        }
-        
+        sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
+
         sb.AppendLine($"private {typeName} _{m_name};");
     }
 
