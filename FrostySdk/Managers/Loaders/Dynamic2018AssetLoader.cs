@@ -66,6 +66,12 @@ public class Dynamic2018AssetLoader : IAssetLoader
             return Code.NotFound;
         }
 
+        if (ProfilesLibrary.FrostbiteVersion < "2014.4.11" && !FileSystemSource.Base.TryResolvePath($"{inSbIc.Name}.toc", out _))
+        {
+            // some superbundles are still in the Update/Patch folder even tho their base bundles which are needed are not there (e.g. languages that are not loaded)
+            return Code.NotFound;
+        }
+
         // load the toc
         DbObjectDict? toc = DbObject.Deserialize(path)?.AsDict();
 
