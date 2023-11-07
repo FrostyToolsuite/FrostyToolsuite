@@ -189,7 +189,7 @@ public class ModUpdater
             }
         }
 
-        int id = 0, i = 0, resourceIndex = -1;
+        int id = 0, resourceIndex = -1;
 
         DbObjectList resourcesList = mod.AsList("resources");
         List<BaseModResource> resources = new(resourcesList.Count);
@@ -318,6 +318,11 @@ public class ModUpdater
             }
 
             id++;
+        }
+
+        foreach (BlockStream stream in archiveStreams.Values)
+        {
+            stream.Dispose();
         }
 
         return (resources.ToArray(), data.ToArray(), modDetails, mod.AsUInt("gameVersion"));
