@@ -3,11 +3,7 @@ namespace Frosty.Sdk.Ebx;
 public partial struct PropertyConnection
 {
     [Frosty.Sdk.Attributes.IsHiddenAttribute()]
-    public uint Flags
-    {
-        get => _Flags;
-        set => _Flags = value;
-    }
+    public uint Flags { get; set; }
 
     [Frosty.Sdk.Attributes.IsTransientAttribute()]
     [Frosty.Sdk.Attributes.EbxFieldMetaAttribute(Frosty.Sdk.Sdk.TypeFlags.TypeEnum.Enum)]

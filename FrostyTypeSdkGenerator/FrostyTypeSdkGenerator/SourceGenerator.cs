@@ -394,19 +394,25 @@ public partial {(typeContext.IsValueType ? "struct" : "class")} {typeContext.Nam
                 }
             }
 
-            string prop;
-            if (meta is not null && meta.TryGetValue(field.Name.Remove(0, 1), out string? metaProp))
+            string prop, name = field.Name.Remove(0, 1);
+            if (meta is not null && meta.TryGetValue(name, out string? metaProp))
             {
-                meta.Remove(field.Name.Remove(0, 1));
+                meta.Remove(name);
+                metaProp = metaProp.Remove(metaProp.LastIndexOf(']') + 1);
                 prop = @$"
 {string.Join("\n", field.Attributes.Select(static attr => $"    [{attr}]"))}
-{metaProp}";
+{metaProp}
+    public {field.Type} {name}
+    {{
+        get => {field.Name};
+        set => {field.Name} = value;
+    }}";
             }
             else
             {
                 prop = $@"
 {string.Join("\n", field.Attributes.Select(static attr => $"    [{attr}]"))}
-    public {field.Type} {field.Name.Remove(0, 1)}
+    public {field.Type} {name}
     {{
         get => {field.Name};
         set => {field.Name} = value;
