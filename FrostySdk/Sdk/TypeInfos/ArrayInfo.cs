@@ -28,4 +28,9 @@ internal class ArrayInfo : TypeInfo
         }
         base.Read(reader);
     }
+
+    public new void CreateType(StringBuilder sb)
+    {
+        m_data.CreateType(sb);
+    }
 }
