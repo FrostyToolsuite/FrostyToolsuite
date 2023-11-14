@@ -25,12 +25,12 @@ public class FrostyMod : IResourceContainer
     /// </summary>
     public const uint Version = 6;
     public const ulong Magic = 0x01005954534F5246;
-    
-    
+
+
     public IEnumerable<BaseModResource> Resources => m_resources;
-    
+
     public FrostyModDetails ModDetails { get; }
-    
+
     public uint Head { get; }
 
     private BaseModResource[] m_resources;
@@ -43,12 +43,12 @@ public class FrostyMod : IResourceContainer
         m_resources = inResources;
         m_data = inData;
     }
-    
+
     public ResourceData GetData(int inIndex)
     {
         return m_data[inIndex];
     }
-    
+
     /// <summary>
     /// Loads a mod from a file.
     /// </summary>
@@ -61,7 +61,7 @@ public class FrostyMod : IResourceContainer
         {
             return null;
         }
-        
+
         using (BlockStream stream = BlockStream.FromFile(inPath, false))
         {
             // read header
@@ -88,7 +88,7 @@ public class FrostyMod : IResourceContainer
             FrostyModDetails modDetails = new(stream.ReadNullTerminatedString(), stream.ReadNullTerminatedString(),
                 stream.ReadNullTerminatedString(), stream.ReadNullTerminatedString(), stream.ReadNullTerminatedString(),
                 stream.ReadNullTerminatedString());
-            
+
             // read resources
             int resourceCount = stream.ReadInt32();
             BaseModResource[] resources = new BaseModResource[resourceCount];
@@ -126,15 +126,16 @@ public class FrostyMod : IResourceContainer
             // read data
             stream.Position = dataOffset;
             ResourceData[] data = new ResourceData[dataCount];
+            long offset = dataOffset + dataCount * 12;
             for (int i = 0; i < dataCount; i++)
             {
-                data[i] = new ResourceData(inPath, stream.ReadInt64(), stream.ReadInt32());
+                data[i] = new ResourceData(inPath, offset + stream.ReadInt64(), stream.ReadInt32());
             }
-        
+
             return new FrostyMod(modDetails, head, resources, data);
         }
     }
-    
+
     /// <summary>
     /// Gets the ModDetails of a mod.
     /// </summary>
@@ -207,7 +208,7 @@ public class FrostyMod : IResourceContainer
             resources = new Block<byte>((int)stream.Length);
             stream.ReadExactly(resources);
         }
-        
+
         Block<byte> data;
         Block<byte> dataHeader = new(inData.Length * (sizeof(long) + sizeof(long)));
         using (BlockStream stream = new(dataHeader, true))
@@ -217,7 +218,7 @@ public class FrostyMod : IResourceContainer
             {
                 stream.WriteInt64(dataStream.Position);
                 stream.WriteInt64(subData.Size);
-                
+
                 dataStream.Write(subData);
             }
 
@@ -225,29 +226,29 @@ public class FrostyMod : IResourceContainer
             data = new Block<byte>((int)dataStream.Length);
             dataStream.ReadExactly(data);
         }
-        
+
         Block<byte> file = new(headerSize + resources.Size + dataHeader.Size + data.Size);
         using (BlockStream stream = new(file, true))
         {
             stream.WriteUInt64(Magic);
             stream.WriteUInt32(Version);
-            
+
             stream.WriteInt64(headerSize + resources.Size);
             stream.WriteInt32(inData.Length);
-            
+
             stream.WriteNullTerminatedString(ProfilesLibrary.ProfileName);
             stream.WriteUInt32(FileSystemManager.Head);
-            
+
             stream.WriteNullTerminatedString(inModDetails.Title);
             stream.WriteNullTerminatedString(inModDetails.Author);
             stream.WriteNullTerminatedString(inModDetails.Category);
             stream.WriteNullTerminatedString(inModDetails.Version);
             stream.WriteNullTerminatedString(inModDetails.Description);
             stream.WriteNullTerminatedString(inModDetails.ModPageLink);
-            
+
             stream.Write(resources);
             resources.Dispose();
-            
+
             stream.Write(dataHeader);
             stream.Write(data);
             dataHeader.Dispose();
@@ -285,9 +286,9 @@ public class FrostyMod : IResourceContainer
             resources = new Block<byte>((int)stream.Length);
             stream.ReadExactly(resources);
         }
-        
+
         Block<byte> data;
-        Block<byte> dataHeader = new(inData.Length * (sizeof(long) + sizeof(long)));
+        Block<byte> dataHeader = new(inData.Length * (sizeof(long) + sizeof(int)));
         using (BlockStream stream = new(dataHeader, true))
         using (DataStream dataStream = new(new MemoryStream()))
         {
@@ -295,7 +296,7 @@ public class FrostyMod : IResourceContainer
             {
                 stream.WriteInt64(dataStream.Position);
                 stream.WriteInt32(subData.Size);
-                
+
                 dataStream.Write(subData);
             }
 
@@ -303,29 +304,29 @@ public class FrostyMod : IResourceContainer
             data = new Block<byte>((int)dataStream.Length);
             dataStream.ReadExactly(data);
         }
-        
+
         Block<byte> file = new(headerSize + resources.Size + dataHeader.Size + data.Size);
         using (BlockStream stream = new(file, true))
         {
             stream.WriteUInt64(Magic);
             stream.WriteUInt32(Version);
-            
+
             stream.WriteInt64(headerSize + resources.Size);
             stream.WriteInt32(inData.Length);
-            
+
             stream.WriteNullTerminatedString(ProfilesLibrary.ProfileName);
             stream.WriteUInt32(inHead);
-            
+
             stream.WriteNullTerminatedString(inModDetails.Title);
             stream.WriteNullTerminatedString(inModDetails.Author);
             stream.WriteNullTerminatedString(inModDetails.Category);
             stream.WriteNullTerminatedString(inModDetails.Version);
             stream.WriteNullTerminatedString(inModDetails.Description);
             stream.WriteNullTerminatedString(inModDetails.ModPageLink);
-            
+
             stream.Write(resources);
             resources.Dispose();
-            
+
             stream.Write(dataHeader);
             stream.Write(data);
             dataHeader.Dispose();

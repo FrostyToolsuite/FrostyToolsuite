@@ -195,13 +195,13 @@ public static class AssetManager
     #region -- Bundle --
 
     /// <summary>
-    /// Gets the <see cref="BundleEntry"/> by name.
+    /// Gets the <see cref="BundleInfo"/> by hash.
     /// </summary>
-    /// <param name="id">The Id of the Bundle.</param>
-    /// <returns>The <see cref="BundleEntry"/> or null if it doesn't exist.</returns>
-    public static BundleInfo? GetBundleEntry(int id)
+    /// <param name="inHash">The hash of the Bundle.</param>
+    /// <returns>The <see cref="BundleInfo"/> or null if it doesn't exist.</returns>
+    public static BundleInfo? GetBundleInfo(int inHash)
     {
-        return s_bundleMapping.Count > id ? s_bundleMapping[id] : null;
+        return s_bundleMapping.TryGetValue(inHash, out BundleInfo? bundleInfo) ? bundleInfo : null;
     }
 
     #endregion
@@ -311,6 +311,14 @@ public static class AssetManager
     }
 
     #endregion
+
+    public static IEnumerable<BundleInfo> EnumerateBundleInfos()
+    {
+        foreach (BundleInfo bundle in s_bundleMapping.Values)
+        {
+            yield return bundle;
+        }
+    }
 
     public static IEnumerable<EbxAssetEntry> EnumerateEbxAssetEntries()
     {
@@ -472,9 +480,9 @@ public static class AssetManager
                 {
                     entry.DependentAssets.Add(import.FileGuid);
                 }
-                
+
                 s_ebxGuidMapping.Add(entry.Guid, entry);
-                
+
                 // Manifest AssetLoader has stripped the bundle names, so we need to figure them out
                 // if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
                 // {
@@ -490,7 +498,7 @@ public static class AssetManager
                 //             be.Name = "win32/" + entry.Name;
                 //         }
                 //         be.Blueprint = entry;
-                //         
+                //
                 //     }
                 //     else if (TypeLibrary.IsSubClassOf(entry.Type, "UIItemDescriptionAsset") ||
                 //              TypeLibrary.IsSubClassOf(entry.Type, "UIMetaDataAsset"))
