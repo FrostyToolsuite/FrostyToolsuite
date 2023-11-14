@@ -6,6 +6,7 @@ public partial struct PropertyConnection
     public uint Flags
     {
         get => _Flags;
+        set => _Flags = value;
     }
 
     [Frosty.Sdk.Attributes.IsTransientAttribute()]

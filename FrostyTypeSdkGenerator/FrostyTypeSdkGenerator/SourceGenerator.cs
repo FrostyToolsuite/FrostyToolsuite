@@ -273,7 +273,7 @@ public partial class {classContext.Name}
         foreach (FieldContext field in classContext.Fields)
         {
             if (classContext.Name != "Asset" && field.Name.Equals("_Name", StringComparison.OrdinalIgnoreCase) &&
-                field.Type.Equals("global::Frosty.Sdk.Ebx.CString"))
+                field.Type.Equals("global::Frostbite.Core.CString"))
             {
                 source = source.Remove(source.Length - 1) + @$"
     protected virtual global::Frosty.Sdk.Ebx.CString GetId()
@@ -282,17 +282,17 @@ public partial class {classContext.Name}
         {{
             return __id;
         }}
-        if (!string.IsNullOrEmpty({field.Name}))
+        if (!string.IsNullOrEmpty((global::Frosty.Sdk.Ebx.CString){field.Name}.ToActualType()))
         {{
-            return {field.Name}.Sanitize();
+            return ((global::Frosty.Sdk.Ebx.CString){field.Name}.ToActualType()).Sanitize();
         }}
 
         if (GlobalAttributes.DisplayModuleInClassId)
         {{
-            EbxTypeMetaAttribute? customAttribute = GetType().GetCustomAttribute<EbxTypeMetaAttribute>();
-			if (customAttribute is not null && !string.IsNullOrEmpty(customAttribute.Namespace))
-			{{
-                return $""{{customAttribute.Namespace}}.{{GetType().Name}}"";
+            string? @namespace = GetType().Namespace;
+            if (!string.IsNullOrEmpty(@namespace))
+            {{
+                return $""{{@namespace}}.{{GetType().Name}}"";
             }}
         }}
 
@@ -316,10 +316,10 @@ public partial class {classContext.Name}
 
         if (GlobalAttributes.DisplayModuleInClassId)
         {{
-            EbxTypeMetaAttribute? customAttribute = GetType().GetCustomAttribute<EbxTypeMetaAttribute>();
-			if (customAttribute is not null && !string.IsNullOrEmpty(customAttribute.Namespace))
-			{{
-                return $""{{customAttribute.Namespace}}.{{GetType().Name}}"";
+            string? @namespace = GetType().Namespace;
+            if (!string.IsNullOrEmpty(@namespace))
+            {{
+                return $""{{@namespace}}.{{GetType().Name}}"";
             }}
         }}
 
@@ -335,7 +335,7 @@ public partial class {classContext.Name}
     {
         FieldContext field = classContext.Fields.First(f => f.Name == "_Name");
 
-        if (!field.Type.Equals("global::Frosty.Sdk.Ebx.CString"))
+        if (!field.Type.Equals("global::Frostbite.Core.CString"))
         {
             return;
         }
@@ -348,16 +348,16 @@ using System.Reflection;
 {(classContext.Namespace is null ? string.Empty : $"namespace {classContext.Namespace}; \n")}
 public partial class {classContext.Name}
 {{
-    protected override CString GetId()
+    protected override global::Frosty.Sdk.Ebx.CString GetId()
     {{
         if (!string.IsNullOrEmpty(__id))
         {{
             return __id;
         }}
 
-        if (!string.IsNullOrEmpty({field.Name}))
+        if (!string.IsNullOrEmpty((global::Frosty.Sdk.Ebx.CString){field.Name}.ToActualType()))
         {{
-            return {field.Name}.Sanitize();
+            return ((global::Frosty.Sdk.Ebx.CString){field.Name}.ToActualType()).Sanitize();
         }}
 
         return base.GetId();
