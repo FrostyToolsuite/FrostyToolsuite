@@ -27,6 +27,11 @@ internal class ArrayInfoData : TypeInfoData
 
     public override void CreateType(StringBuilder sb)
     {
+        if (TypeInfo.Version < 3)
+        {
+            m_nameHash = (uint)Utils.Utils.HashString($"{GetTypeInfo().GetName()}-Array");
+        }
+
         if (!m_guid.Equals(Guid.Empty))
         {
             sb.AppendLine($"[{nameof(ArrayGuidAttribute)}(\"{m_guid}\")]");
