@@ -68,7 +68,7 @@ internal class ClassInfoData : TypeInfoData
             sb.AppendLine($"public partial class {m_name[..m_name.IndexOf("::", StringComparison.Ordinal)]}");
             sb.AppendLine("{");
         }
-        
+
         base.CreateType(sb);
 
         sb.Append($"public partial class {CleanUpName()}");
@@ -78,7 +78,7 @@ internal class ClassInfoData : TypeInfoData
         if (superClass.GetName() != CleanUpName())
         {
             superClassFieldCount = superClass.GetFieldCount();
-            sb.Append($" : {superClass.GetName()}");
+            sb.Append($" : {superClass.GetFullName()}");
         }
         sb.AppendLine();
 
@@ -98,7 +98,7 @@ internal class ClassInfoData : TypeInfoData
         }
 
         sb.AppendLine("}");
-        
+
         if (m_name.Contains("::"))
         {
             sb.AppendLine("}");

@@ -9,6 +9,8 @@ internal class ArrayInfoData : TypeInfoData
 {
     public TypeInfo GetTypeInfo() => TypeInfo.TypeInfoMapping[p_typeInfo];
 
+    public long GetTypeInfoPtr() => p_typeInfo;
+
     private long p_typeInfo;
 
     public override void Read(MemoryReader reader)

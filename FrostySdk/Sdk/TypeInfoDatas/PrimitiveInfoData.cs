@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
+using Frosty.Sdk.Interfaces;
 
 namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
@@ -6,12 +8,20 @@ internal class PrimitiveInfoData : TypeInfoData
 {
     public override void CreateType(StringBuilder sb)
     {
+        base.CreateType(sb);
+
         string actualType = string.Empty;
 
         switch (m_flags.GetTypeEnum())
         {
             case TypeFlags.TypeEnum.String:
                 actualType = "System.String";
+                break;
+            case TypeFlags.TypeEnum.CString:
+                actualType = "Frosty.Sdk.Ebx.CString";
+                break;
+            case TypeFlags.TypeEnum.FileRef:
+                actualType = "Frosty.Sdk.Ebx.FileRef";
                 break;
             case TypeFlags.TypeEnum.Boolean:
                 actualType = "System.Boolean";
@@ -52,11 +62,62 @@ internal class PrimitiveInfoData : TypeInfoData
             case TypeFlags.TypeEnum.Sha1:
                 actualType = "Frosty.Sdk.Sha1";
                 break;
+            case TypeFlags.TypeEnum.ResourceRef:
+                actualType = "Frosty.Sdk.Ebx.ResourceRef";
+                break;
+            case TypeFlags.TypeEnum.TypeRef:
+                actualType = "Frosty.Sdk.Ebx.TypeRef";
+                break;
+            case TypeFlags.TypeEnum.BoxedValueRef:
+                actualType = "Frosty.Sdk.Ebx.BoxedValueRef";
+                break;
         }
 
-        if (!string.IsNullOrEmpty(actualType))
-        {
-            sb.Insert(0, $"using {m_name} = {actualType};\n");
-        }
+        sb.AppendLine($$"""
+                        public struct {{m_name}} : IPrimitive
+                        {
+                            private {{actualType}} m_value;
+
+                            public object ToActualType() => m_value;
+
+                            public void FromActualType(object value)
+                            {
+                                if (value is not {{actualType}})
+                                {
+                                    throw new ArgumentException("Parameter needs to be of type {{actualType}}", nameof(value));
+                                }
+
+                                m_value = ({{actualType}})value;
+                            }
+
+                            public override bool Equals(object? obj)
+                            {
+                                if (obj is {{m_name}} a)
+                                {
+                                    return m_value.Equals(a.m_value);
+                                }
+
+                                if (obj is {{actualType}} b)
+                                {
+                                    return m_value.Equals(b);
+                                }
+
+                                return false;
+                            }
+
+                            public override int GetHashCode()
+                            {
+                                return m_value.GetHashCode();
+                            }
+
+                            public static bool operator ==({{m_name}} a, object? b) => a.Equals(b);
+
+                            public static bool operator !=({{m_name}} a, object? b) => !a.Equals(b);
+
+                            public static implicit operator {{actualType}}({{m_name}} value) => value.m_value;
+
+                            public static implicit operator {{m_name}}({{actualType}} value) => new() { m_value = value };
+                        }
+                        """);
     }
 }

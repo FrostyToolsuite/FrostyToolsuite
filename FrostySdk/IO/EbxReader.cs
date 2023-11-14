@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
+using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
 using Frosty.Sdk.Sdk;
 
@@ -37,6 +38,7 @@ public class EbxReader : DataStream
     protected readonly EbxImportReference[] m_imports;
     protected HashSet<Guid> m_dependencies = new();
     protected List<object> m_objects = new();
+    protected List<int> m_refCounts = new();
 
     protected Guid m_fileGuid;
     protected long m_arraysOffset;
@@ -203,6 +205,7 @@ public class EbxReader : DataStream
 
         asset.fileGuid = m_fileGuid;
         asset.objects = m_objects;
+        asset.refCounts = m_refCounts;
         asset.dependencies = m_dependencies;
         asset.OnLoadComplete();
 
@@ -229,6 +232,7 @@ public class EbxReader : DataStream
             for (int i = 0; i < inst.Count; i++)
             {
                 m_objects.Add(CreateObject(typeDescriptor));
+                m_refCounts.Add(0);
             }
         }
 
@@ -302,6 +306,12 @@ public class EbxReader : DataStream
 
                         try
                         {
+                            if (typeof(IPrimitive).IsAssignableFrom(fieldProp?.PropertyType.GenericTypeArguments[0]))
+                            {
+                                IPrimitive primitive = (IPrimitive)Activator.CreateInstance(fieldProp.PropertyType.GenericTypeArguments[0])!;
+                                primitive.FromActualType(value);
+                                value = primitive;
+                            }
                             fieldProp?.GetValue(obj)?.GetType().GetMethod("Add")?.Invoke(fieldProp.GetValue(obj), new[] { value });
                         }
                         catch (Exception)
@@ -317,9 +327,15 @@ public class EbxReader : DataStream
 
                     try
                     {
+                        if (typeof(IPrimitive).IsAssignableFrom(fieldProp?.PropertyType))
+                        {
+                            IPrimitive primitive = (IPrimitive)Activator.CreateInstance(fieldProp.PropertyType)!;
+                            primitive.FromActualType(value);
+                            value = primitive;
+                        }
                         fieldProp?.SetValue(obj, value);
                     }
-                    catch (Exception)
+                    catch (Exception e)
                     {
                         // ignored
                     }
@@ -479,8 +495,7 @@ public class EbxReader : DataStream
             return new PointerRef();
         }
 
-
-
+        m_refCounts[(int)(index - 1)]++;
         return new PointerRef(m_objects[(int)(index - 1)]);
     }
 
