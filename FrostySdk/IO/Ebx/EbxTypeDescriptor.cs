@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Frosty.Sdk.Sdk;
 
 namespace Frosty.Sdk.IO.Ebx;
@@ -13,7 +14,21 @@ public struct EbxTypeDescriptor
     public TypeFlags Flags;
     public ushort Size;
     public ushort SecondSize;
-    
+
+    public EbxTypeDescriptor(Guid inKey)
+    {
+        Name = string.Empty;
+        ReadOnlySpan<byte> bytes = inKey.ToByteArray();
+        NameHash = BitConverter.ToUInt32(bytes);
+        FieldIndex = BitConverter.ToInt32(bytes[4..]);
+        FieldCount = bytes[8];
+        Alignment = bytes[9];
+        Flags = BitConverter.ToUInt16(bytes[10..]);
+        Size = BitConverter.ToUInt16(bytes[12..]);
+        SecondSize = BitConverter.ToUInt16(bytes[14..]);
+        Debug.Assert(ToKey() == inKey);
+    }
+
     public ushort GetFieldCount() => (ushort)(FieldCount | ((Alignment & 0x80) << 1));
     public void SetFieldCount(ushort value) { FieldCount = (byte)value; Alignment = (byte)((Alignment & ~0x80) | ((value & 0x100) >> 1)); }
     public byte GetAlignment() => (byte)(Alignment & 0x7F);
