@@ -1,28 +1,31 @@
+using Frosty.Sdk.Attributes;
+using Frosty.Sdk.Sdk;
+
 namespace Frosty.Sdk.Ebx;
 
 public partial struct PropertyConnection
 {
-    [Frosty.Sdk.Attributes.IsHiddenAttribute()]
+    [IsHiddenAttribute()]
     public uint Flags { get; set; }
 
-    [Frosty.Sdk.Attributes.IsTransientAttribute()]
-    [Frosty.Sdk.Attributes.EbxFieldMetaAttribute(Frosty.Sdk.Sdk.TypeFlags.TypeEnum.Enum)]
+    [IsTransientAttribute()]
+    [EbxFieldMetaAttribute(TypeFlags.TypeEnum.Boolean)]
     public PropertyConnectionTargetType TargetType
     {
         get => (PropertyConnectionTargetType)(Flags & 0x07u);
         set => Flags = (Flags & ~0x07u) | ((byte)value & 0x07u);
     }
 
-    [Frosty.Sdk.Attributes.IsTransientAttribute()]
-    [Frosty.Sdk.Attributes.EbxFieldMetaAttribute(Frosty.Sdk.Sdk.TypeFlags.TypeEnum.Boolean)]
+    [IsTransientAttribute()]
+    [EbxFieldMetaAttribute(TypeFlags.TypeEnum.Boolean)]
     public bool SourceCanNeverBeStatic
     {
         get => (Flags & 0x08u) != 0;
         set => Flags = value ? Flags | 0x08u : Flags & ~0x08u;
     }
 
-    [Frosty.Sdk.Attributes.IsTransientAttribute()]
-    [Frosty.Sdk.Attributes.EbxFieldMetaAttribute(Frosty.Sdk.Sdk.TypeFlags.TypeEnum.Enum)]
+    [IsTransientAttribute()]
+    [EbxFieldMetaAttribute(TypeFlags.TypeEnum.Boolean)]
     public InputPropertyType InputPropertyType
     {
         get => (InputPropertyType)((Flags & 0x30u) >> 4);
