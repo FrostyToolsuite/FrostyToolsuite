@@ -77,7 +77,6 @@ internal class FieldInfo : IComparable
             }
 
             typeName = $"ObservableCollection<{typeName}>";
-            sb.AppendLine($"[{nameof(EbxArrayMetaAttribute)}({(ushort)type.GetFlags()})]");
         }
         sb.AppendLine($"[{nameof(EbxFieldMetaAttribute)}({(ushort)flags}, {m_offset}, {(isClass ? $"typeof({type.GetFullName()})" : "null")})]");
         sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
