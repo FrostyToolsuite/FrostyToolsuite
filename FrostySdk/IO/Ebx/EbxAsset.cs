@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -77,6 +77,22 @@ public partial class EbxAsset
     internal List<object> objects = new();
     internal List<int> refCounts = new();
     internal HashSet<Guid> dependencies = new();
+
+    public static EbxAsset Deserialize(Stream ebxStream)
+    {
+        using (EbxReader reader = EbxReader.CreateReader(ebxStream))
+        {
+           return reader.ReadAsset<EbxAsset>();
+        }
+    }
+
+    public static void Serialize(Stream ebxStream, EbxAsset asset)
+    {
+        using (EbxWriter writer = EbxWriter.CreateWriter(ebxStream, EbxWriteFlags.DoNotSort, ProfilesLibrary.EbxVersion == 5))
+        {
+            writer.WriteAsset(asset);
+        }
+    }
 
     public EbxAsset()
     {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -49,8 +49,8 @@ public class EbxReader : DataStream
     private static readonly Type s_cStringType = TypeLibrary.GetType("CString")!;
     private static readonly Type s_resourceRefType = TypeLibrary.GetType("ResourceRef")!;
     private static readonly Type s_fileRefType = TypeLibrary.GetType("FileRef")!;
-    private static readonly Type s_typeRefType = TypeLibrary.GetType("TypeRef")!;
-    private static readonly Type s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef")!;
+    private static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef")!;
+    private static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef")!;
 
     protected readonly EbxFieldDescriptor[] m_fieldDescriptors;
     protected readonly EbxTypeDescriptor[] m_typeDescriptors;
