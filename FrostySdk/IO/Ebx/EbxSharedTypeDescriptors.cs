@@ -28,8 +28,6 @@ public static class EbxSharedTypeDescriptors
             Read(FileSystemManager.GetFileFromMemoryFs("SharedTypeDescriptors.ebx"));
         }
 
-        EbxTypeDescriptor a = new(s_typeKeyMapping.Values.First());
-
         s_isInitialized = true;
     }
 

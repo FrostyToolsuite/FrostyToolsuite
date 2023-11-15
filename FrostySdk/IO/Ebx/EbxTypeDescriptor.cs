@@ -26,7 +26,6 @@ public struct EbxTypeDescriptor
         Flags = BitConverter.ToUInt16(bytes[10..]);
         Size = BitConverter.ToUInt16(bytes[12..]);
         SecondSize = BitConverter.ToUInt16(bytes[14..]);
-        Debug.Assert(ToKey() == inKey);
     }
 
     public ushort GetFieldCount() => (ushort)(FieldCount | ((Alignment & 0x80) << 1));
