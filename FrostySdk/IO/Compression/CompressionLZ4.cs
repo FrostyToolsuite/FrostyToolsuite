@@ -7,9 +7,9 @@ namespace Frosty.Sdk.IO.Compression;
 public partial class CompressionLZ4 : ICompressionFormat
 {
     public string Identifier => "LZ4";
-    private const string NativeLibName = "lz4";
+    private const string NativeLibName = "ThirdParty/liblz4";
 
-    [LibraryImport(NativeLibName)] 
+    [LibraryImport(NativeLibName)]
     internal static partial int LZ4_compress_default(nuint src, nuint dst, int srcSize, int dstCapacity);
 
     [LibraryImport(NativeLibName)]
@@ -17,7 +17,7 @@ public partial class CompressionLZ4 : ICompressionFormat
 
     [LibraryImport(NativeLibName)]
     internal static partial int LZ4_decompress_safe(nuint src, nuint dst, int compressedSize, int dstCapacity);
-    
+
     public unsafe void Decompress<T>(Block<T> inData, ref Block<T> outData, CompressionFlags inFlags = CompressionFlags.None) where T : unmanaged
     {
         int err = LZ4_decompress_safe((nuint)inData.Ptr, (nuint)outData.Ptr, inData.Size, outData.Size);
