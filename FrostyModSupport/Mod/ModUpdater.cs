@@ -21,6 +21,7 @@ public class ModUpdater
     }
 
     private static Dictionary<int, HashSet<int>> s_bundleMapping = new();
+    private static Dictionary<int, string> s_superBundleMapping = new();
 
     public static Errors UpdateMod(string inPath, string inNewPath)
     {
@@ -43,6 +44,16 @@ public class ModUpdater
             int hash = Utils.HashString(bundle.Name, true);
             s_bundleMapping.TryAdd(hash, new HashSet<int>());
             s_bundleMapping[hash].Add(bundle.Id);
+        }
+
+        foreach (SuperBundleInfo superBundle in FileSystemManager.EnumerateSuperBundles())
+        {
+            int hash = Utils.HashString(superBundle.Name, true);
+            foreach (SuperBundleInstallChunk sbIc in superBundle.InstallChunks)
+            {
+                s_superBundleMapping.Add(hash, sbIc.Name);
+                break;
+            }
         }
 
         using (BlockStream stream = BlockStream.FromFile(inPath, false))
@@ -115,10 +126,9 @@ public class ModUpdater
             return null;
         }
 
-        (BaseModResource[], Block<byte>[], FrostyModDetails, uint) retVal = default;
-        retVal.Item4 = inStream.ReadUInt32();
+        uint head = inStream.ReadUInt32();
 
-        retVal.Item3 = new FrostyModDetails(inStream.ReadNullTerminatedString(), inStream.ReadNullTerminatedString(),
+        FrostyModDetails modDetails = new(inStream.ReadNullTerminatedString(), inStream.ReadNullTerminatedString(),
             inStream.ReadNullTerminatedString(), inStream.ReadNullTerminatedString(), inStream.ReadNullTerminatedString(),
             version > 4 ? inStream.ReadNullTerminatedString() : string.Empty);
 
@@ -139,20 +149,24 @@ public class ModUpdater
                     b = ReadBaseModResource(inStream, version);
                     inStream.ReadNullTerminatedString();
                     int superBundleHash = inStream.ReadInt32();
-                    // TODO: update hash and add bundle hash to s_bundleMapping
+                    string sbIcName = s_superBundleMapping[superBundleHash];
+                    s_bundleMapping.Add(Utils.HashString(b.Name, true), new HashSet<int>
+                    {
+                        Utils.HashString(b.Name + sbIcName, true)
+                    });
 
-                    resources[i] = new BundleModResource(b.Item2, superBundleHash);
+                    resources[i] = new BundleModResource(b.Name, superBundleHash);
                     break;
                 case ModResourceType.Ebx:
                     b = ReadBaseModResource(inStream, version);
-                    flags = AssetManager.GetEbxAssetEntry(b.Item2) is not null ? BaseModResource.ResourceFlags.IsAdded : 0;
+                    flags = AssetManager.GetEbxAssetEntry(b.Name) is not null ? BaseModResource.ResourceFlags.IsAdded : 0;
 
                     // we now store ebx names the same way they are stored in the bundle, so all lowercase
                     resources[i] = new EbxModResource(b.ResourceIndex, b.Name.ToLower(), b.Sha1, b.OriginalSize, flags, b.HandlerHash, b.UserData, b.BundlesToAdd, Enumerable.Empty<int>());
                     break;
                 case ModResourceType.Res:
                     b = ReadBaseModResource(inStream, version);
-                    flags = AssetManager.GetResAssetEntry(b.Item2) is not null ? BaseModResource.ResourceFlags.IsAdded : 0;
+                    flags = AssetManager.GetResAssetEntry(b.Name) is not null ? BaseModResource.ResourceFlags.IsAdded : 0;
 
                     resources[i] = new ResModResource(b.ResourceIndex, b.Name, b.Sha1, b.OriginalSize, flags, b.HandlerHash, b.UserData, b.BundlesToAdd,
                         Enumerable.Empty<int>(), inStream.ReadUInt32(), inStream.ReadUInt64(),
@@ -166,8 +180,45 @@ public class ModUpdater
                     if ((entry = AssetManager.GetChunkAssetEntry(Guid.Parse(b.Name))) is null)
                     {
                         flags = BaseModResource.ResourceFlags.IsAdded;
-                        // TODO: add to some superbundles
-                        superBundlesToAdd = Enumerable.Empty<int>();
+
+                        HashSet<int> temp = new();
+                        foreach (SuperBundleInfo superBundleInfo in FileSystemManager.EnumerateSuperBundles())
+                        {
+                            switch (FileSystemManager.BundleFormat)
+                            {
+                                case BundleFormat.Dynamic2018:
+                                case BundleFormat.Manifest2019:
+                                    if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/chunks0",
+                                            StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        continue;
+                                    }
+
+                                    foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
+                                    {
+                                        temp.Add(Utils.HashString(sbIc.Name, true));
+                                    }
+                                    break;
+                                case BundleFormat.Kelvin:
+                                    if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/globals",
+                                            StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        continue;
+                                    }
+
+                                    foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
+                                    {
+                                        temp.Add(Utils.HashString(sbIc.Name, true));
+                                    }
+                                    break;
+                                case BundleFormat.SuperBundleManifest:
+                                    continue;
+                            }
+
+                            break;
+                        }
+
+                        superBundlesToAdd = temp;
                     }
                     else
                     {
@@ -190,7 +241,7 @@ public class ModUpdater
                         if (firstMip != -1 && rangeEnd == 0)
                         {
                             // we need to calculate the range, since it was not calculated
-                            using (BlockStream stream = new(AssetManager.GetAsset(entry)))
+                            using (BlockStream stream = new(AssetManager.GetRawAsset(entry)))
                             {
                                 long uncompressedSize = logicalOffset + logicalSize;
                                 long uncompressedBundledSize = (logicalOffset & 0xFFFF) | logicalSize;
@@ -199,7 +250,7 @@ public class ModUpdater
 
                                 while (true)
                                 {
-                                    ulong packed = inStream.ReadUInt64(Endian.Big);
+                                    ulong packed = stream.ReadUInt64(Endian.Big);
 
                                     int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
                                     CompressionType compressionType = (CompressionType)(packed >> 24);
@@ -236,7 +287,7 @@ public class ModUpdater
             }
         }
 
-        retVal.Item2 = new Block<byte>[dataCount];
+        Block<byte>[] data = new Block<byte>[dataCount];
         inStream.Position = dataOffset;
         for (int i = 0; i < dataCount; i++)
         {
@@ -247,11 +298,11 @@ public class ModUpdater
             Block<byte> block = new(size);
             inStream.Position = dataOffset + dataCount * 16 + offset;
             inStream.ReadExactly(block);
-            retVal.Item2[i] = block;
+            data[i] = block;
             inStream.Position = curPos;
         }
 
-        return retVal;
+        return (resources, data, modDetails, head);
     }
 
     private static (BaseModResource[], Block<byte>[], FrostyModDetails, uint)? UpdateLegacyFormat(DataStream inStream,
@@ -402,7 +453,6 @@ public class ModUpdater
                     if ((entry = AssetManager.GetChunkAssetEntry(chunkId)) is null)
                     {
                         flags = BaseModResource.ResourceFlags.IsAdded;
-                        // TODO: add to some superbundles
 
                         HashSet<int> temp = new();
                         foreach (SuperBundleInfo superBundleInfo in FileSystemManager.EnumerateSuperBundles())
@@ -470,7 +520,7 @@ public class ModUpdater
                         if (firstMip != -1 && rangeEnd == 0)
                         {
                             // we need to calculate the range in case the old mod didnt have it calculated for assets only added to bundles
-                            using (BlockStream stream = new(AssetManager.GetAsset(entry)))
+                            using (BlockStream stream = new(AssetManager.GetRawAsset(entry)))
                             {
                                 long uncompressedSize = entry.LogicalOffset + entry.LogicalSize;
                                 long uncompressedBundledSize = (entry.LogicalOffset & 0xFFFF) | entry.LogicalSize;
@@ -479,7 +529,7 @@ public class ModUpdater
 
                                 while (true)
                                 {
-                                    ulong packed = inStream.ReadUInt64(Endian.Big);
+                                    ulong packed = stream.ReadUInt64(Endian.Big);
 
                                     int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
                                     CompressionType compressionType = (CompressionType)(packed >> 24);
