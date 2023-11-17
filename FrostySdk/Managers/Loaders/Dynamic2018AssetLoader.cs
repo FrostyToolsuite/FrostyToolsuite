@@ -201,45 +201,49 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 }
             }
 
-            string basePath = FileSystemSource.Base.ResolvePath($"{inSbIc.Name}.toc");
-            DbObjectDict? baseToc = string.IsNullOrEmpty(basePath) ? null : DbObject.Deserialize(basePath)?.AsDict();
-
-            if (baseToc is not null)
+            if (inSource != FileSystemSource.Base)
             {
-                foreach (DbObject obj in baseToc.AsList("chunks"))
+                string basePath = FileSystemSource.Base.ResolvePath($"{inSbIc.Name}.toc");
+                DbObjectDict? baseToc = string.IsNullOrEmpty(basePath) ? null : DbObject.Deserialize(basePath)?.AsDict();
+
+                if (baseToc is not null)
                 {
-                    DbObjectDict chunkObj = obj.AsDict();
-                    Guid id = chunkObj.AsGuid("id");
-                    if (patchChunks.Contains(id))
+                    foreach (DbObject obj in baseToc.AsList("chunks"))
                     {
-                        continue;
-                    }
-
-                    ChunkAssetEntry entry;
-                    if (isCas || isDas)
-                    {
-                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), chunkObj.AsSha1("sha1"), 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
-
-                        IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(entry.Sha1);
-                        if (fileInfos is not null)
+                        DbObjectDict chunkObj = obj.AsDict();
+                        Guid id = chunkObj.AsGuid("id");
+                        if (patchChunks.Contains(id))
                         {
-                            entry.FileInfos.UnionWith(fileInfos);
+                            continue;
                         }
-                    }
-                    else
-                    {
-                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
-                    }
 
-                    AssetManager.AddSuperBundleChunk(entry);
+                        ChunkAssetEntry entry;
+                        if (isCas || isDas)
+                        {
+                            entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), chunkObj.AsSha1("sha1"), 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
 
-                    if (entry.LogicalSize == 0)
-                    {
-                        // TODO: get original size
-                        // entry.OriginalSize = entry.FileInfo.GetOriginalSize();
+                            IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(entry.Sha1);
+                            if (fileInfos is not null)
+                            {
+                                entry.FileInfos.UnionWith(fileInfos);
+                            }
+                        }
+                        else
+                        {
+                            entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
+                        }
+
+                        AssetManager.AddSuperBundleChunk(entry);
+
+                        if (entry.LogicalSize == 0)
+                        {
+                            // TODO: get original size
+                            // entry.OriginalSize = entry.FileInfo.GetOriginalSize();
+                        }
                     }
                 }
             }
+
         }
 
         if (toc.ContainsKey("hasBaseBundles") || toc.ContainsKey("hasBaseChunks"))

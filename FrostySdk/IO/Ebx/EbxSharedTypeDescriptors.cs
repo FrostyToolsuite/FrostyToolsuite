@@ -28,6 +28,11 @@ public static class EbxSharedTypeDescriptors
             Read(FileSystemManager.GetFileFromMemoryFs("SharedTypeDescriptors.ebx"));
         }
 
+        if (FileSystemManager.HasFileInMemoryFs("SharedTypeDescriptors_patch.ebx"))
+        {
+            Read(FileSystemManager.GetFileFromMemoryFs("SharedTypeDescriptors_patch.ebx"));
+        }
+
         s_isInitialized = true;
     }
 
