@@ -7,14 +7,14 @@ namespace Frosty.Sdk.IO.Compression;
 public partial class CompressionOodle : ICompressionFormat
 {
     public string Identifier => "Oodle";
-    private const string NativeLibName = "oo2core";
-    
+    private const string NativeLibName = "ThirdParty/oo2core";
+
     internal enum OodleLZ_FuzzSafe
     {
         No = 0,
         Yes = 1
     }
-    
+
     internal enum OodleLZ_CheckCRC
     {
         No = 0,
@@ -45,7 +45,7 @@ public partial class CompressionOodle : ICompressionFormat
         OodleLZ_Verbosity verbosity = OodleLZ_Verbosity.None, IntPtr decBufBase = 0, nuint decBufSize = 0,
         nuint fpCallback = 0, nuint callbackUserData = 0, nuint decoderMemory = 0, nuint decoderMemorySize = 0,
         OodleLZ_Decode_ThreadPhase threadPhase = OodleLZ_Decode_ThreadPhase.Unthreaded);
-    
+
     public unsafe void Decompress<T>(Block<T> inData, ref Block<T> outData, CompressionFlags inFlags = CompressionFlags.None) where T : unmanaged
     {
         nuint retCode = OodleLZ_Decompress((nuint)inData.Ptr, (nuint)inData.Size, (nuint)outData.Ptr, (nuint)outData.Size);

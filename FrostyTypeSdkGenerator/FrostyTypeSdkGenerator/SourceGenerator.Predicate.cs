@@ -10,12 +10,12 @@ public sealed partial class SourceGenerator
 {
     private static bool StructPredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
-        return node is StructDeclarationSyntax { Members.Count: > 0 };
+        return node is StructDeclarationSyntax { Members.Count: > 0 } structDeclarationSyntax && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword);
     }
-    
+
     private static bool EmptyStructPredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
-        return node is StructDeclarationSyntax { Members.Count: 0 };
+        return node is StructDeclarationSyntax { Members.Count: 0 } structDeclarationSyntax && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword);
     }
 
     private static bool BaseClassPredicate(SyntaxNode node, CancellationToken cancellationToken)
@@ -25,12 +25,13 @@ public sealed partial class SourceGenerator
 
     private static bool DataContainerPredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
-        return node is ClassDeclarationSyntax { BaseList: not null } classDeclarationSyntax && classDeclarationSyntax.BaseList.Types.Any(static type => (type.Type as IdentifierNameSyntax)?.Identifier.Text == "DataContainer");
+        return node is ClassDeclarationSyntax { BaseList: not null } classDeclarationSyntax && classDeclarationSyntax.BaseList.Types.Any(static type => (type.Type as QualifiedNameSyntax)?.Right.Identifier.Text == "DataContainer");
+
     }
-    
+
     private static bool NonDataContainerPredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
-        return node is ClassDeclarationSyntax { BaseList: not null } classDeclarationSyntax && classDeclarationSyntax.BaseList.Types.Any(static type => (type.Type as IdentifierNameSyntax)?.Identifier.Text != "DataContainer") && classDeclarationSyntax.Members.Any(static member => (member as FieldDeclarationSyntax)?.Declaration.Variables.Any(v => v.Identifier.Text == "_Name") == true);
+        return node is ClassDeclarationSyntax { BaseList: not null } classDeclarationSyntax && classDeclarationSyntax.BaseList.Types.Any(static type => (type.Type as QualifiedNameSyntax)?.Right.Identifier.Text != "DataContainer") && classDeclarationSyntax.Members.Any(static member => (member as FieldDeclarationSyntax)?.Declaration.Variables.Any(v => v.Identifier.Text == "_Name") == true);
     }
 
     private static bool TypePredicate(SyntaxNode node, CancellationToken cancellationToken)

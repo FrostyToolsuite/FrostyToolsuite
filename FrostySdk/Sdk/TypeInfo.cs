@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
-using Frosty.Sdk.Profiles;
 using Frosty.Sdk.Sdk.TypeInfoDatas;
 using Frosty.Sdk.Sdk.TypeInfos;
 
@@ -51,6 +51,7 @@ internal class TypeInfo
 
     public static readonly Dictionary<long, TypeInfo> TypeInfoMapping = new();
 
+    protected long p_this;
     protected TypeInfoData m_data;
     protected long p_prev;
     protected long p_next;
@@ -78,6 +79,7 @@ internal class TypeInfo
 
         TypeInfo retVal = CreateTypeInfo(data);
 
+        retVal.p_this = startPos;
         retVal.Read(reader);
 
         TypeInfoMapping.Add(startPos, retVal);
@@ -110,6 +112,10 @@ internal class TypeInfo
         if (data is DelegateInfoData delegateData)
         {
             return new DelegateInfo(delegateData);
+        }
+        if (data is PrimitiveInfoData primitiveData)
+        {
+            return new PrimitiveInfo(primitiveData);
         }
         return new TypeInfo(data);
     }
@@ -146,13 +152,25 @@ internal class TypeInfo
         reader.Position = p_next;
         return ReadTypeInfo(reader);
     }
-    
+
     public string GetName() => m_data.CleanUpName();
+
+    public string GetFullName() => m_data.GetFullName();
 
     public TypeFlags GetFlags() => m_data.GetFlags();
 
     public void CreateType(StringBuilder sb)
     {
+        m_data.CreateNamespace(sb);
+
+        if (Version < 3 && ArrayInfo.Mapping.TryGetValue(p_this, out long arrayInfoPtr))
+        {
+            m_data.SetArrayInfoPtr(arrayInfoPtr);
+        }
+
+        m_data.TypeInfoPtr = p_this;
         m_data.CreateType(sb);
+
+        sb.AppendLine("}");
     }
 }

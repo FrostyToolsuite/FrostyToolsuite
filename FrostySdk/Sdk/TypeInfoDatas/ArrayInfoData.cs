@@ -9,6 +9,8 @@ internal class ArrayInfoData : TypeInfoData
 {
     public TypeInfo GetTypeInfo() => TypeInfo.TypeInfoMapping[p_typeInfo];
 
+    public long GetTypeInfoPtr() => p_typeInfo;
+
     private long p_typeInfo;
 
     public override void Read(MemoryReader reader)
@@ -25,6 +27,11 @@ internal class ArrayInfoData : TypeInfoData
 
     public override void CreateType(StringBuilder sb)
     {
+        if (TypeInfo.Version < 3)
+        {
+            m_nameHash = (uint)Utils.Utils.HashString($"{GetTypeInfo().GetName()}-Array");
+        }
+
         if (!m_guid.Equals(Guid.Empty))
         {
             sb.AppendLine($"[{nameof(ArrayGuidAttribute)}(\"{m_guid}\")]");

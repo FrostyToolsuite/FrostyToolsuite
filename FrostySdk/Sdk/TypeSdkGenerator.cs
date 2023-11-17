@@ -79,12 +79,12 @@ public class TypeSdkGenerator
         sb.AppendLine("using System.Collections.ObjectModel;");
         sb.AppendLine("using System.Reflection;");
         sb.AppendLine("using Frosty.Sdk.Attributes;");
+        sb.AppendLine("using Frosty.Sdk.Interfaces;");
         sb.AppendLine("using Frosty.Sdk.Managers;");
         sb.AppendLine("using Frosty.Sdk;");
         sb.AppendLine();
         sb.AppendLine("[assembly: SdkVersion(" + FileSystemManager.Head + ")]");
         sb.AppendLine();
-        sb.AppendLine("namespace Frosty.Sdk.Ebx;");
 
         foreach (TypeInfo typeInfo in TypeInfo.TypeInfoMapping.Values)
         {
@@ -175,7 +175,7 @@ public class TypeSdkGenerator
         }
 #endif
 
-        using (FileStream stream = new(filePath, FileMode.Create, FileAccess.Write))
+        using (MemoryStream stream = new())
         {
             EmitResult result = outputCompilation.Emit(stream);
             if (!result.Success)
@@ -185,6 +185,7 @@ public class TypeSdkGenerator
 #endif
                 return false;
             }
+            File.WriteAllBytes(filePath, stream.ToArray());
         }
 
         return true;

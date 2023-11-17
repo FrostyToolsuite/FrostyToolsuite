@@ -31,21 +31,21 @@ public class FileSystemSource
     public bool TryResolvePath(string inPath, [NotNullWhen(true)] out string? resolvedPath)
     {
         string path = System.IO.Path.Combine(FileSystemManager.BasePath, Path, inPath);
-        
+
         if (File.Exists(path) || Directory.Exists(path))
         {
             resolvedPath = path;
             return true;
         }
-        
+
         resolvedPath = null;
         return false;
     }
-    
+
     public string ResolvePath(string inPath)
     {
         string path = System.IO.Path.Combine(FileSystemManager.BasePath, Path, inPath);
-        
+
         if (File.Exists(path) || Directory.Exists(path))
         {
             return path;
@@ -53,4 +53,6 @@ public class FileSystemSource
 
         return string.Empty;
     }
+
+    public bool IsDLC() => m_type == Type.DLC;
 }

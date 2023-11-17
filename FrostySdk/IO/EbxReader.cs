@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
+using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
 using Frosty.Sdk.Sdk;
 
@@ -29,6 +31,27 @@ public class EbxReader : DataStream
     public EbxImportReference[] Imports => m_imports;
     public bool IsValid => m_isValid;
 
+    private static readonly Type s_stringType = TypeLibrary.GetType("String")!;
+    private static readonly Type s_sbyteType = TypeLibrary.GetType("Int8")!;
+    private static readonly Type s_byteType = TypeLibrary.GetType("UInt8") ?? TypeLibrary.GetType("Uint8")!;
+    private static readonly Type s_boolType = TypeLibrary.GetType("Boolean")!;
+    private static readonly Type s_ushortType = TypeLibrary.GetType("UInt16") ?? TypeLibrary.GetType("Uint16")!;
+    private static readonly Type s_shortType = TypeLibrary.GetType("Int16")!;
+    private static readonly Type s_uintType = TypeLibrary.GetType("UInt32") ?? TypeLibrary.GetType("Uint32")!;
+    private static readonly Type s_intType = TypeLibrary.GetType("Int32")!;
+    private static readonly Type s_ulongType = TypeLibrary.GetType("UInt64") ?? TypeLibrary.GetType("Uint64")!;
+    private static readonly Type s_longType = TypeLibrary.GetType("Int64")!;
+    private static readonly Type s_floatType = TypeLibrary.GetType("Float32")!;
+    private static readonly Type s_doubleType = TypeLibrary.GetType("Float64")!;
+    private static readonly Type s_pointerType = typeof(PointerRef);
+    private static readonly Type s_guidType = TypeLibrary.GetType("Guid")!;
+    private static readonly Type s_sha1Type = TypeLibrary.GetType("SHA1")!;
+    private static readonly Type s_cStringType = TypeLibrary.GetType("CString")!;
+    private static readonly Type s_resourceRefType = TypeLibrary.GetType("ResourceRef")!;
+    private static readonly Type s_fileRefType = TypeLibrary.GetType("FileRef")!;
+    private static readonly Type s_typeRefType = TypeLibrary.GetType("TypeRef")!;
+    private static readonly Type s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef")!;
+
     protected readonly EbxFieldDescriptor[] m_fieldDescriptors;
     protected readonly EbxTypeDescriptor[] m_typeDescriptors;
     protected readonly EbxInstance[] m_instances;
@@ -37,6 +60,7 @@ public class EbxReader : DataStream
     protected readonly EbxImportReference[] m_imports;
     protected HashSet<Guid> m_dependencies = new();
     protected List<object> m_objects = new();
+    protected List<int> m_refCounts = new();
 
     protected Guid m_fileGuid;
     protected long m_arraysOffset;
@@ -203,6 +227,7 @@ public class EbxReader : DataStream
 
         asset.fileGuid = m_fileGuid;
         asset.objects = m_objects;
+        asset.refCounts = m_refCounts;
         asset.dependencies = m_dependencies;
         asset.OnLoadComplete();
 
@@ -229,6 +254,7 @@ public class EbxReader : DataStream
             for (int i = 0; i < inst.Count; i++)
             {
                 m_objects.Add(CreateObject(typeDescriptor));
+                m_refCounts.Add(0);
             }
         }
 
@@ -302,6 +328,12 @@ public class EbxReader : DataStream
 
                         try
                         {
+                            if (typeof(IPrimitive).IsAssignableFrom(fieldProp?.PropertyType.GenericTypeArguments[0]))
+                            {
+                                IPrimitive primitive = (IPrimitive)Activator.CreateInstance(fieldProp.PropertyType.GenericTypeArguments[0])!;
+                                primitive.FromActualType(value);
+                                value = primitive;
+                            }
                             fieldProp?.GetValue(obj)?.GetType().GetMethod("Add")?.Invoke(fieldProp.GetValue(obj), new[] { value });
                         }
                         catch (Exception)
@@ -317,9 +349,15 @@ public class EbxReader : DataStream
 
                     try
                     {
+                        if (typeof(IPrimitive).IsAssignableFrom(fieldProp?.PropertyType))
+                        {
+                            IPrimitive primitive = (IPrimitive)Activator.CreateInstance(fieldProp.PropertyType)!;
+                            primitive.FromActualType(value);
+                            value = primitive;
+                        }
                         fieldProp?.SetValue(obj, value);
                     }
-                    catch (Exception)
+                    catch (Exception e)
                     {
                         // ignored
                     }
@@ -399,36 +437,37 @@ public class EbxReader : DataStream
 
     protected virtual Type GetType(EbxTypeDescriptor classType) => TypeLibrary.GetType(classType.NameHash)!;
 
-    protected Type GetTypeFromEbxField(EbxFieldDescriptor fieldType)
+    protected Type GetTypeFromEbxField(TypeFlags.TypeEnum inFlags, ushort inTypeDescriptorRef)
     {
-        switch (fieldType.Flags.GetTypeEnum())
+        switch (inFlags)
         {
-            case TypeFlags.TypeEnum.Struct: return GetType(m_typeResolver.ResolveType(fieldType.TypeDescriptorRef));
-            case TypeFlags.TypeEnum.String: return typeof(string);
-            case TypeFlags.TypeEnum.Int8: return typeof(sbyte);
-            case TypeFlags.TypeEnum.UInt8: return typeof(byte);
-            case TypeFlags.TypeEnum.Boolean: return typeof(bool);
-            case TypeFlags.TypeEnum.UInt16: return typeof(ushort);
-            case TypeFlags.TypeEnum.Int16: return typeof(short);
-            case TypeFlags.TypeEnum.UInt32: return typeof(uint);
-            case TypeFlags.TypeEnum.Int32: return typeof(int);
-            case TypeFlags.TypeEnum.UInt64: return typeof(ulong);
-            case TypeFlags.TypeEnum.Int64: return typeof(long);
-            case TypeFlags.TypeEnum.Float32: return typeof(float);
-            case TypeFlags.TypeEnum.Float64: return typeof(double);
-            case TypeFlags.TypeEnum.Class: return typeof(PointerRef);
-            case TypeFlags.TypeEnum.Guid: return typeof(Guid);
-            case TypeFlags.TypeEnum.Sha1: return typeof(Sha1);
-            case TypeFlags.TypeEnum.CString: return typeof(CString);
-            case TypeFlags.TypeEnum.ResourceRef: return typeof(ResourceRef);
-            case TypeFlags.TypeEnum.FileRef: return typeof(FileRef);
-            case TypeFlags.TypeEnum.TypeRef: return typeof(TypeRef);
-            case TypeFlags.TypeEnum.BoxedValueRef: return typeof(ulong);
+            case TypeFlags.TypeEnum.Struct: return GetType(m_typeResolver.ResolveType(inTypeDescriptorRef));
+            case TypeFlags.TypeEnum.String: return s_stringType;
+            case TypeFlags.TypeEnum.Int8: return s_sbyteType;
+            case TypeFlags.TypeEnum.UInt8: return s_byteType;
+            case TypeFlags.TypeEnum.Boolean: return s_boolType;
+            case TypeFlags.TypeEnum.UInt16: return s_ushortType;
+            case TypeFlags.TypeEnum.Int16: return s_shortType;
+            case TypeFlags.TypeEnum.UInt32: return s_uintType;
+            case TypeFlags.TypeEnum.Int32: return s_intType;
+            case TypeFlags.TypeEnum.UInt64: return s_ulongType;
+            case TypeFlags.TypeEnum.Int64: return s_longType;
+            case TypeFlags.TypeEnum.Float32: return s_floatType;
+            case TypeFlags.TypeEnum.Float64: return s_doubleType;
+            case TypeFlags.TypeEnum.Class: return s_pointerType;
+            case TypeFlags.TypeEnum.Guid: return s_guidType;
+            case TypeFlags.TypeEnum.Sha1: return s_sha1Type;
+            case TypeFlags.TypeEnum.CString: return s_cStringType;
+            case TypeFlags.TypeEnum.ResourceRef: return s_resourceRefType;
+            case TypeFlags.TypeEnum.FileRef: return s_fileRefType;
+            case TypeFlags.TypeEnum.TypeRef: return s_typeRefType;
+            case TypeFlags.TypeEnum.BoxedValueRef: return s_boxedValueRefType;
             case TypeFlags.TypeEnum.Array:
-                EbxTypeDescriptor arrayType = m_typeDescriptors[fieldType.TypeDescriptorRef];
-                return typeof(List<>).MakeGenericType(GetTypeFromEbxField(m_fieldDescriptors[arrayType.FieldIndex]));
+                EbxTypeDescriptor arrayType = m_typeDescriptors[inTypeDescriptorRef];
+                EbxFieldDescriptor element = m_fieldDescriptors[arrayType.FieldIndex];
+                return typeof(List<>).MakeGenericType(GetTypeFromEbxField(element.Flags.GetTypeEnum(), element.TypeDescriptorRef));
             case TypeFlags.TypeEnum.Enum:
-                return GetType(m_typeResolver.ResolveType(fieldType.TypeDescriptorRef));
+                return GetType(m_typeResolver.ResolveType(inTypeDescriptorRef));
 
             default:
                 throw new NotImplementedException();
@@ -479,8 +518,7 @@ public class EbxReader : DataStream
             return new PointerRef();
         }
 
-
-
+        m_refCounts[(int)(index - 1)]++;
         return new PointerRef(m_objects[(int)(index - 1)]);
     }
 
@@ -516,7 +554,6 @@ public class EbxReader : DataStream
         }
 
         EbxBoxedValue boxedValue = m_boxedValues[index];
-        TypeFlags.TypeEnum subType = TypeFlags.TypeEnum.Inherited;
 
         long pos = Position;
         Position = m_boxedValuesOffset + boxedValue.Offset;
@@ -527,7 +564,8 @@ public class EbxReader : DataStream
             EbxTypeDescriptor arrayType = m_typeResolver.ResolveType(boxedValue.TypeDescriptorRef);
             EbxFieldDescriptor arrayField = m_typeResolver.ResolveField(arrayType.FieldIndex);
 
-            value = Activator.CreateInstance(typeof(List<>).MakeGenericType(GetTypeFromEbxField(arrayField)))!;
+            Type elementType = GetTypeFromEbxField(arrayField.Flags.GetTypeEnum(), arrayField.TypeDescriptorRef);
+            value = Activator.CreateInstance(typeof(ObservableCollection<>).MakeGenericType(elementType))!;
             index = ReadInt32();
             EbxArray array = m_arrays[index];
 
@@ -537,15 +575,27 @@ public class EbxReader : DataStream
             for (int i = 0; i < array.Count; i++)
             {
                 object subValue = ReadField(arrayType, arrayField.Flags.GetTypeEnum(), arrayField.TypeDescriptorRef);
-                value.GetType()?.GetMethod("Add")?.Invoke(value, new object[] { subValue });
+                if (typeof(IPrimitive).IsAssignableFrom(elementType))
+                {
+                    IPrimitive primitive = (IPrimitive)Activator.CreateInstance(elementType)!;
+                    primitive.FromActualType(value);
+                    value = primitive;
+                }
+                value.GetType().GetMethod("Add")?.Invoke(value, new[] { subValue });
             }
 
-            subType = arrayField.Flags.GetTypeEnum();
             Position = arrayPos;
         }
         else
         {
             value = ReadField(null, (TypeFlags.TypeEnum)boxedValue.Type, boxedValue.TypeDescriptorRef);
+            Type fieldType = GetTypeFromEbxField((TypeFlags.TypeEnum)boxedValue.Type, boxedValue.TypeDescriptorRef);
+            if (typeof(IPrimitive).IsAssignableFrom(fieldType))
+            {
+                IPrimitive primitive = (IPrimitive)Activator.CreateInstance(fieldType)!;
+                primitive.FromActualType(value);
+                value = primitive;
+            }
             if ((TypeFlags.TypeEnum)boxedValue.Type == TypeFlags.TypeEnum.Enum)
             {
                 object tmpValue = value;
@@ -555,6 +605,6 @@ public class EbxReader : DataStream
         }
         Position = pos;
 
-        return new BoxedValueRef(value, (TypeFlags.TypeEnum)boxedValue.Type, subType);
+        return new BoxedValueRef(value, (TypeFlags.TypeEnum)boxedValue.Type);
     }
 }
