@@ -8,29 +8,29 @@ namespace Frosty.Sdk.Managers.Infos.FileInfos;
 public class CasFileInfo : IFileInfo
 {
     public CasResourceInfo? GetBase() => m_base;
-    
+
     private CasResourceInfo? m_base;
     private CasResourceInfo? m_delta;
 
     private CasFileInfo m_duplicate;
-    
+
     public CasFileInfo(CasResourceInfo? inBase, CasResourceInfo? inDelta = null)
     {
         m_base = inBase;
         m_delta = inDelta;
     }
-    
+
     public CasFileInfo(CasFileIdentifier inCasFileIdentifier, uint inOffset, uint inSize, uint inLogicalOffset)
     {
         m_base = new CasResourceInfo(inCasFileIdentifier, inOffset, inSize, inLogicalOffset);
     }
-    
+
     public CasFileInfo(CasFileIdentifier inCasFileIdentifier, uint inOffset, uint inSize, uint inLogicalOffset, string inKeyId)
     {
         m_base = new CasCryptoResourceInfo(inCasFileIdentifier, inOffset, inSize, inLogicalOffset, inKeyId);
     }
 
-    public bool IsComplete() => m_delta is null;
+    public bool IsComplete() => (m_delta is null) && m_base?.IsComplete() == true;
     public long GetSize() => m_base?.GetSize() ?? 0;
 
     public long GetOriginalSize()
@@ -39,7 +39,7 @@ public class CasFileInfo : IFileInfo
         {
             throw new Exception("Base CasResourceInfo can't be null.");
         }
-        
+
         if (m_delta is null)
         {
             using (BlockStream stream = new(m_base.GetRawData()))
@@ -50,14 +50,14 @@ public class CasFileInfo : IFileInfo
 
         return -1;
     }
-    
+
     public Block<byte> GetRawData()
     {
         if (m_base is null)
         {
             throw new Exception("Base CasResourceInfo can't be null.");
         }
-        
+
         if (m_delta is null)
         {
             return m_base.GetRawData();
@@ -72,7 +72,7 @@ public class CasFileInfo : IFileInfo
         {
             throw new Exception("Base CasResourceInfo can't be null.");
         }
-        
+
         if (m_delta is null)
         {
             return m_base.GetData(inOriginalSize);
@@ -101,7 +101,7 @@ public class CasFileInfo : IFileInfo
         return m_base == b.m_base &&
                m_delta == b.m_delta;
     }
-    
+
     public override bool Equals(object? obj)
     {
         if (obj is CasFileInfo b)
