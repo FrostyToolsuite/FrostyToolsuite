@@ -19,13 +19,13 @@ public class ManifestAssetLoader : IAssetLoader
         // all of the bundles and chunks of all SuperBundles are put into the manifest
         // afaik u cant reconstruct the SuperBundles, so this might make things a bit ugly
         // They also have catalog files which entries are not used, but they still make a sanity check for the offsets and indices in the file
-        
+
         DbObjectDict manifest = FileSystemManager.SuperBundleManifest!;
-        
+
         CasFileIdentifier file = CasFileIdentifier.FromManifestFileIdentifier(manifest.AsUInt("file"));
-        
+
         string path = FileSystemManager.GetFilePath(file);
-        
+
         using (BlockStream stream = BlockStream.FromFile(path, manifest.AsUInt("offset"), manifest.AsInt("size")))
         {
             uint resourceInfoCount = stream.ReadUInt32();
@@ -33,7 +33,7 @@ public class ManifestAssetLoader : IAssetLoader
             uint chunkCount = stream.ReadUInt32();
 
             (CasFileIdentifier, uint, long)[] files = new (CasFileIdentifier, uint, long)[resourceInfoCount];
-        
+
             // resource infos
             for (int i = 0; i < resourceInfoCount; i++)
             {
@@ -42,26 +42,26 @@ public class ManifestAssetLoader : IAssetLoader
             }
 
             Dictionary<int, HashSet<int>> mapping = new();
-            
+
             // bundles
             for (int i = 0; i < bundleCount; i++)
             {
                 int nameHash = stream.ReadInt32();
                 int startIndex = stream.ReadInt32();
                 int resourceCount = stream.ReadInt32();
-        
+
                 // unknown, always 0
                 stream.Position += sizeof(ulong);
-                
+
                 (CasFileIdentifier, uint, long) resourceInfo = files[startIndex];
 
-                // we use the installChunk of the bundle to get a superBundle and SuperBundleInstallChunk 
+                // we use the installChunk of the bundle to get a superBundle and SuperBundleInstallChunk
                 InstallChunkInfo ic = FileSystemManager.GetInstallChunkInfo(resourceInfo.Item1.InstallChunkIndex);
                 string superbundle = ic.SuperBundles.FirstOrDefault() ?? string.Empty;
                 Debug.Assert(!string.IsNullOrEmpty(superbundle), "no super bundle found for install chunk");
                 // hack we just assume there are no splitSuperBundles
                 SuperBundleInstallChunk sbIc = FileSystemManager.GetSuperBundleInstallChunk(superbundle);
-                
+
                 BinaryBundle bundleMeta;
                 using (BlockStream bundleStream = BlockStream.FromFile(
                            FileSystemManager.GetFilePath(resourceInfo.Item1), resourceInfo.Item2,
@@ -71,13 +71,12 @@ public class ManifestAssetLoader : IAssetLoader
                 }
 
                 // get name since they are hashed
-                bool needToGetName = !ProfilesLibrary.SharedBundles.TryGetValue(nameHash, out string? name);
-                foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
+                if (!ProfilesLibrary.SharedBundles.TryGetValue(nameHash, out string? name))
                 {
-                    if (needToGetName)
+                    foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
                     {
                         // blueprint and sublevel bundles always have an ebx with the same name
-                        string potentialName = $"{FileSystemManager.GamePlatform}/{ebx.Name}";
+                        string potentialName = ebx.Name.StartsWith(FileSystemManager.GamePlatform.ToString(), StringComparison.OrdinalIgnoreCase) ? ebx.Name : $"{FileSystemManager.GamePlatform}/{ebx.Name}";
                         int hash = Utils.Utils.HashString(potentialName, true);
                         if (nameHash == hash)
                         {
@@ -86,17 +85,15 @@ public class ManifestAssetLoader : IAssetLoader
                         }
                     }
                 }
-                
-                Debug.Assert(!string.IsNullOrEmpty(name), "couldn't resolve bundle name");
 
-                // if we couldn't get a name just use the nameHash
+                // if we couldn't get a name just use the nameHash for now when indexing ebx the ui stuff will assign those
                 if (string.IsNullOrEmpty(name))
                 {
                     name = nameHash.ToString("X8");
                 }
 
                 BundleInfo bundle = AssetManager.AddBundle(name, sbIc);
-                
+
                 // load the assets
                 // we use the file infos from the catalogs, since its easier even if they are not used by the game
                 foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
@@ -106,7 +103,7 @@ public class ManifestAssetLoader : IAssetLoader
                     {
                         ebx.FileInfos.UnionWith(fileInfos);
                     }
-                    
+
                     AssetManager.AddEbx(ebx, bundle.Id);
                 }
 
@@ -132,7 +129,7 @@ public class ManifestAssetLoader : IAssetLoader
                     AssetManager.AddChunk(chunk, bundle.Id);
                 }
             }
-            
+
             // chunks
             for (int i = 0; i < chunkCount; i++)
             {

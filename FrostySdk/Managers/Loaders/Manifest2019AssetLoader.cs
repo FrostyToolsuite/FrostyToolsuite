@@ -31,7 +31,7 @@ public class Manifest2019AssetLoader : IAssetLoader
 
     private readonly HashSet<Guid> m_removedChunks = new();
     private readonly HashSet<string> m_removedBundles = new();
-    
+
     public void Load()
     {
         foreach (SuperBundleInfo sbInfo in FileSystemManager.EnumerateSuperBundles())
@@ -54,6 +54,8 @@ public class Manifest2019AssetLoader : IAssetLoader
                             found = true;
                             break;
                     }
+
+                    break;
                 }
 
                 if (!found)
@@ -70,7 +72,7 @@ public class Manifest2019AssetLoader : IAssetLoader
         {
             return Code.NotFound;
         }
-        
+
         using (BlockStream stream = BlockStream.FromFile(path, true))
         {
             stream.Position += sizeof(uint); // bundleHashMapOffset
@@ -109,7 +111,7 @@ public class Manifest2019AssetLoader : IAssetLoader
             {
                 // stream for loading from sb file
                 DataStream? sbStream = null;
-                
+
                 if (flags.HasFlag(Flags.HasCompressedNames))
                 {
                     stream.Position = namesOffset;
@@ -118,7 +120,7 @@ public class Manifest2019AssetLoader : IAssetLoader
                     stream.Position = tableOffset;
                     huffmanDecoder.ReadHuffmanTable(stream, tableCount, Endian.Big);
                 }
-                
+
                 stream.Position = bundleDataOffset;
 
                 for (int i = 0; i < bundlesCount; i++)
@@ -149,7 +151,7 @@ public class Manifest2019AssetLoader : IAssetLoader
                     }
 
                     BundleInfo bundle = AssetManager.AddBundle(name, inSbIc);
-                    
+
                     // load bundle
                     byte bundleLoadFlag = (byte)(bundleSize >> 30);
                     bundleSize &= 0x3FFFFFFFU;
@@ -175,7 +177,7 @@ public class Manifest2019AssetLoader : IAssetLoader
                 stream.Position = chunkDataOffset;
                 Block<uint> chunkData = new(dataCount);
                 stream.ReadExactly(chunkData.ToBlock<byte>());
-                
+
                 stream.Position = chunkGuidOffset;
                 Span<byte> b = stackalloc byte[16];
                 for (int i = 0; i < chunksCount; i++)
@@ -200,7 +202,7 @@ public class Manifest2019AssetLoader : IAssetLoader
                     }
 
                     byte fileIdentifierFlag = (byte)(index >> 24);
-                        
+
                     index &= 0x00FFFFFF;
 
                     CasFileIdentifier casFileIdentifier;
@@ -226,7 +228,7 @@ public class Manifest2019AssetLoader : IAssetLoader
 
                     AssetManager.AddSuperBundleChunk(chunk);
                 }
-                
+
                 chunkData.Dispose();
             }
 
@@ -238,13 +240,13 @@ public class Manifest2019AssetLoader : IAssetLoader
 
         return Code.Stop;
     }
-    
+
     private void LoadBundle(DataStream stream, long inOffset, uint inSize, ref BundleInfo bundle)
     {
         long curPos = stream.Position;
 
         stream.Position = inOffset;
-        
+
         int bundleOffset = stream.ReadInt32(Endian.Big);
         int bundleSize = stream.ReadInt32(Endian.Big);
         uint locationOffset = stream.ReadUInt32(Endian.Big);
@@ -265,13 +267,13 @@ public class Manifest2019AssetLoader : IAssetLoader
 
         Block<byte> fileIdentifierFlags = new(totalCount);
         stream.ReadExactly(fileIdentifierFlags);
-        
+
         // the flags should be the last thing in the bundle
         Debug.Assert(stream.Position == inOffset + inSize, "Didnt read bundle correctly.");
 
         CasFileIdentifier file = default;
         int currentIndex = 0;
-        
+
         // load the bundle meta
         BinaryBundle bundleMeta;
         if (inlineBundle)
@@ -279,7 +281,7 @@ public class Manifest2019AssetLoader : IAssetLoader
             stream.Position = inOffset + bundleOffset;
             bundleMeta = BinaryBundle.Deserialize(stream);
             Debug.Assert(stream.Position == inOffset + bundleOffset + bundleSize, "We did not read the bundle meta completely");
-            
+
             // go to the start of the data
             stream.Position = inOffset + dataOffset;
         }
@@ -297,41 +299,41 @@ public class Manifest2019AssetLoader : IAssetLoader
             using (BlockStream bundleStream = BlockStream.FromFile(path, offset, size))
             {
                 bundleMeta = BinaryBundle.Deserialize(bundleStream);
-                
+
                 Debug.Assert(bundleStream.Position == bundleStream.Length, "We did not read the bundle meta completely");
             }
         }
-        
+
         // load assets from bundle
         foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
         {
             file = ReadCasFileIdentifier(stream, fileIdentifierFlags[currentIndex++], file);
-            
+
             ebx.FileInfos.Add(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), 0));
-            
+
             AssetManager.AddEbx(ebx, bundle.Id);
         }
 
         foreach (ResAssetEntry res in bundleMeta.ResList)
         {
             file = ReadCasFileIdentifier(stream, fileIdentifierFlags[currentIndex++], file);
-            
+
             res.FileInfos.Add(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), 0));
-            
+
             AssetManager.AddRes(res, bundle.Id);
         }
 
         foreach (ChunkAssetEntry chunk in bundleMeta.ChunkList)
         {
             file = ReadCasFileIdentifier(stream, fileIdentifierFlags[currentIndex++], file);
-            
+
             chunk.FileInfos.Add(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), chunk.LogicalOffset));
-            
+
             AssetManager.AddChunk(chunk, bundle.Id);
         }
 
         fileIdentifierFlags.Dispose();
-        
+
         stream.Position = curPos;
     }
 

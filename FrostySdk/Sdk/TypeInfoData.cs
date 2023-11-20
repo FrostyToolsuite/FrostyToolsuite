@@ -9,6 +9,8 @@ namespace Frosty.Sdk.Sdk;
 
 internal class TypeInfoData
 {
+    public long TypeInfoPtr { get; set; }
+
     protected string m_name = string.Empty;
     protected uint m_nameHash;
     protected TypeFlags m_flags;
@@ -29,10 +31,14 @@ internal class TypeInfoData
             name = reader.ReadNullTerminatedString();
         }
 
-        uint nameHash = 0;
+        uint nameHash;
         if (TypeInfo.Version > 4)
         {
             nameHash = reader.ReadUInt();
+        }
+        else
+        {
+            nameHash = (uint)Utils.Utils.HashString(name);
         }
 
         TypeFlags flags = reader.ReadUShort();
@@ -140,19 +146,23 @@ internal class TypeInfoData
 
     public TypeFlags GetFlags() => m_flags;
 
+    public void CreateNamespace(StringBuilder sb)
+    {
+        sb.AppendLine($"namespace Frostbite.{m_nameSpace}");
+        sb.AppendLine("{");
+    }
+
     public virtual void CreateType(StringBuilder sb)
     {
-        sb.AppendLine($"[{nameof(EbxTypeMetaAttribute)}({(ushort)m_flags}, {m_alignment}, {m_size}, \"{m_nameSpace}\")]");
+        sb.AppendLine($"[{nameof(TypeOffsetAttribute)}({TypeInfoPtr})]");
+        sb.AppendLine($"[{nameof(EbxTypeMetaAttribute)}({(ushort)m_flags}, {m_alignment}, {m_size})]");
 
         sb.AppendLine($"[{nameof(DisplayNameAttribute)}(\"{m_name}\")]");
-        
+        sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
+
         if (!m_guid.Equals(Guid.Empty))
         {
             sb.AppendLine($"[{nameof(GuidAttribute)}(\"{m_guid}\")]");
-        }
-        if (m_nameHash != 0)
-        {
-            sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
         }
         if (m_signature != 0)
         {
@@ -181,4 +191,11 @@ internal class TypeInfoData
         }
         return name.Replace(':', '_').Replace("<", "_").Replace(">", "_");
     }
+
+    public void SetArrayInfoPtr(long inArrayInfoPtr)
+    {
+        p_arrayInfo = inArrayInfoPtr;
+    }
+
+    public string GetFullName() => $"Frostbite.{m_nameSpace}.{CleanUpName()}";
 }

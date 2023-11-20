@@ -8,10 +8,10 @@ namespace Frosty.Sdk.IO.Compression;
 public partial class CompressionZStd : ICompressionFormat
 {
     public string Identifier => "ZStandard";
-    private const string NativeLibName = "zstd";
-    
+    private const string NativeLibName = "ThirdParty/libzstd";
+
     private static nuint s_DDict = nuint.Zero;
-    
+
     [LibraryImport(NativeLibName)] internal static partial nuint ZSTD_getErrorName(nuint code);
     [LibraryImport(NativeLibName)] internal static partial nuint ZSTD_isError(nuint code);
     [LibraryImport(NativeLibName)] internal static partial nuint ZSTD_createDDict(nuint dict, nuint dictSize);
@@ -32,7 +32,7 @@ public partial class CompressionZStd : ICompressionFormat
             throw new Exception($"A ZStandard operation failed with error: \"{error}\"");
         }
     }
-    
+
     /// <inheritdoc/>
     public unsafe void Decompress<T>(Block<T> inData, ref Block<T> outData, CompressionFlags inFlags = CompressionFlags.None) where T : unmanaged
     {
@@ -55,7 +55,7 @@ public partial class CompressionZStd : ICompressionFormat
         }
         GetError(code);
     }
-    
+
     /// <inheritdoc/>
     public unsafe void Compress<T>(Block<T> inData, ref Block<T> outData, CompressionFlags inFlags = CompressionFlags.None) where T : unmanaged
     {

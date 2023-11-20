@@ -17,7 +17,7 @@ internal class FieldInfo : IComparable
     private TypeFlags m_flags;
     private ushort m_offset;
     private long p_typeInfo;
-    
+
     public void Read(MemoryReader reader, uint classHash)
     {
         if (!ProfilesLibrary.HasStrippedTypeNames)
@@ -27,6 +27,10 @@ internal class FieldInfo : IComparable
         if (TypeInfo.Version > 4)
         {
             m_nameHash = reader.ReadUInt();
+        }
+        else
+        {
+            m_nameHash = (uint)Utils.Utils.HashString(m_name);
         }
         m_flags = reader.ReadUShort();
         m_offset = reader.ReadUShort();
@@ -53,34 +57,30 @@ internal class FieldInfo : IComparable
     public void CreateField(StringBuilder sb)
     {
         TypeInfo type = GetTypeInfo();
-        string typeName = type.GetName();
+        string typeName = type.GetFullName();
         TypeFlags flags = type.GetFlags();
         bool isClass = false;
 
         if (type is ClassInfo)
         {
-            typeName = "PointerRef";
+            typeName = "Frosty.Sdk.Ebx.PointerRef";
             isClass = true;
         }
-        
-        if (type is ArrayInfo arrayInfo)
+        else if (type is ArrayInfo arrayInfo)
         {
             type = arrayInfo.GetTypeInfo();
-            typeName = type.GetName();
+            typeName = type.GetFullName();
             if (type is ClassInfo)
             {
-                typeName = "PointerRef";
+                typeName = "Frosty.Sdk.Ebx.PointerRef";
                 isClass = true;
             }
+
             typeName = $"ObservableCollection<{typeName}>";
-            sb.AppendLine($"[{nameof(EbxArrayMetaAttribute)}({(ushort)type.GetFlags()})]");
         }
-        sb.AppendLine($"[{nameof(EbxFieldMetaAttribute)}({(ushort)flags}, {m_offset}, {(isClass ? $"typeof({type.GetName()})" : "null")})]");
-        if (m_nameHash != 0)
-        {
-            sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
-        }
-        
+        sb.AppendLine($"[{nameof(EbxFieldMetaAttribute)}({(ushort)flags}, {m_offset}, {(isClass ? $"typeof({type.GetFullName()})" : "null")})]");
+        sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
+
         sb.AppendLine($"private {typeName} _{m_name};");
     }
 

@@ -35,7 +35,7 @@ public struct TypeFlags
         Interface = 0x1B,
         Delegate = 0x1C
     }
-    
+
     public enum CategoryEnum
     {
         None = 0,
@@ -78,13 +78,13 @@ public struct TypeFlags
     }
 
     public TypeEnum GetTypeEnum() => (TypeEnum)((m_flags >> (ProfilesLibrary.EbxVersion == 2 ? 4 : 5)) & 0x1F);
-    
+
     public CategoryEnum GetCategoryEnum() => (CategoryEnum)((m_flags >> (ProfilesLibrary.EbxVersion == 2 ? 0 : 1)) & 0xF);
 
     public Flags GetFlags() => (Flags)(m_flags & (ProfilesLibrary.EbxVersion == 2 ? 0x1FF : 0x3FF));
 
     public static implicit operator ushort(TypeFlags value) => value.m_flags;
-    
+
     public static implicit operator TypeFlags(ushort value) => new(value);
 
 }

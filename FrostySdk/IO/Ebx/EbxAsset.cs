@@ -1,7 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using Frosty.Sdk.Ebx;
+using Frosty.Sdk.Managers;
+using Frosty.Sdk.Managers.Entries;
+using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO.Ebx;
 
@@ -27,12 +31,27 @@ public partial class EbxAsset
             }
         }
     }
-    public IEnumerable<object> Objects
+    public IEnumerable<object> RootObjects
     {
         get
         {
             for (int i = 0; i < objects.Count; i++)
+            {
+                if (refCounts[i] == 0 || i == 0)
+                {
+                    yield return objects[i];
+                }
+            }
+        }
+    }
+    public IEnumerable<object> Objects
+    {
+        get
+        {
+            for (int i = objects.Count - 1; i >= 0; i--)
+            {
                 yield return objects[i];
+            }
         }
     }
     public IEnumerable<object> ExportedObjects
@@ -56,7 +75,24 @@ public partial class EbxAsset
 
     internal Guid fileGuid;
     internal List<object> objects = new();
+    internal List<int> refCounts = new();
     internal HashSet<Guid> dependencies = new();
+
+    public static EbxAsset Deserialize(Stream ebxStream)
+    {
+        using (EbxReader reader = EbxReader.CreateReader(ebxStream))
+        {
+           return reader.ReadAsset<EbxAsset>();
+        }
+    }
+
+    public static void Serialize(Stream ebxStream, EbxAsset asset)
+    {
+        using (EbxWriter writer = EbxWriter.CreateWriter(ebxStream, EbxWriteFlags.DoNotSort, ProfilesLibrary.EbxVersion == 5))
+        {
+            writer.WriteAsset(asset);
+        }
+    }
 
     public EbxAsset()
     {
@@ -132,7 +168,7 @@ public partial class EbxAsset
     public void Update()
     {
         dependencies.Clear();
-        
+
         List<Tuple<PropertyInfo, object>> refProps = new();
         List<Tuple<object, Guid>> externalProps = new();
         List<object> objsToProcess = new();
