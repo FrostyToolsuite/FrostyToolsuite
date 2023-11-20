@@ -25,7 +25,7 @@ public partial class FrostyModExecutor
     private readonly List<IModEntry> m_handlerAssets = new();
 
     private readonly Dictionary<Sha1, ResourceData> m_data = new();
-    private readonly Dictionary<Sha1, Block<byte>> m_data2 = new();
+    private readonly Dictionary<Sha1, Block<byte>> m_memoryData = new();
 
     private readonly Dictionary<int, SuperBundleModInfo> m_superBundleModInfos = new();
     private readonly Dictionary<int, int> m_bundleToSuperBundleMapping = new();
@@ -112,7 +112,7 @@ public partial class FrostyModExecutor
         {
             // entry.Handler will never be null, since the assets added to m_handlerAssets always have a handler set
             entry.Handler!.Modify(entry, out Block<byte> data);
-            Debug.Assert(m_data2.TryAdd(entry.Sha1, data));
+            Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
         }
         
         // clear old generated mod data
@@ -122,16 +122,17 @@ public partial class FrostyModExecutor
         // modify the superbundles and write them to mod data
         foreach (KeyValuePair<int, SuperBundleModInfo> sb in m_superBundleModInfos)
         {
-            SuperBundleInstallChunk sbic = FileSystemManager.GetSuperBundleInstallChunk(sb.Key);
+            SuperBundleInstallChunk sbIc = FileSystemManager.GetSuperBundleInstallChunk(sb.Key);
 
             // write all data in this superbundle to cas files in the correct install chunk
-            InstallChunkWriter installChunkWriter = WriteCasArchives(sb.Value, sbic);
+            InstallChunkWriter installChunkWriter = WriteCasArchives(sb.Value, sbIc);
             
             switch (FileSystemManager.BundleFormat)
             {
                 case BundleFormat.Dynamic2018:
                     break;
                 case BundleFormat.Manifest2019:
+                    ModManifest2019(sbIc, sb.Value, installChunkWriter);
                     break;
                 case BundleFormat.SuperBundleManifest:
                     break;
@@ -263,7 +264,7 @@ public partial class FrostyModExecutor
                         
                         // only add asset to bundles, use base games data
                         Block<byte> data = AssetManager.GetRawAsset(entry);
-                        Debug.Assert(m_data2.TryAdd(entry.Sha1, data));
+                        Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
                         modEntry = new EbxModEntry(ebx, data.Size);
                     }
                     else
@@ -337,7 +338,7 @@ public partial class FrostyModExecutor
                         
                         // only add asset to bundles, use base games data
                         Block<byte> data = AssetManager.GetRawAsset(entry);
-                        Debug.Assert(m_data2.TryAdd(entry.Sha1, data));
+                        Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
                         modEntry = new ResModEntry(res, data.Size);
                     }
                     else
@@ -412,7 +413,7 @@ public partial class FrostyModExecutor
                         
                         // only add asset to bundles, use base games data
                         Block<byte> data = AssetManager.GetRawAsset(entry);
-                        Debug.Assert(m_data2.TryAdd(entry.Sha1, data));
+                        Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
                         modEntry = new ChunkModEntry(chunk, data.Size);
                     }
                     else
@@ -625,7 +626,7 @@ public partial class FrostyModExecutor
             return (data.GetData(), true);
         }
 
-        if (m_data2.TryGetValue(sha1, out Block<byte>? block))
+        if (m_memoryData.TryGetValue(sha1, out Block<byte>? block))
         {
             return (block, false);
         }

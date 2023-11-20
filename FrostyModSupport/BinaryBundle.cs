@@ -198,8 +198,10 @@ public static class BinaryBundle
         inStream.Position = startPos + size;
         
         // write new bundle
-        Block<byte> retVal;
-        using (DataStream stream = new(new MemoryStream()))
+        stringsOffset = 32 + (containsSha1 ? sha1.Length * 20 : 0) + ebx.Length * 8 + res.Length * 36 +
+                        chunks.Length * 24; // TODO: meta first?
+        Block<byte> retVal = new((int)(stringsOffset + offset));
+        using (BlockStream stream = new(retVal, true))
         {
             stream.WriteUInt32(0xDEADBEEF, Endian.Big);
             
@@ -209,15 +211,14 @@ public static class BinaryBundle
             stream.WriteInt32(ebx.Length, endian);
             stream.WriteInt32(res.Length, endian);
             stream.WriteInt32(chunks.Length, endian);
-            stringsOffset = 32 + (containsSha1 ? sha1.Length * 20 : 0) + ebx.Length * 8 + res.Length * 36 +
-                            chunks.Length * 24; // TODO: meta first?
+            
             stream.WriteUInt32((uint)stringsOffset, endian);
             stream.WriteUInt32(0xDEADBEEF, endian); // TODO: metaOffset
             stream.WriteUInt32(0xDEADBEEF, endian); // TODO: metaSize
 
             foreach (Sha1 value in sha1)
             {
-                stream.WriteSha1(value, endian);
+                stream.WriteSha1(value);
             }
 
             foreach (EbxModEntry entry in ebx)
@@ -262,10 +263,6 @@ public static class BinaryBundle
                 stream.Position = stringsOffset + 4 + pair.Value;
                 stream.WriteNullTerminatedString(pair.Key);
             }
-            
-            stream.Position = 0;
-            retVal = new Block<byte>((int)stream.Length);
-            stream.ReadExactly(retVal);
         }
         
         return retVal;
