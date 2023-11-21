@@ -16,19 +16,19 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
     /// The absolute start of the block.
     /// </summary>
     public T* BasePtr { get; private set; }
-    
+
     /// <summary>
     /// The current, potentially shifted start of the block.
     /// </summary>
     public T* Ptr { get; private set; }
-    
+
     /// <summary>
     /// Absolute size of the block.
     /// </summary>
     public int BaseSize { get; private set; }
-    
+
     /// <summary>
-    /// Shifted size of the block. <see cref="BaseSize"/> - <see cref="ShiftAmount"/> gets the current Size. 
+    /// Shifted size of the block. <see cref="BaseSize"/> - <see cref="ShiftAmount"/> gets the current Size.
     /// </summary>
     public int ShiftAmount => (int)(Ptr - BasePtr);
 
@@ -76,7 +76,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
     public Block(T* inStartPtr, T* inEndPtr)
     {
         BasePtr = inStartPtr;
-        Ptr = BasePtr; 
+        Ptr = BasePtr;
         // If the diff between end and start pointers is 0, then the size is 1.
         // => size = diff + 1
         BaseSize = ((int)(inEndPtr - inStartPtr) / sizeof(T)) + 1;
@@ -170,7 +170,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ArgumentOutOfRangeException(nameof(inNewSize));
         }
-        
+
         // Get the old offset.
         int currentOffset = ShiftAmount;
         int newSize = inNewSize * sizeof(T);
@@ -339,7 +339,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
     {
         return inBlock.ToReadOnlySpan();
     }
-    
+
     /// <summary>
     /// Copies the data of this <see cref="Block{T}"/> to the specified destination.
     /// </summary>
@@ -395,7 +395,21 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
     {
         m_usable = false;
     }
-    
+
+    private static class EmptyArray<T2> where T2 : unmanaged
+    {
+        internal static readonly Block<T2> Value = new(0);
+    }
+
+    /// <summary>
+    /// Returns an empty Block.
+    /// </summary>
+    /// <returns>An empty Block.</returns>
+    public static Block<T> Empty()
+    {
+        return EmptyArray<T>.Value;
+    }
+
     public void Dispose()
     {
         if (m_usable)
