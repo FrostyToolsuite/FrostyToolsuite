@@ -9,13 +9,17 @@ using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers;
 using System.Diagnostics;
-using System.Linq;
 using Frosty.Sdk.Interfaces;
-using System.Data;
 
 namespace Frosty.Sdk.IO;
 public class DbxWriter : IDisposable
 {
+    private static readonly string s_instanceGuidName = "__InstanceGuid";
+
+    private string m_filePath;
+    private EbxWriteFlags m_flags;
+    private XmlWriter m_xmlWriter;
+
     public DbxWriter(string filePath, EbxWriteFlags inFlags)
     {
         m_filePath = filePath;
@@ -34,11 +38,10 @@ public class DbxWriter : IDisposable
         WriteAsset(inAsset);
     }
 
-    private static readonly string s_instanceGuidName = "__InstanceGuid";
-
-    private string m_filePath;
-    private EbxWriteFlags m_flags;
-    private XmlWriter m_xmlWriter;
+    public void Dispose()
+    {
+        m_xmlWriter.Dispose();
+    }
 
     #region Partition Writing
     private void WritePartitionStart(Guid inAssetGuid, Guid inPrimaryInstanceGuid)
@@ -487,8 +490,10 @@ public class DbxWriter : IDisposable
 
     private void WriteAsset(EbxAsset inAsset)
     {
+#if FROSTY_DEVELOPER
         Stopwatch w = new();
         w.Start();
+#endif
         m_xmlWriter.WriteStartDocument();
 
         WritePartitionStart(inAsset.FileGuid, inAsset.RootInstanceGuid);
@@ -499,8 +504,10 @@ public class DbxWriter : IDisposable
         }
 
         WritePartitionEnd();
+#if FROSTY_DEVELOPER
         w.Stop();
         Console.WriteLine($"Finished writing {m_filePath} in {w.ElapsedMilliseconds} ms");
+#endif
     }
 
     /// <summary>
@@ -613,10 +620,5 @@ public class DbxWriter : IDisposable
         guid[15] = (byte)inInternalId;
 
         return new Guid(guid);
-    }
-
-    public void Dispose()
-    {
-        m_xmlWriter.Dispose();
     }
 }
