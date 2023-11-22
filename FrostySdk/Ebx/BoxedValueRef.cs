@@ -1,7 +1,6 @@
 using System;
 using System.Reflection;
 using Frosty.Sdk.Attributes;
-using Frosty.Sdk.IO.Ebx;
 using Frosty.Sdk.Sdk;
 
 namespace Frosty.Sdk.Ebx;
@@ -10,11 +9,11 @@ public class BoxedValueRef
 {
     public object? Value => m_value;
     public TypeFlags.TypeEnum Type => m_type;
-    public EbxFieldCategory Category => m_category;
+    public TypeFlags.CategoryEnum Category => m_category;
 
     private object? m_value;
     private readonly TypeFlags.TypeEnum m_type;
-    private readonly EbxFieldCategory m_category;
+    private readonly TypeFlags.CategoryEnum m_category;
 
     public BoxedValueRef()
     {
@@ -26,7 +25,7 @@ public class BoxedValueRef
         m_type = inType;
     }
 
-    public BoxedValueRef(object? inValue, TypeFlags.TypeEnum inType, EbxFieldCategory inCategory)
+    public BoxedValueRef(object? inValue, TypeFlags.TypeEnum inType, TypeFlags.CategoryEnum inCategory)
     {
         m_value = inValue;
         m_type = inType;

@@ -1,4 +1,4 @@
-﻿namespace Frosty.Sdk.IO.Ebx;
+﻿namespace Frosty.Sdk.IO.PartitionEbx;
 
 internal enum EbxVersion
 {
