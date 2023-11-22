@@ -1,6 +1,5 @@
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
-using Frosty.Sdk.IO.Ebx;
 using Frosty.Sdk.Sdk;
 using static Frosty.Sdk.Sdk.TypeFlags;
 using System;
@@ -8,6 +7,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Frosty.Sdk.Interfaces;
+using Frosty.Sdk.IO.Ebx;
+using Frosty.Sdk.IO.PartitionEbx;
 using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO;
@@ -34,7 +35,6 @@ public class EbxWriter
     private static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef");
 
     private static readonly string s_ebxNamespace = "Frostbite";
-    private static readonly string s_instanceGuidName = "__InstanceGuid";
     private static readonly string s_collectionName = "ObservableCollection`1";
 
     private uint m_stringsLength = 0;
@@ -86,7 +86,7 @@ public class EbxWriter
             m_objs.Insert(0, ebxObj);
         }
 
-        WriteEbx(inAsset.FileGuid);
+        WriteEbx(inAsset.PartitionGuid);
     }
 
     private void WriteHeader(Guid inFileGuid)
@@ -439,12 +439,6 @@ public class EbxWriter
         {
             // ignore transients if not saving to project
             if (ebxProperty.GetCustomAttribute<IsTransientAttribute>() is not null)
-            {
-                continue;
-            }
-
-            // ignore the instance guid
-            if (ebxProperty.Name.Equals(s_instanceGuidName))
             {
                 continue;
             }
@@ -849,12 +843,6 @@ public class EbxWriter
                     continue;
                 }
 
-                // ignore instance guid
-                if (pi.Name.Equals(s_instanceGuidName))
-                {
-                    continue;
-                }
-
                 classProperties.Add(pi);
             }
 
@@ -923,12 +911,6 @@ public class EbxWriter
             {
                 // ignore transients
                 if (propertyInfo.GetCustomAttribute<IsTransientAttribute>() is not null)
-                {
-                    continue;
-                }
-
-                // ignore instance guid
-                if (propertyInfo.Name.Equals(s_instanceGuidName))
                 {
                     continue;
                 }
