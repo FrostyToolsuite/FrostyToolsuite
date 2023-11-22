@@ -17,13 +17,11 @@ public class DbxWriter : IDisposable
     private static readonly string s_instanceGuidName = "__InstanceGuid";
 
     private string m_filePath;
-    private EbxWriteFlags m_flags;
     private XmlWriter m_xmlWriter;
 
-    public DbxWriter(string filePath, EbxWriteFlags inFlags)
+    public DbxWriter(string inFilePath)
     {
-        m_filePath = filePath;
-        m_flags = inFlags;
+        m_filePath = inFilePath;
         XmlWriterSettings settings = new() { Indent = true, IndentChars = "\t" };
         m_xmlWriter = XmlWriter.Create(m_filePath, settings);
     }
@@ -496,7 +494,7 @@ public class DbxWriter : IDisposable
 #endif
         m_xmlWriter.WriteStartDocument();
 
-        WritePartitionStart(inAsset.FileGuid, inAsset.RootInstanceGuid);
+        WritePartitionStart(inAsset.PartitionGuid, inAsset.RootInstanceGuid);
 
         foreach (object ebxObj in inAsset.objects)
         {
@@ -521,7 +519,7 @@ public class DbxWriter : IDisposable
 
         WriteInstanceStart(guid,
             $"{ebxType.Namespace}.{ebxType.GetCustomAttribute<DisplayNameAttribute>()!.Name}",
-            m_flags.HasFlag(EbxWriteFlags.IncludeTransient) ? ((dynamic)ebxObj).__Id : null);
+            ((dynamic)ebxObj).__Id);
 
         if (ebxType.IsClass)
 
@@ -580,11 +578,6 @@ public class DbxWriter : IDisposable
 
         foreach (var pi in currentTypeProps)
         {
-            if (pi.GetCustomAttribute<IsTransientAttribute>() != null && !m_flags.HasFlag(EbxWriteFlags.IncludeTransient))
-            {
-                continue;
-            }
-
             if (pi.Name.Equals(s_instanceGuidName))
             {
                 continue;
