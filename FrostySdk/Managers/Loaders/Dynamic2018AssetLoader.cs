@@ -66,12 +66,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
             return Code.NotFound;
         }
 
-        if (ProfilesLibrary.FrostbiteVersion < "2014.4.11" && !FileSystemSource.Base.TryResolvePath($"{inSbIc.Name}.toc", out _))
-        {
-            // some superbundles are still in the Update/Patch folder even tho their base bundles which are needed are not there (e.g. languages that are not loaded)
-            return Code.NotFound;
-        }
-
         // load the toc
         DbObjectDict? toc = DbObject.Deserialize(path)?.AsDict();
 
@@ -114,7 +108,15 @@ public class Dynamic2018AssetLoader : IAssetLoader
             }
             else
             {
-                foreach (DbObject obj in toc.AsList("bundles"))
+                DbObjectList bundles = toc.AsList("bundles");
+
+                if (bundles.Count > 0 && ProfilesLibrary.FrostbiteVersion < "2014.4.11" && !inSource.IsDLC() && !FileSystemSource.Base.TryResolvePath($"{inSbIc.Name}.toc", out _))
+                {
+                    // some superbundles are still in the Update/Patch folder even tho their base bundles which are needed are not there (e.g. languages that are not loaded)
+                    return Code.NotFound;
+                }
+
+                foreach (DbObject obj in bundles)
                 {
                     DbObjectDict bundleObj = obj.AsDict();
 
@@ -165,18 +167,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         // load chunks
         if (toc.ContainsKey("chunks"))
         {
-            string basePath = FileSystemManager.ResolvePath(false, $"{inSbIc.Name}.toc");
-            DbObjectDict? baseToc = string.IsNullOrEmpty(basePath) ? null : DbObject.Deserialize(basePath)?.AsDict();
-
-            HashSet<Guid> baseChunks = new();
-
-            if (baseToc is not null)
-            {
-                foreach (DbObject obj in toc.AsList("chunks"))
-                {
-                    baseChunks.Add(obj.AsDict().AsGuid("id"));
-                }
-            }
+            HashSet<Guid> patchChunks = new();
 
             foreach (DbObject obj in toc.AsList("chunks"))
             {
@@ -195,9 +186,11 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 else
                 {
                     entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
+                    entry.FileInfos.Add(new NonCasFileInfo(inSbIc.Name, chunkObj.AsUInt("offset"),
+                        chunkObj.AsUInt("size")));
                 }
 
-                bool b = baseChunks.Remove(entry.Id);
+                patchChunks.Add(entry.Id);
 
                 AssetManager.AddSuperBundleChunk(entry);
 
@@ -208,7 +201,49 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 }
             }
 
-            Debug.Assert(baseChunks.Count == 0);
+            if (inSource != FileSystemSource.Base)
+            {
+                string basePath = FileSystemSource.Base.ResolvePath($"{inSbIc.Name}.toc");
+                DbObjectDict? baseToc = string.IsNullOrEmpty(basePath) ? null : DbObject.Deserialize(basePath)?.AsDict();
+
+                if (baseToc is not null)
+                {
+                    foreach (DbObject obj in baseToc.AsList("chunks"))
+                    {
+                        DbObjectDict chunkObj = obj.AsDict();
+                        Guid id = chunkObj.AsGuid("id");
+                        if (patchChunks.Contains(id))
+                        {
+                            continue;
+                        }
+
+                        ChunkAssetEntry entry;
+                        if (isCas || isDas)
+                        {
+                            entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), chunkObj.AsSha1("sha1"), 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
+
+                            IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(entry.Sha1);
+                            if (fileInfos is not null)
+                            {
+                                entry.FileInfos.UnionWith(fileInfos);
+                            }
+                        }
+                        else
+                        {
+                            entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
+                        }
+
+                        AssetManager.AddSuperBundleChunk(entry);
+
+                        if (entry.LogicalSize == 0)
+                        {
+                            // TODO: get original size
+                            // entry.OriginalSize = entry.FileInfo.GetOriginalSize();
+                        }
+                    }
+                }
+            }
+
         }
 
         if (toc.ContainsKey("hasBaseBundles") || toc.ContainsKey("hasBaseChunks"))

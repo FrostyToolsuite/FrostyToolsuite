@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Utils;
 
@@ -26,6 +25,11 @@ public static class EbxSharedTypeDescriptors
         if (FileSystemManager.HasFileInMemoryFs("SharedTypeDescriptors.ebx"))
         {
             Read(FileSystemManager.GetFileFromMemoryFs("SharedTypeDescriptors.ebx"));
+        }
+
+        if (FileSystemManager.HasFileInMemoryFs("SharedTypeDescriptors_patch.ebx"))
+        {
+            Read(FileSystemManager.GetFileFromMemoryFs("SharedTypeDescriptors_patch.ebx"));
         }
 
         s_isInitialized = true;
@@ -109,7 +113,9 @@ public static class EbxSharedTypeDescriptors
                 {
                     // its a relative offset to the field, so we have to calculate the index
                     typeDescriptor.FieldIndex = (int)((offset - typeDescriptor.FieldIndex - 0x08) / 0x10 + startFields);
+                    s_keyTypeMapping.Remove(key);
                     s_keyTypeMapping.Add(key, s_typeDescriptors.Count);
+                    s_typeKeyMapping.Remove(typeDescriptor.NameHash);
                     s_typeKeyMapping.Add(typeDescriptor.NameHash, key);
                 }
 

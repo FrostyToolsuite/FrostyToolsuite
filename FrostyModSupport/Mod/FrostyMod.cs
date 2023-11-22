@@ -209,15 +209,15 @@ public class FrostyMod : IResourceContainer
             stream.ReadExactly(resources);
         }
 
-        Block<byte> data;
-        Block<byte> dataHeader = new(inData.Length * (sizeof(long) + sizeof(long)));
+        Block<byte> data = new(inData.Length * 100); // low estimate
+        Block<byte> dataHeader = new(inData.Length * (sizeof(long) + sizeof(int)));
         using (BlockStream stream = new(dataHeader, true))
-        using (DataStream dataStream = new(new MemoryStream()))
+        using (BlockStream dataStream = new(data, true))
         {
             foreach (Block<byte> subData in inData)
             {
                 stream.WriteInt64(dataStream.Position);
-                stream.WriteInt64(subData.Size);
+                stream.WriteInt32(subData.Size);
 
                 dataStream.Write(subData);
             }
@@ -272,8 +272,8 @@ public class FrostyMod : IResourceContainer
                    inModDetails.Version.Length + 1 + inModDetails.Description.Length + 1 +
                    inModDetails.Category.Length + 1 + inModDetails.ModPageLink.Length + 1;
 
-        Block<byte> resources;
-        using (DataStream stream = new(new MemoryStream()))
+        Block<byte> resources = new(sizeof(int) + inResources.Length * (4 + 10)); // we just estimate a min size (ResourceIndex + Name(low estimate of 9 chars))
+        using (BlockStream stream = new(resources, true))
         {
             stream.WriteInt32(inResources.Length);
 
@@ -281,16 +281,12 @@ public class FrostyMod : IResourceContainer
             {
                 resource.Write(stream);
             }
-
-            stream.Position = 0;
-            resources = new Block<byte>((int)stream.Length);
-            stream.ReadExactly(resources);
         }
 
-        Block<byte> data;
+        Block<byte> data = new(inData.Length * 100); // low estimate of the actual size
         Block<byte> dataHeader = new(inData.Length * (sizeof(long) + sizeof(int)));
         using (BlockStream stream = new(dataHeader, true))
-        using (DataStream dataStream = new(new MemoryStream()))
+        using (BlockStream dataStream = new(data, true))
         {
             foreach (Block<byte> subData in inData)
             {
@@ -299,10 +295,6 @@ public class FrostyMod : IResourceContainer
 
                 dataStream.Write(subData);
             }
-
-            dataStream.Position = 0;
-            data = new Block<byte>((int)dataStream.Length);
-            dataStream.ReadExactly(data);
         }
 
         Block<byte> file = new(headerSize + resources.Size + dataHeader.Size + data.Size);

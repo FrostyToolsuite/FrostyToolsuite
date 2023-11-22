@@ -11,7 +11,7 @@ public class CasResourceInfo
     private readonly uint m_offset;
     private readonly uint m_size;
     private readonly uint m_logicalOffset;
-    
+
     public CasResourceInfo(CasFileIdentifier inCasFileIdentifier, uint inOffset, uint inSize, uint inLogicalOffset)
     {
         m_casFileIdentifier = inCasFileIdentifier;
@@ -19,7 +19,7 @@ public class CasResourceInfo
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
     }
-    
+
     public CasResourceInfo(bool inIsPatch, int inInstallChunkIndex, int inCasIndex, uint inOffset, uint inSize, uint inLogicalOffset)
     {
         m_casFileIdentifier = new CasFileIdentifier(inIsPatch, inInstallChunkIndex, inCasIndex);
@@ -28,12 +28,14 @@ public class CasResourceInfo
         m_logicalOffset = inLogicalOffset;
     }
 
+    public bool IsComplete() => m_logicalOffset == 0;
+
     public string GetPath() => FileSystemManager.GetFilePath(m_casFileIdentifier);
 
     protected uint GetOffset() => m_offset;
-    
+
     public uint GetSize() => m_size;
-    
+
     public virtual Block<byte> GetRawData()
     {
         using (FileStream stream = new(GetPath(), FileMode.Open, FileAccess.Read))
@@ -41,7 +43,7 @@ public class CasResourceInfo
             stream.Position = m_offset;
 
             Block<byte> retVal = new((int)m_size);
-            
+
             stream.ReadExactly(retVal);
             return retVal;
         }
@@ -78,7 +80,7 @@ public class CasResourceInfo
                m_size == b.m_size &&
                m_logicalOffset == b.m_logicalOffset;
     }
-    
+
     public override bool Equals(object? obj)
     {
         if (obj is CasResourceInfo b)
@@ -112,7 +114,7 @@ public class CasResourceInfo
         stream.WriteByte(1);
         SerializeInternal(stream, info);
     }
-    
+
     public static CasResourceInfo? Deserialize(DataStream stream)
     {
         byte type = stream.ReadByte();
@@ -129,7 +131,7 @@ public class CasResourceInfo
                 throw new Exception("Not a valid CasResourceInfo type. Has to be 0, 1 or 2.");
         }
     }
-    
+
     protected static void SerializeInternal(DataStream stream, CasResourceInfo info)
     {
         stream.WriteUInt32(CasFileIdentifier.ToFileIdentifier(info.m_casFileIdentifier));

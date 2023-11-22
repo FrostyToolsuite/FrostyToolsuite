@@ -9,7 +9,7 @@ public partial struct PropertyConnection
     public uint Flags { get; set; }
 
     [IsTransientAttribute()]
-    [EbxFieldMetaAttribute(TypeFlags.TypeEnum.Boolean)]
+    [EbxFieldMetaAttribute(TypeFlags.TypeEnum.Enum)]
     public PropertyConnectionTargetType TargetType
     {
         get => (PropertyConnectionTargetType)(Flags & 0x07u);
@@ -25,7 +25,7 @@ public partial struct PropertyConnection
     }
 
     [IsTransientAttribute()]
-    [EbxFieldMetaAttribute(TypeFlags.TypeEnum.Boolean)]
+    [EbxFieldMetaAttribute(TypeFlags.TypeEnum.Enum)]
     public InputPropertyType InputPropertyType
     {
         get => (InputPropertyType)((Flags & 0x30u) >> 4);
