@@ -1,17 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using Frosty.Sdk.Ebx;
-using Frosty.Sdk.Managers;
-using Frosty.Sdk.Managers.Entries;
-using Frosty.Sdk.Utils;
+using Frosty.Sdk.IO;
 
-namespace Frosty.Sdk.IO.Ebx;
+namespace Frosty.Sdk.Ebx;
 
 public partial class EbxAsset
 {
-    public Guid FileGuid => fileGuid;
+    public Guid PartitionGuid => partitionGuid;
     public Guid RootInstanceGuid
     {
         get
@@ -73,10 +69,22 @@ public partial class EbxAsset
     public bool IsValid => objects.Count != 0;
     public bool TransientEdit { get; set; }
 
-    internal Guid fileGuid;
+    internal Guid partitionGuid;
     internal List<object> objects = new();
     internal List<int> refCounts = new();
     internal HashSet<Guid> dependencies = new();
+
+    public static EbxAsset Deserialize(DataStream ebxStream)
+    {
+        BaseEbxReader reader = BaseEbxReader.CreateReader(ebxStream);
+        return reader.ReadAsset<EbxAsset>();
+    }
+
+    public static void Serialize(DataStream ebxStream, EbxAsset asset)
+    {
+        EbxWriter writer = EbxWriter.CreateWriter(ebxStream);
+        writer.WriteAsset(asset);
+    }
 
     public EbxAsset()
     {
@@ -84,7 +92,7 @@ public partial class EbxAsset
 
     public EbxAsset(params object[] rootObjects)
     {
-        fileGuid = Guid.NewGuid();
+        partitionGuid = Guid.NewGuid();
 
         foreach (dynamic obj in rootObjects)
         {
@@ -123,7 +131,7 @@ public partial class EbxAsset
         return true;
     }
 
-    public void SetFileGuid(Guid guid) => fileGuid = guid;
+    public void SetFileGuid(Guid guid) => partitionGuid = guid;
 
     public void AddObject(dynamic obj, bool root = false)
     {

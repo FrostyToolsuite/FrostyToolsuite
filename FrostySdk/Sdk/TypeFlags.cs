@@ -52,13 +52,13 @@ public struct TypeFlags
     [Flags]
     public enum Flags
     {
-        MetaData = 1 << 11,
-        Homogeneous = 1 << 12,
-        AlwaysPersist = 1 << 13, // only valid on fields
-        Exposed = 1 << 13, // only valid on fields
-        FlagsEnum = 1 << 13, // enum is a bitfield only valid on enums
-        LayoutImmutable = 1 << 14,
-        Blittable = 1 << 15
+        MetaData = 1 << 1,
+        Homogeneous = 1 << 2,
+        AlwaysPersist = 1 << 3, // only valid on fields
+        Exposed = 1 << 3, // only valid on fields
+        FlagsEnum = 1 << 3, // enum is a bitfield only valid on enums
+        LayoutImmutable = 1 << 4,
+        Blittable = 1 << 5
     }
 
     private readonly ushort m_flags;
@@ -81,7 +81,7 @@ public struct TypeFlags
 
     public CategoryEnum GetCategoryEnum() => (CategoryEnum)((m_flags >> (ProfilesLibrary.EbxVersion == 2 ? 0 : 1)) & 0xF);
 
-    public Flags GetFlags() => (Flags)(m_flags & (ProfilesLibrary.EbxVersion == 2 ? 0x1FF : 0x3FF));
+    public Flags GetFlags() => (Flags)(m_flags >> (ProfilesLibrary.EbxVersion == 2 ? 9 : 10));
 
     public static implicit operator ushort(TypeFlags value) => value.m_flags;
 

@@ -35,7 +35,7 @@ public struct PointerRef
     public static bool operator !=(PointerRef a, object b) => !a.Equals(b);
 
     public override bool Equals(object? obj)
-    {  
+    {
         if (obj is not PointerRef b)
         {
             return false;
