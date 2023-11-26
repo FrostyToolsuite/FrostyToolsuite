@@ -11,7 +11,7 @@ namespace Frosty.Sdk.IO;
 public class BlockStream : DataStream
 {
     private readonly Block<byte> m_block;
-    private bool m_leaveOpen;
+    private readonly bool m_leaveOpen;
 
     public BlockStream(int inSize)
     {
@@ -26,13 +26,32 @@ public class BlockStream : DataStream
         m_leaveOpen = inLeaveOpen;
     }
 
-    public override unsafe string ReadNullTerminatedString(bool wide = false)
+    public override void Write(ReadOnlySpan<byte> buffer)
     {
-        if (wide)
-        {
-            return base.ReadNullTerminatedString(wide);
-        }
+        ResizeStream(Position + buffer.Length);
+        base.Write(buffer);
+    }
 
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        ResizeStream(Position + count);
+        base.Write(buffer, offset, count);
+    }
+
+    public override void WriteByte(byte value)
+    {
+        ResizeStream(Position + sizeof(byte));
+        base.WriteByte(value);
+    }
+
+    public override void CopyTo(Stream destination, int bufferSize)
+    {
+        ResizeStream(Position + bufferSize);
+        base.CopyTo(destination, bufferSize);
+    }
+
+    public override unsafe string ReadNullTerminatedString()
+    {
         string retVal = new((sbyte*)(m_block.Ptr + Position));
         Position += retVal.Length + 1;
         return retVal;
@@ -54,10 +73,10 @@ public class BlockStream : DataStream
                 if (CheckExtraObfuscation(stream, out int keySize))
                 {
                     int size = (int)(stream.Length - keySize);
-                    using (Block<byte> data = new Block<byte>(size))
+                    using (Block<byte> data = new(size))
                     {
                         stream.ReadExactly(data);
-                
+
                         // this is not how the game actually decrypts the data, but also seems to work
                         // look at https://github.com/CadeEvs/FrostyToolsuite/blob/1.0.6.2/FrostySdk/Deobfuscators/MEADeobfuscator.cs for actual decryption algorithm
                         byte initialValue = data[0];
@@ -77,7 +96,7 @@ public class BlockStream : DataStream
                             if (Deobfuscate(header, dataStream, out retVal))
                             {
                                 return retVal;
-                            }   
+                            }
                         }
                     }
                 }
@@ -120,7 +139,7 @@ public class BlockStream : DataStream
                 wasObfuscated = true;
                 return retVal;
             }
-            
+
             stream.Position = 0;
 
             retVal = new BlockStream((int)stream.Length);
@@ -143,7 +162,7 @@ public class BlockStream : DataStream
             stream.Position = inOffset;
 
             BlockStream retVal = new(inSize);
-            
+
             stream.ReadExactly(retVal.m_block);
             return retVal;
         }
@@ -182,10 +201,22 @@ public class BlockStream : DataStream
 
     public override void Dispose()
     {
+        if (m_leaveOpen && Position > Length)
+        {
+            Span<byte> padding = new byte[Position - Length];
+            Position = Length;
+            m_stream.Write(padding);
+        }
+        if (m_leaveOpen && m_block.Size != Length)
+        {
+            // resize the block if needed
+            m_block.Resize((int)Length);
+        }
+
         base.Dispose();
         if (!m_leaveOpen)
         {
-            m_block.Dispose();   
+            m_block.Dispose();
         }
         GC.SuppressFinalize(this);
     }
@@ -193,7 +224,7 @@ public class BlockStream : DataStream
     private static bool CheckExtraObfuscation(Stream inStream, out int keySize)
     {
         keySize = 0;
-        
+
         // read signature
         inStream.Seek(-36, SeekOrigin.End);
         Span<byte> signature = stackalloc byte[36];
@@ -209,7 +240,7 @@ public class BlockStream : DataStream
                 return false;
             }
         }
-        
+
         // get key size
         keySize = signature[3] << 24 | signature[2] << 16 | signature[1] << 8 | signature[0] << 0;
         return true;
@@ -218,19 +249,33 @@ public class BlockStream : DataStream
     private static bool Deobfuscate(Span<byte> inHeader, Stream inStream, [NotNullWhen(returnValue:true)] out BlockStream? stream)
     {
         if (!(inHeader[0] == 0x00 && inHeader[1] == 0xD1 && inHeader[2] == 0xCE &&
-             (inHeader[3] == 0x00 || inHeader[3] == 0x01 || inHeader[3] == 0x03))) // version 0 is not used in fb3
+              (inHeader[3] == 0x00 || inHeader[3] == 0x01 || inHeader[3] == 0x03))) // version 0 is not used in fb3
         {
             stream = null;
             return false;
         }
-        
+
         stream = new BlockStream((int)(inStream.Length - 0x22C));
         inStream.ReadExactly(stream.m_block);
-                    
+
         // deobfuscate the data
         IDeobfuscator? deobfuscator = FileSystemManager.CreateDeobfuscator();
         deobfuscator?.Deobfuscate(inHeader, stream.m_block);
-                    
+
         return true;
+    }
+
+    private void ResizeStream(long inDesiredMinLength)
+    {
+        if (inDesiredMinLength > m_block.Size)
+        {
+            long position = Position;
+            int neededLength = (int)Math.Max(inDesiredMinLength, Environment.SystemPageSize + position);
+            neededLength = neededLength + 15 & ~15;
+            m_block.Resize(neededLength);
+            m_stream = m_block.ToStream();
+            m_stream.SetLength(inDesiredMinLength);
+            m_stream.Position = position;
+        }
     }
 }

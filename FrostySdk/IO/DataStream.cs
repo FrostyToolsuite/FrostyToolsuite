@@ -3,56 +3,69 @@ using System.Buffers.Binary;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO;
 
 public unsafe class DataStream : IDisposable
 {
+    /// <inheritdoc cref="Stream.Position"/>
     public long Position
     {
         get => m_stream.Position;
         set => m_stream.Position = value;
     }
 
+    /// <inheritdoc cref="Stream.Length"/>
     public long Length => m_stream.Length;
-    
+
     protected Stream m_stream;
-    private readonly byte[] m_buffer;
     private readonly StringBuilder m_stringBuilder;
 
     protected DataStream()
     {
         m_stream = Stream.Null;
-        m_buffer = new byte[20];
         m_stringBuilder = new StringBuilder();
     }
-    
+
     public DataStream(Stream inStream)
     {
         m_stream = inStream;
-        m_buffer = new byte[20];
         m_stringBuilder = new StringBuilder();
     }
-    
+
+    /// <inheritdoc cref="Stream.Seek"/>
     public long Seek(long offset, SeekOrigin origin) => m_stream.Seek(offset, origin);
 
-    public void CopyTo(Stream destination) => m_stream.CopyTo(destination);
-    public void CopyTo(Stream destination, int length) => m_stream.CopyTo(destination, length);
+    /// <inheritdoc cref="Stream.CopyTo(Stream)"/>
+    public void CopyTo(Stream destination) => CopyTo(destination, (int)(Length - Position));
+    /// <inheritdoc cref="Stream.CopyTo(Stream, int)"/>
+    public virtual void CopyTo(Stream destination, int bufferSize) => m_stream.CopyTo(destination, bufferSize);
 
+    /// <inheritdoc cref="Stream.SetLength"/>
     public void SetLength(int value) => m_stream.SetLength(value);
 
     #region -- Read --
 
+    /// <summary>
+    /// Reads count number of bytes from the current stream and advances the position within the stream.
+    /// </summary>
+    /// <param name="count">The number of bytes to be read from the current stream.</param>
+    /// <returns>A byte array containing the read bytes.</returns>
+    /// <exception cref="EndOfStreamException">The end of the stream is reached before reading count number of bytes.</exception>
     public byte[] ReadBytes(int count)
     {
         byte[] retVal = new byte[count];
         m_stream.ReadExactly(retVal, 0, retVal.Length);
         return retVal;
     }
+
+    /// <inheritdoc cref="Stream.ReadExactly(Span{byte})"/>
     public void ReadExactly(Span<byte> buffer) => m_stream.ReadExactly(buffer);
-    
+
+    /// <inheritdoc cref="Stream.Read(byte[], int, int)"/>
     public int Read(byte[] buffer, int offset, int count) => m_stream.Read(buffer, offset, count);
-    
+
     #region -- Basic Types --
 
     public byte ReadByte()
@@ -65,7 +78,7 @@ public unsafe class DataStream : IDisposable
 
         return (byte)retVal;
     }
-    
+
     public sbyte ReadSByte()
     {
         return (sbyte)ReadByte();
@@ -76,99 +89,114 @@ public unsafe class DataStream : IDisposable
         return ReadByte() != 0;
     }
 
-    public char ReadChar(bool wide = false)
+    public char ReadChar()
     {
-        return (char)(wide ? ReadInt16() : ReadByte());
+        return (char)ReadByte();
     }
 
     public short ReadInt16(Endian endian = Endian.Little)
     {
-        m_stream.ReadExactly(m_buffer, 0, sizeof(short));
-        
+        Span<byte> buffer = stackalloc byte[sizeof(short)];
+        m_stream.ReadExactly(buffer);
+
         if (endian == Endian.Big)
         {
-            Array.Reverse(m_buffer, 0, sizeof(short));
+            return BinaryPrimitives.ReadInt16BigEndian(buffer);
         }
-        return BitConverter.ToInt16(m_buffer);
+
+        return BinaryPrimitives.ReadInt16LittleEndian(buffer);
     }
 
     public ushort ReadUInt16(Endian endian = Endian.Little)
     {
         return (ushort)ReadInt16(endian);
     }
-    
+
     public int ReadInt32(Endian endian = Endian.Little)
     {
-        Span<byte> span = m_buffer.AsSpan(0, sizeof(int));
-        m_stream.ReadExactly(span);
-        
+        Span<byte> buffer = stackalloc byte[sizeof(int)];
+        m_stream.ReadExactly(buffer);
+
         if (endian == Endian.Big)
         {
-            return BinaryPrimitives.ReadInt32BigEndian(span);
+            return BinaryPrimitives.ReadInt32BigEndian(buffer);
         }
 
-        return BinaryPrimitives.ReadInt32LittleEndian(span);
+        return BinaryPrimitives.ReadInt32LittleEndian(buffer);
     }
-    
+
     public uint ReadUInt32(Endian endian = Endian.Little)
     {
         return (uint)ReadInt32(endian);
     }
-    
+
     public long ReadInt64(Endian endian = Endian.Little)
     {
-        Span<byte> span = m_buffer.AsSpan(0, sizeof(long));
-        m_stream.ReadExactly(span);
-        
+        Span<byte> buffer = stackalloc byte[sizeof(long)];
+        m_stream.ReadExactly(buffer);
+
         if (endian == Endian.Big)
         {
-            return BinaryPrimitives.ReadInt64BigEndian(span);
+            return BinaryPrimitives.ReadInt64BigEndian(buffer);
         }
 
-        return BinaryPrimitives.ReadInt64LittleEndian(span);
+        return BinaryPrimitives.ReadInt64LittleEndian(buffer);
     }
 
     public ulong ReadUInt64(Endian endian = Endian.Little)
     {
         return (ulong)ReadInt64(endian);
     }
-    
+
+    public Half ReadHalf(Endian endian = Endian.Little)
+    {
+        Span<byte> buffer = stackalloc byte[sizeof(Half)];
+        m_stream.ReadExactly(buffer);
+
+        if (endian == Endian.Big)
+        {
+            return BinaryPrimitives.ReadHalfBigEndian(buffer);
+        }
+
+        return BinaryPrimitives.ReadHalfLittleEndian(buffer);
+    }
+
     public float ReadSingle(Endian endian = Endian.Little)
     {
-        Span<byte> span = m_buffer.AsSpan(0, sizeof(float));
-        m_stream.ReadExactly(span);
-        
+        Span<byte> buffer = stackalloc byte[sizeof(float)];
+        m_stream.ReadExactly(buffer);
+
         if (endian == Endian.Big)
         {
-            return BinaryPrimitives.ReadSingleBigEndian(span);
+            return BinaryPrimitives.ReadSingleBigEndian(buffer);
         }
 
-        return BinaryPrimitives.ReadSingleLittleEndian(span);
+        return BinaryPrimitives.ReadSingleLittleEndian(buffer);
     }
-    
+
     public double ReadDouble(Endian endian = Endian.Little)
     {
-        Span<byte> span = m_buffer.AsSpan(0, sizeof(double));
-        m_stream.ReadExactly(span);
-        
+        Span<byte> buffer = stackalloc byte[sizeof(double)];
+        m_stream.ReadExactly(buffer);
+
         if (endian == Endian.Big)
         {
-            return BinaryPrimitives.ReadDoubleBigEndian(span);
+            return BinaryPrimitives.ReadDoubleBigEndian(buffer);
         }
 
-        return BinaryPrimitives.ReadDoubleLittleEndian(span);
+        return BinaryPrimitives.ReadDoubleLittleEndian(buffer);
     }
 
     #endregion
 
     #region -- Strings --
-    
-    public virtual string ReadNullTerminatedString(bool wide = false)
+
+    public virtual string ReadNullTerminatedString()
     {
         m_stringBuilder.Clear();
         while (true)
         {
-            char c = ReadChar(wide);
+            char c = ReadChar();
             if (c == 0)
             {
                 return m_stringBuilder.ToString();
@@ -180,10 +208,11 @@ public unsafe class DataStream : IDisposable
 
     public string ReadFixedSizedString(int size)
     {
-        Span<byte> buffer = new byte[size];
-        m_stream.ReadExactly(buffer);
-
-        return Encoding.UTF8.GetString(buffer).TrimEnd((char)0);
+        using (Block<byte> buffer = new(size))
+        {
+            m_stream.ReadExactly(buffer);
+            return Encoding.ASCII.GetString(buffer).TrimEnd((char)0);
+        }
     }
 
     public string ReadSizedString()
@@ -237,7 +266,7 @@ public unsafe class DataStream : IDisposable
 
     public Guid ReadGuid(Endian endian = Endian.Little)
     {
-        Span<byte> span = m_buffer.AsSpan(0, sizeof(Guid));
+        Span<byte> span = stackalloc byte[sizeof(Guid)];
         m_stream.ReadExactly(span);
 
         if (endian == Endian.Big)
@@ -252,26 +281,23 @@ public unsafe class DataStream : IDisposable
 
     public Sha1 ReadSha1()
     {
-        Span<byte> span = m_buffer.AsSpan(0, sizeof(Sha1));
+        Span<byte> span = stackalloc byte[sizeof(Sha1)];
         m_stream.ReadExactly(span);
-        
+
         return new Sha1(span);
     }
 
     #endregion
-    
+
     #region -- Write --
 
-    public void Write(ReadOnlySpan<byte> buffer) => m_stream.Write(buffer);
+    public virtual void Write(ReadOnlySpan<byte> buffer) => m_stream.Write(buffer);
 
-    public void Write(byte[] buffer, int offset, int count) => m_stream.Write(buffer, offset, count);
+    public virtual void Write(byte[] buffer, int offset, int count) => m_stream.Write(buffer, offset, count);
 
     #region -- Basic Types --
 
-    public void WriteByte(byte value)
-    {
-        m_stream.WriteByte(value);
-    }
+    public virtual void WriteByte(byte value) => m_stream.WriteByte(value);
 
     public void WriteSByte(sbyte value)
     {
@@ -280,59 +306,70 @@ public unsafe class DataStream : IDisposable
 
     public void WriteBoolean(bool value)
     {
-        m_stream.WriteByte((byte)(value ? 1 : 0));
+        WriteByte((byte)(value ? 1 : 0));
     }
 
-    public void WriteChar(char value, bool wide = false)
+    public void WriteChar(char value)
     {
-        if (wide)
-        {
-            WriteInt16((short)value);
-        }
-        else
-        {
-            WriteByte((byte)value);
-        }
+        WriteByte((byte)value);
     }
 
     public void WriteInt16(short value, Endian endian = Endian.Little)
     {
+        Span<byte> buffer = stackalloc byte[sizeof(short)];
+
         if (endian == Endian.Big)
         {
-            value = Reverse(value);
+            BinaryPrimitives.WriteInt16BigEndian(buffer, value);
         }
-        Unsafe.As<byte, short>(ref m_buffer[0]) = value;
-        m_stream.Write(m_buffer, 0, sizeof(short));
+        else
+        {
+            BinaryPrimitives.WriteInt16LittleEndian(buffer, value);
+        }
+
+        Write(buffer);
     }
 
     public void WriteUInt16(ushort value, Endian endian = Endian.Little)
     {
         WriteInt16((short)value, endian);
     }
-    
+
     public void WriteInt32(int value, Endian endian = Endian.Little)
     {
+        Span<byte> buffer = stackalloc byte[sizeof(int)];
+
         if (endian == Endian.Big)
         {
-            value = Reverse(value);
+            BinaryPrimitives.WriteInt32BigEndian(buffer, value);
         }
-        Unsafe.As<byte, int>(ref m_buffer[0]) = value;
-        m_stream.Write(m_buffer, 0, sizeof(int));
+        else
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(buffer, value);
+        }
+
+        Write(buffer);
     }
-    
+
     public void WriteUInt32(uint value, Endian endian = Endian.Little)
     {
         WriteInt32((int)value, endian);
     }
-    
+
     public void WriteInt64(long value, Endian endian = Endian.Little)
     {
+        Span<byte> buffer = stackalloc byte[sizeof(long)];
+
         if (endian == Endian.Big)
         {
-            value = Reverse(value);
+            BinaryPrimitives.WriteInt64BigEndian(buffer, value);
         }
-        Unsafe.As<byte, long>(ref m_buffer[0]) = value;
-        m_stream.Write(m_buffer, 0, sizeof(long));
+        else
+        {
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, value);
+        }
+
+        Write(buffer);
     }
 
     public void WriteUInt64(ulong value, Endian endian = Endian.Little)
@@ -340,66 +377,84 @@ public unsafe class DataStream : IDisposable
         WriteInt64((long)value, endian);
     }
 
-    public void WriteSingle(float value, Endian endian = Endian.Little)
+    public void WriteHalf(Half value, Endian endian = Endian.Little)
     {
+        Span<byte> buffer = stackalloc byte[sizeof(Half)];
+
         if (endian == Endian.Big)
         {
-            int i = 0;
-            Unsafe.As<int, float>(ref i) = value;
-            i = Reverse(i);
-            Unsafe.As<byte, int>(ref m_buffer[0]) = i;
+            BinaryPrimitives.WriteHalfBigEndian(buffer, value);
         }
         else
         {
-            Unsafe.As<byte, float>(ref m_buffer[0]) = value;   
+            BinaryPrimitives.WriteHalfLittleEndian(buffer, value);
         }
-        m_stream.Write(m_buffer, 0, sizeof(float));
+
+        Write(buffer);
+    }
+
+    public void WriteSingle(float value, Endian endian = Endian.Little)
+    {
+        Span<byte> buffer = stackalloc byte[sizeof(float)];
+
+        if (endian == Endian.Big)
+        {
+            BinaryPrimitives.WriteSingleBigEndian(buffer, value);
+        }
+        else
+        {
+            BinaryPrimitives.WriteSingleLittleEndian(buffer, value);
+        }
+
+        Write(buffer);
     }
 
     public void WriteDouble(double value, Endian endian = Endian.Little)
     {
+        Span<byte> buffer = stackalloc byte[sizeof(double)];
+
         if (endian == Endian.Big)
         {
-            long i = 0;
-            Unsafe.As<long, double>(ref i) = value;
-            i = Reverse(i);
-            Unsafe.As<byte, long>(ref m_buffer[0]) = i;
+            BinaryPrimitives.WriteDoubleBigEndian(buffer, value);
         }
         else
         {
-            Unsafe.As<byte, double>(ref m_buffer[0]) = value;   
+            BinaryPrimitives.WriteDoubleLittleEndian(buffer, value);
         }
-        m_stream.Write(m_buffer, 0, sizeof(double));
+
+        Write(buffer);
     }
 
     #endregion
 
     #region -- Strings --
 
-    public void WriteNullTerminatedString(string value, bool wide = false)
+    public void WriteNullTerminatedString(string value)
     {
-        Span<byte> span = new byte[(value.Length + 1) * (wide ? 2 : 1)];
-        if (wide)
+        using (Block<byte> buffer = new(value.Length + 1))
         {
-            Encoding.Unicode.GetBytes(value, span);
+            Encoding.ASCII.GetBytes(value, buffer);
+            buffer[value.Length] = 0;
+            Write(buffer);
         }
-        else
-        {
-            Encoding.ASCII.GetBytes(value, span);
-        }
-        m_stream.Write(span);
     }
 
     public void WriteFixedSizedString(string value, int size)
     {
-        Span<byte> span = new byte[size];
-        Encoding.UTF8.GetBytes(value, span);
-        m_stream.Write(span);
+        using (Block<byte> buffer = new(size))
+        {
+            Encoding.ASCII.GetBytes(value, buffer);
+            for (int i = value.Length; i < size; i++)
+            {
+                buffer[i] = 0;
+            }
+            Write(buffer);
+        }
     }
-    
+
     public void WriteSizedString(string value)
     {
-        int size = Encoding.UTF8.GetByteCount(value) + 1;
+        int size = value.Length + 1;
         Write7BitEncodedInt32(size);
         WriteFixedSizedString(value, size);
     }
@@ -408,35 +463,38 @@ public unsafe class DataStream : IDisposable
 
     public void WriteGuid(Guid value, Endian endian = Endian.Little)
     {
-        Unsafe.As<byte, Guid>(ref m_buffer[0]) = value;
-        
+        Span<byte> buffer = stackalloc byte[sizeof(Guid)];
+
+        value.TryWriteBytes(buffer);
+
         if (endian == Endian.Big)
         {
-            Array.Reverse(m_buffer, 0, sizeof(Guid));
+            Unsafe.As<byte, int>(ref buffer[0]) = BinaryPrimitives.ReverseEndianness(Unsafe.As<byte, int>(ref buffer[0]));
+            Unsafe.As<byte, short>(ref buffer[4]) = BinaryPrimitives.ReverseEndianness(Unsafe.As<byte, short>(ref buffer[4]));
+            Unsafe.As<byte, short>(ref buffer[6]) = BinaryPrimitives.ReverseEndianness(Unsafe.As<byte, short>(ref buffer[6]));
         }
-        m_stream.Write(m_buffer, 0, sizeof(Guid));
+
+        Write(buffer);
     }
 
-    public void WriteSha1(Sha1 value, Endian endian = Endian.Little)
+    public void WriteSha1(Sha1 value)
     {
-        Unsafe.As<byte, Sha1>(ref m_buffer[0]) = value;
-        
-        if (endian == Endian.Big)
-        {
-            Array.Reverse(m_buffer, 0, sizeof(Sha1));
-        }
-        m_stream.Write(m_buffer, 0, sizeof(Sha1));
+        Span<byte> buffer = stackalloc byte[sizeof(Sha1)];
+
+        value.TryWriteBytes(buffer);
+
+        Write(buffer);
     }
-    
+
     public void Write7BitEncodedInt32(int value)
     {
         uint num;
         for (num = (uint) value; num > (uint) sbyte.MaxValue; num >>= 7)
         {
-            WriteByte((byte) (num | 0xFFFFFF80U));
+            WriteByte((byte)(num | 0xFFFFFF80U));
         }
 
-        WriteByte((byte) num);
+        WriteByte((byte)num);
     }
 
     public void Write7BitEncodedInt64(long value)
@@ -444,10 +502,10 @@ public unsafe class DataStream : IDisposable
         ulong num;
         for (num = (ulong) value; num > (ulong) sbyte.MaxValue; num >>= 7)
         {
-            WriteByte((byte) ((uint) num | 0xFFFFFF80U));
+            WriteByte((byte)((uint)num | 0xFFFFFF80U));
         }
 
-        WriteByte((byte) num);
+        WriteByte((byte)num);
     }
 
     #endregion
@@ -457,35 +515,13 @@ public unsafe class DataStream : IDisposable
         if (m_stream.Position % alignment != 0)
         {
             m_stream.Position += alignment - (m_stream.Position % alignment);
-        } 
+        }
     }
-    
+
     public static implicit operator Stream(DataStream stream) => stream.m_stream;
-    
+
     public virtual void Dispose()
     {
         m_stream.Dispose();
-    }
-
-    private short Reverse(short s)
-    {
-        ushort val = (ushort)s;
-        return (short)(((val & 0xff) << 8) | ((val & 0xff00) >> 8));
-    }
-    
-    private int Reverse(int i)
-    {
-        uint val = (uint)i;
-        return (int)(((val & 0xff) << 24) | ((val & 0xff000000) >> 24) |
-                     ((val & 0xff00) << 8) | ((val & 0xff0000) >> 8));
-    }
-
-    private long Reverse(long l)
-    {
-        ulong val = (uint)l;
-        return (long)(((val & 0x00000000000000ffUL) << 56) | ((val & 0xff00000000000000UL) >> 56) |
-                      ((val & 0x000000000000ff00UL) << 40) | ((val & 0x00ff000000000000UL) >> 40) |
-                      ((val & 0x0000000000ff0000UL) << 24) | ((val & 0x0000ff0000000000UL) >> 24) |
-                      ((val & 0x00000000ff000000UL) <<  8) | ((val & 0x000000ff00000000UL) >> 8));
     }
 }

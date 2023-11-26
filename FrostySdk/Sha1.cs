@@ -53,6 +53,22 @@ public readonly struct Sha1
         return bytes;
     }
 
+    public bool TryWriteBytes(Span<byte> destination)
+    {
+        if (destination.Length < 20)
+        {
+            return false;
+        }
+        
+        destination[(0 * 4) + 0] = (byte)(m_a & 0xFF); destination[(0 * 4) + 1] = (byte)((m_a >> 8) & 0xFF); destination[(0 * 4) + 2] = (byte)((m_a >> 16) & 0xFF); destination[(0 * 4) + 3] = (byte)((m_a >> 24) & 0xFF);
+        destination[(1 * 4) + 0] = (byte)(m_b & 0xFF); destination[(1 * 4) + 1] = (byte)((m_b >> 8) & 0xFF); destination[(1 * 4) + 2] = (byte)((m_b >> 16) & 0xFF); destination[(1 * 4) + 3] = (byte)((m_b >> 24) & 0xFF);
+        destination[(2 * 4) + 0] = (byte)(m_c & 0xFF); destination[(2 * 4) + 1] = (byte)((m_c >> 8) & 0xFF); destination[(2 * 4) + 2] = (byte)((m_c >> 16) & 0xFF); destination[(2 * 4) + 3] = (byte)((m_c >> 24) & 0xFF);
+        destination[(3 * 4) + 0] = (byte)(m_d & 0xFF); destination[(3 * 4) + 1] = (byte)((m_d >> 8) & 0xFF); destination[(3 * 4) + 2] = (byte)((m_d >> 16) & 0xFF); destination[(3 * 4) + 3] = (byte)((m_d >> 24) & 0xFF);
+        destination[(4 * 4) + 0] = (byte)(m_e & 0xFF); destination[(4 * 4) + 1] = (byte)((m_e >> 8) & 0xFF); destination[(4 * 4) + 2] = (byte)((m_e >> 16) & 0xFF); destination[(4 * 4) + 3] = (byte)((m_e >> 24) & 0xFF);
+
+        return true;
+    }
+    
     public override bool Equals(object? obj)
     {
         if (obj == null || obj.GetType() != typeof(Sha1))
