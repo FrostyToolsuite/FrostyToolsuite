@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Xml;
 using Frosty.ModSupport.Mod.Resources;
 using Frosty.Sdk;
@@ -60,15 +61,18 @@ public class ModUpdater
         {
             if (isDaiMod)
             {
+                // ancient daimods from the daimodmaker
                 mod = ConvertDaiMod(stream);
             }
             else if (FrostyMod.Magic != stream.ReadUInt64())
             {
+                // legacy frosty mod format, it used a DbObject
                 stream.Position = 0;
                 mod = UpdateLegacyFormat(stream, inPath.Replace(".fbmod", string.Empty));
             }
             else
             {
+                // binary frosty mod format
                 mod = UpdateNewFormat(stream);
             }
         }
@@ -86,32 +90,6 @@ public class ModUpdater
         }
 
         return Errors.Success;
-    }
-
-    private static (BaseModResource[], Block<byte>[], FrostyModDetails, uint)? ConvertDaiMod(BlockStream inStream)
-    {
-        if (inStream.ReadFixedSizedString(8) != "DAIMODV2")
-        {
-            return null;
-        }
-
-        int unk = inStream.ReadInt32();
-        string name = inStream.ReadNullTerminatedString();
-        string xml = inStream.ReadNullTerminatedString();
-        string code = inStream.ReadNullTerminatedString();
-
-        XmlDocument doc = new();
-        doc.Load(xml);
-
-        XmlElement? detailsElem = doc["daimod"]?["details"];
-        FrostyModDetails details = new(detailsElem?["name"]?.InnerText ?? string.Empty,
-            detailsElem?["author"]?.InnerText ?? string.Empty, "DAI Mods", detailsElem?["version"]?.InnerText ?? string.Empty,
-            "Converted from DAI Mod\n" + detailsElem?["description"]?.InnerText, string.Empty);
-
-        int dataCount = inStream.ReadInt32();
-        List<Block<byte>> data = new(dataCount);
-
-        return (default, data.ToArray(), details, 0);
     }
 
     private static (BaseModResource[], Block<byte>[], FrostyModDetails, uint)? UpdateNewFormat(DataStream inStream)
@@ -137,7 +115,7 @@ public class ModUpdater
         for (int i = 0; i < resourceCount; i++)
         {
             ModResourceType type = (ModResourceType)inStream.ReadByte();
-            (int ResourceIndex, string Name, Sha1 Sha1, long OriginalSize, int HandlerHash, string UserData, IEnumerable<int> BundlesToAdd) b;
+            (int ResourceIndex, string Name, Sha1 Sha1, long OriginalSize, int HandlerHash, string UserData, IEnumerable<int> BundlesToAdd, bool HasBundleToAdd) b;
             BaseModResource.ResourceFlags flags;
             switch (type)
             {
@@ -174,58 +152,6 @@ public class ModUpdater
                     break;
                 case ModResourceType.Chunk:
                     b = ReadBaseModResource(inStream, version);
-
-                    IEnumerable<int> superBundlesToAdd;
-                    ChunkAssetEntry? entry;
-                    if ((entry = AssetManager.GetChunkAssetEntry(Guid.Parse(b.Name))) is null)
-                    {
-                        flags = BaseModResource.ResourceFlags.IsAdded;
-
-                        HashSet<int> temp = new();
-                        foreach (SuperBundleInfo superBundleInfo in FileSystemManager.EnumerateSuperBundles())
-                        {
-                            switch (FileSystemManager.BundleFormat)
-                            {
-                                case BundleFormat.Dynamic2018:
-                                case BundleFormat.Manifest2019:
-                                    if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/chunks0",
-                                            StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        continue;
-                                    }
-
-                                    foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
-                                    {
-                                        temp.Add(Utils.HashString(sbIc.Name, true));
-                                    }
-                                    break;
-                                case BundleFormat.Kelvin:
-                                    if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/globals",
-                                            StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        continue;
-                                    }
-
-                                    foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
-                                    {
-                                        temp.Add(Utils.HashString(sbIc.Name, true));
-                                    }
-                                    break;
-                                case BundleFormat.SuperBundleManifest:
-                                    continue;
-                            }
-
-                            break;
-                        }
-
-                        superBundlesToAdd = temp;
-                    }
-                    else
-                    {
-                        flags = 0;
-                        superBundlesToAdd = Enumerable.Empty<int>();
-                    }
-
                     uint rangeStart = inStream.ReadUInt32();
                     uint rangeEnd = inStream.ReadUInt32();
                     uint logicalOffset = inStream.ReadUInt32();
@@ -233,50 +159,9 @@ public class ModUpdater
                     int h32 = inStream.ReadInt32();
                     int firstMip = inStream.ReadInt32();
 
-                    if (b.ResourceIndex == -1 && entry is not null)
-                    {
-                        logicalOffset = entry.LogicalOffset;
-                        logicalSize = entry.LogicalSize;
-
-                        if (firstMip != -1 && rangeEnd == 0)
-                        {
-                            // we need to calculate the range, since it was not calculated
-                            using (BlockStream stream = new(AssetManager.GetRawAsset(entry)))
-                            {
-                                long uncompressedSize = logicalOffset + logicalSize;
-                                long uncompressedBundledSize = (logicalOffset & 0xFFFF) | logicalSize;
-                                long sizeLeft = uncompressedSize - uncompressedBundledSize;
-                                uint size = 0;
-
-                                while (true)
-                                {
-                                    ulong packed = stream.ReadUInt64(Endian.Big);
-
-                                    int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
-                                    CompressionType compressionType = (CompressionType)(packed >> 24);
-                                    Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
-                                    int bufferSize = (int)(packed & 0x000FFFFF);
-
-                                    sizeLeft -= decompressedSize;
-                                    if (sizeLeft < 0)
-                                    {
-                                        break;
-                                    }
-
-                                    if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
-                                    {
-                                        bufferSize = decompressedSize;
-                                    }
-
-                                    size += (uint)(bufferSize + 8);
-                                    stream.Position += bufferSize;
-                                }
-
-                                rangeStart = size;
-                                rangeEnd = (uint)stream.Length;
-                            }
-                        }
-                    }
+                    flags = FixChunk(b.ResourceIndex, b.HasBundleToAdd, Guid.Parse(b.Name),
+                        ref logicalOffset, ref logicalSize, ref rangeStart, ref rangeEnd, ref firstMip,
+                        out IEnumerable<int> superBundlesToAdd);
 
                     resources[i] = new ChunkModResource(b.ResourceIndex, b.Name, b.Sha1, b.OriginalSize, flags, b.HandlerHash, b.UserData,
                         b.BundlesToAdd, Enumerable.Empty<int>(), rangeStart, rangeEnd, logicalOffset, logicalSize, h32,
@@ -329,6 +214,11 @@ public class ModUpdater
 
         FrostyModDetails modDetails = new(mod.AsString("title"), mod.AsString("author"), mod.AsString("category"),
             mod.AsString("version"), mod.AsString("description"), string.Empty);
+
+        if (modDetails.Description.Contains("(Converted from .daimod)"))
+        {
+            return null;
+        }
 
         Dictionary<int, (HashSet<int>, HashSet<int>)> bundles = new();
         foreach (DbObject actionObj in mod.AsList("actions"))
@@ -401,10 +291,12 @@ public class ModUpdater
 
             IEnumerable<int> bundlesToAdd;
             IEnumerable<int> bundlesToRemove;
+            bool hasBundlesToAdd = false;
             if (bundles.TryGetValue(id, out (HashSet<int>, HashSet<int>) b))
             {
                 bundlesToAdd = b.Item1;
                 bundlesToRemove = b.Item2;
+                hasBundlesToAdd = b.Item1.Count > 0;
             }
             else
             {
@@ -447,115 +339,12 @@ public class ModUpdater
                 {
                     Guid chunkId = Guid.Parse(name);
 
-                    BaseModResource.ResourceFlags flags;
-                    IEnumerable<int> superBundlesToAdd;
-                    ChunkAssetEntry? entry;
-                    if ((entry = AssetManager.GetChunkAssetEntry(chunkId)) is null)
-                    {
-                        flags = BaseModResource.ResourceFlags.IsAdded;
-
-                        HashSet<int> temp = new();
-                        foreach (SuperBundleInfo superBundleInfo in FileSystemManager.EnumerateSuperBundles())
-                        {
-                            switch (FileSystemManager.BundleFormat)
-                            {
-                                case BundleFormat.Dynamic2018:
-                                case BundleFormat.Manifest2019:
-                                    if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/chunks0",
-                                            StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        continue;
-                                    }
-
-                                    foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
-                                    {
-                                        temp.Add(Utils.HashString(sbIc.Name, true));
-                                    }
-                                    break;
-                                case BundleFormat.Kelvin:
-                                    if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/globals",
-                                            StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        continue;
-                                    }
-
-                                    foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
-                                    {
-                                        temp.Add(Utils.HashString(sbIc.Name, true));
-                                    }
-                                    break;
-                                case BundleFormat.SuperBundleManifest:
-                                    continue;
-                            }
-
-                            break;
-                        }
-
-                        superBundlesToAdd = temp;
-                    }
-                    else
-                    {
-                        flags = 0;
-                        superBundlesToAdd = Enumerable.Empty<int>();
-                    }
-
                     uint rangeStart = resource.AsUInt("rangeStart");
                     uint rangeEnd = resource.AsUInt("rangeEnd");
                     uint logicalOffset = resource.AsUInt("logicalOffset");
                     uint logicalSize = resource.AsUInt("logicalSize");
                     int h32 = resource.AsInt("h32");
                     int firstMip = resource.AsInt("firstMip", -1);
-
-                    if (firstMip == -1 && rangeEnd != 0)
-                    {
-                        // set the firstmip to 0 and hope not too many issues arise
-                        firstMip = 0;
-                    }
-
-                    if (resourceIndex == -1 && entry is not null)
-                    {
-                        logicalOffset = entry.LogicalOffset;
-                        logicalSize = entry.LogicalSize;
-
-                        if (firstMip != -1 && rangeEnd == 0)
-                        {
-                            // we need to calculate the range in case the old mod didnt have it calculated for assets only added to bundles
-                            using (BlockStream stream = new(AssetManager.GetRawAsset(entry)))
-                            {
-                                long uncompressedSize = entry.LogicalOffset + entry.LogicalSize;
-                                long uncompressedBundledSize = (entry.LogicalOffset & 0xFFFF) | entry.LogicalSize;
-                                long sizeLeft = uncompressedSize - uncompressedBundledSize;
-                                uint size = 0;
-
-                                while (true)
-                                {
-                                    ulong packed = stream.ReadUInt64(Endian.Big);
-
-                                    int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
-                                    CompressionType compressionType = (CompressionType)(packed >> 24);
-                                    Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
-                                    int bufferSize = (int)(packed & 0x000FFFFF);
-
-                                    sizeLeft -= decompressedSize;
-                                    if (sizeLeft < 0)
-                                    {
-                                        break;
-                                    }
-
-                                    if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
-                                    {
-                                        bufferSize = decompressedSize;
-                                    }
-
-                                    size += (uint)(bufferSize + 8);
-                                    stream.Position += bufferSize;
-                                }
-
-                                rangeStart = size;
-                                rangeEnd = (uint)stream.Length;
-                            }
-                        }
-                    }
 
                     if (version < 2)
                     {
@@ -568,6 +357,10 @@ public class ModUpdater
                         // issues result from this.
                         firstMip = 0;
                     }
+
+                    BaseModResource.ResourceFlags flags = FixChunk(resourceIndex, hasBundlesToAdd, chunkId,
+                        ref logicalOffset, ref logicalSize, ref rangeStart, ref rangeEnd, ref firstMip,
+                        out IEnumerable<int> superBundlesToAdd);
 
                     resources.Add(new ChunkModResource(resourceIndex, name, sha1, resource.AsLong("uncompressedSize"),
                         flags, 0, string.Empty, bundlesToAdd, bundlesToRemove, rangeStart, rangeEnd, logicalOffset,
@@ -587,38 +380,199 @@ public class ModUpdater
         return (resources.ToArray(), data.ToArray(), modDetails, mod.AsUInt("gameVersion"));
     }
 
-    private static int ReadArchive(List<Block<byte>> data, Dictionary<int, BlockStream> archiveStreams,
-        DbObjectDict inDict, string inModName)
+    private static (BaseModResource[], Block<byte>[], FrostyModDetails, uint)? ConvertDaiMod(BlockStream inStream)
     {
-        int archiveIndex = inDict.AsInt("archiveIndex", -1);
-        if (archiveIndex == -1)
+        if (inStream.ReadFixedSizedString(8) != "DAIMODV2")
         {
-            return -1;
+            return null;
         }
 
-        if (!archiveStreams.TryGetValue(archiveIndex, out BlockStream? stream))
+        int unk = inStream.ReadInt32();
+        string name = inStream.ReadNullTerminatedString();
+        string xml = inStream.ReadNullTerminatedString();
+        string code = inStream.ReadNullTerminatedString();
+
+        XmlDocument doc = new();
+        doc.LoadXml(xml);
+
+        XmlElement? mod = doc["daimod"];
+        if (mod is null)
         {
-            string path = $"{inModName}_{archiveIndex:D2}.archive";
-            if (!File.Exists(path))
+            return null;
+        }
+
+        // create mod details
+        XmlElement? detailsElem = mod["details"];
+        FrostyModDetails details = new(detailsElem?["name"]?.InnerText ?? string.Empty,
+            detailsElem?["author"]?.InnerText ?? string.Empty, "DAI Mods", detailsElem?["version"]?.InnerText ?? string.Empty,
+            "Converted from DAI Mod\n" + detailsElem?["description"]?.InnerText, string.Empty);
+
+        // get bundle actions
+        Dictionary<int, (HashSet<int>, HashSet<int>)> bundles = new();
+        XmlElement? bundlesElem = mod["bundles"];
+        if (bundlesElem is not null)
+        {
+            foreach (XmlElement bundle in bundlesElem)
             {
-                return -1;
+                string bundleName = bundle.GetAttribute("name");
+                int bundleHash = Utils.HashString(bundleName, true);
+                string action = bundle.GetAttribute("action");
+
+                XmlElement? entries = bundle["entries"];
+                if (entries is null)
+                {
+                    continue;
+                }
+
+                foreach (XmlElement entry in entries)
+                {
+                    if (!int.TryParse(entry.GetAttribute("id"), out int resourceId))
+                    {
+                        continue;
+                    }
+                    switch (action)
+                    {
+                        case "modify":
+                            bundles.TryAdd(resourceId, (new HashSet<int>(), new HashSet<int>()));
+                            bundles[resourceId].Item1.UnionWith(s_bundleMapping[bundleHash]);
+                            break;
+                    }
+                }
             }
-            stream = BlockStream.FromFile(path, false);
+        }
+        XmlElement? resourcesElem = mod["resources"];
+        List<BaseModResource> resources = new(5 + resourcesElem?.ChildNodes.Count ?? 0) { new EmbeddedModResource(-1, "Icon") };
+
+        for (int i = 1; i < 5; i++)
+        {
+            resources.Add(new EmbeddedModResource(-1, $"Screenshot{i}"));
         }
 
-        uint archiveOffset = inDict.AsUInt("archiveOffset");
-        stream.Position = archiveOffset;
-        Block<byte> block = new(inDict.AsInt("compressedSize"));
-        stream.ReadExactly(block);
+        Span<byte> guidBytes = stackalloc byte[0x10];
+        if (resourcesElem is not null)
+        {
+            foreach (XmlElement resource in resourcesElem)
+            {
+                string resourceName = resource.GetAttribute("name");
+                string type = resource.GetAttribute("type");
+                string action = resource.GetAttribute("action");
+                if (!int.TryParse(resource.GetAttribute("resourceId"), out int resourceId))
+                {
+                    resourceId = -1;
+                }
+                Sha1 sha1 = resource.HasAttribute("sha1") ? new Sha1(resource.GetAttribute("sha1")) : Sha1.Zero;
 
-        data.Add(block);
+                if (action == "remove")
+                {
+                    // we dont really need to remove the chunks
+                    continue;
+                }
 
-        return data.Count - 1;
+                bool hasBundlesToAdd = false;
+                IEnumerable<int> bundlesToAdd;
+                IEnumerable<int> bundlesToRemove;
+                if (bundles.TryGetValue(resourceId, out (HashSet<int>, HashSet<int>) b))
+                {
+                    bundlesToAdd = b.Item1;
+                    bundlesToRemove = b.Item2;
+                    hasBundlesToAdd = b.Item1.Count > 0;
+                }
+                else
+                {
+                    bundlesToAdd = Enumerable.Empty<int>();
+                    bundlesToRemove = Enumerable.Empty<int>();
+                }
+
+                long.TryParse(resource.GetAttribute("originalSize"), out long originalSize);
+
+                switch (type)
+                {
+                    case "ebx":
+                    {
+                        BaseModResource.ResourceFlags flags = AssetManager.GetEbxAssetEntry(name) is null
+                            ? BaseModResource.ResourceFlags.IsAdded
+                            : 0;
+                        resources.Add(new EbxModResource(resourceId, resourceName, sha1, originalSize, flags, 0,
+                            string.Empty, bundlesToAdd, bundlesToRemove));
+                        break;
+                    }
+                    case "res":
+                    {
+                        BaseModResource.ResourceFlags flags = AssetManager.GetResAssetEntry(name) is null
+                            ? BaseModResource.ResourceFlags.IsAdded
+                            : 0;
+
+                        ReadOnlySpan<char> resMetaString = resource.GetAttribute("meta");
+                        byte[] resMeta = new byte[0x10];
+                        for (int i = 0; i < resMeta.Length; i++)
+                        {
+                            resMeta[i] = byte.Parse(resMetaString.Slice(i * 2, 2), NumberStyles.HexNumber);
+                        }
+
+                        resources.Add(new ResModResource(resourceId, name, sha1, originalSize, flags, 0,
+                            string.Empty, bundlesToAdd, bundlesToRemove,
+                            (uint)int.Parse(resource.GetAttribute("resType")),
+                            (ulong)long.Parse(resource.GetAttribute("resRid")), resMeta));
+                        break;
+                    }
+                    case "chunk":
+                    {
+                        ReadOnlySpan<char> idString = resourceName;
+                        for (int j = 0; j < guidBytes.Length; j++)
+                        {
+                            guidBytes[j] = byte.Parse(idString.Slice(j * 2, 2), NumberStyles.HexNumber);
+                        }
+
+                        Guid id = new(guidBytes);
+
+                        uint rangeStart = uint.Parse(resource.GetAttribute("rangeStart"));
+                        uint rangeEnd = uint.Parse(resource.GetAttribute("rangeEnd"));
+                        uint logicalOffset = uint.Parse(resource.GetAttribute("logicalOffset"));
+                        uint logicalSize = uint.Parse(resource.GetAttribute("logicalSize"));
+                        int h32 = int.Parse(resource.GetAttribute("chunkH32"));
+
+                        // they store the firstMip as DbObject so we need to parse it
+                        ReadOnlySpan<char> meta = resource.GetAttribute("meta");
+                        Block<byte> metaBytes = new(meta.Length / 2);
+                        for (int i = 0; i < metaBytes.Size; i++)
+                        {
+                            metaBytes[i] = byte.Parse(meta.Slice(i * 2, 2), NumberStyles.HexNumber);
+                        }
+
+                        int firstMip;
+                        using (BlockStream stream = new(metaBytes))
+                        {
+                            firstMip = DbObject.Deserialize(stream)?.AsInt() ?? -1;
+                        }
+
+                        BaseModResource.ResourceFlags flags = FixChunk(resourceId, hasBundlesToAdd, id,
+                            ref logicalOffset, ref logicalSize, ref rangeStart, ref rangeEnd, ref firstMip,
+                            out IEnumerable<int> superBundlesToAdd);
+
+                        resources.Add(new ChunkModResource(resourceId, id.ToString(), sha1, originalSize, flags, 0,
+                            string.Empty, bundlesToAdd, bundlesToRemove, rangeStart, rangeEnd, logicalOffset,
+                            logicalSize, h32, firstMip, superBundlesToAdd, Enumerable.Empty<int>()));
+                        break;
+                    }
+                }
+            }
+        }
+
+        int dataCount = inStream.ReadInt32();
+        Block<byte>[] data = new Block<byte>[dataCount];
+        for (int i = 0; i < dataCount; i++)
+        {
+            Block<byte> buffer = new(inStream.ReadInt32());
+            inStream.ReadExactly(buffer);
+            data[i] = buffer;
+        }
+
+        return (resources.ToArray(), data, details, 0);
     }
 
-    private static (int, string, Sha1, long, int, string, IEnumerable<int>) ReadBaseModResource(DataStream inStream, uint version)
+    private static (int, string, Sha1, long, int, string, IEnumerable<int>, bool) ReadBaseModResource(DataStream inStream, uint version)
     {
-        (int, string, Sha1, long, int, string, IEnumerable<int>) retVal = default;
+        (int, string, Sha1, long, int, string, IEnumerable<int>, bool) retVal = default;
 
         retVal.Item1 = inStream.ReadInt32();
 
@@ -648,6 +602,7 @@ public class ModUpdater
                 bundles.UnionWith(s_bundleMapping[hash]);
             }
             retVal.Item7 = bundles;
+            retVal.Item8 = bundles.Count > 0;
         }
 
         // as of version 4, only bundles the asset will be added to are stored, existing bundles
@@ -662,8 +617,146 @@ public class ModUpdater
                 bundles.UnionWith(s_bundleMapping[hash]);
             }
             retVal.Item7 = bundles;
+            retVal.Item8 = bundles.Count > 0;
         }
 
         return retVal;
+    }
+
+    private static BaseModResource.ResourceFlags FixChunk(int inResourceIndex, bool inHasBundlesToAdd, Guid inId, ref uint logicalOffset, ref uint logicalSize, ref uint rangeStart, ref uint rangeEnd, ref int firstMip,
+        out IEnumerable<int> superBundlesToAdd)
+    {
+        if (firstMip == -1 && rangeEnd != 0)
+        {
+            // set the firstmip to 0 and hope not too many issues arise
+            firstMip = 0;
+        }
+
+        ChunkAssetEntry? entry;
+        BaseModResource.ResourceFlags flags = 0;
+        superBundlesToAdd = Enumerable.Empty<int>();
+        if ((entry = AssetManager.GetChunkAssetEntry(inId)) is null)
+        {
+            flags = BaseModResource.ResourceFlags.IsAdded;
+
+            if (!inHasBundlesToAdd || firstMip != -1)
+            {
+                HashSet<int> temp = new();
+                foreach (SuperBundleInfo superBundleInfo in FileSystemManager.EnumerateSuperBundles())
+                {
+                    switch (FileSystemManager.BundleFormat)
+                    {
+                        case BundleFormat.Dynamic2018:
+                        case BundleFormat.Manifest2019:
+                            if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/chunks0",
+                                    StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
+                            {
+                                temp.Add(Utils.HashString(sbIc.Name, true));
+                            }
+
+                            break;
+                        case BundleFormat.Kelvin:
+                            if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/globals",
+                                    StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
+                            {
+                                temp.Add(Utils.HashString(sbIc.Name, true));
+                            }
+
+                            break;
+                        case BundleFormat.SuperBundleManifest:
+                            continue;
+                    }
+
+                    break;
+                }
+
+                superBundlesToAdd = temp;
+            }
+        }
+        else if (inResourceIndex == -1)
+        {
+            logicalOffset = entry.LogicalOffset;
+            logicalSize = entry.LogicalSize;
+
+            if (firstMip != -1 && rangeEnd == 0)
+            {
+                // we need to calculate the range in case the old mod didnt have it calculated for assets only added to bundles
+                using (BlockStream stream = new(AssetManager.GetRawAsset(entry)))
+                {
+                    long uncompressedSize = entry.LogicalOffset + entry.LogicalSize;
+                    long uncompressedBundledSize = (entry.LogicalOffset & 0xFFFF) | entry.LogicalSize;
+                    long sizeLeft = uncompressedSize - uncompressedBundledSize;
+                    uint size = 0;
+
+                    while (true)
+                    {
+                        ulong packed = stream.ReadUInt64(Endian.Big);
+
+                        int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
+                        CompressionType compressionType = (CompressionType)(packed >> 24);
+                        Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
+                        int bufferSize = (int)(packed & 0x000FFFFF);
+
+                        sizeLeft -= decompressedSize;
+                        if (sizeLeft < 0)
+                        {
+                            break;
+                        }
+
+                        if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
+                        {
+                            bufferSize = decompressedSize;
+                        }
+
+                        size += (uint)(bufferSize + 8);
+                        stream.Position += bufferSize;
+                    }
+
+                    rangeStart = size;
+                    rangeEnd = (uint)stream.Length;
+                }
+            }
+        }
+
+        return flags;
+    }
+
+    private static int ReadArchive(List<Block<byte>> data, Dictionary<int, BlockStream> archiveStreams,
+        DbObjectDict inDict, string inModName)
+    {
+        int archiveIndex = inDict.AsInt("archiveIndex", -1);
+        if (archiveIndex == -1)
+        {
+            return -1;
+        }
+
+        if (!archiveStreams.TryGetValue(archiveIndex, out BlockStream? stream))
+        {
+            string path = $"{inModName}_{archiveIndex:D2}.archive";
+            if (!File.Exists(path))
+            {
+                return -1;
+            }
+            stream = BlockStream.FromFile(path, false);
+        }
+
+        uint archiveOffset = inDict.AsUInt("archiveOffset");
+        stream.Position = archiveOffset;
+        Block<byte> block = new(inDict.AsInt("compressedSize"));
+        stream.ReadExactly(block);
+
+        data.Add(block);
+
+        return data.Count - 1;
     }
 }
