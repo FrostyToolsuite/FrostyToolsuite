@@ -37,7 +37,7 @@ public partial class FrostyModExecutor
     private string m_patchPath;
     private string m_modDataPath;
     private string m_gamePatchPath;
-    
+
     /// <summary>
     /// Generates a directory containing the modded games data.
     /// </summary>
@@ -70,7 +70,7 @@ public partial class FrostyModExecutor
 
         // load handlers from Handlers directory
         LoadHandlers();
-        
+
         // process all mods
         foreach (string path in modPaths)
         {
@@ -106,7 +106,7 @@ public partial class FrostyModExecutor
                 }
             }
         }
-        
+
         // apply handlers
         foreach (IModEntry entry in m_handlerAssets)
         {
@@ -114,11 +114,11 @@ public partial class FrostyModExecutor
             entry.Handler!.Modify(entry, out Block<byte> data);
             Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
         }
-        
+
         // clear old generated mod data
         Directory.Delete(m_modDataPath, true);
         Directory.CreateDirectory(m_modDataPath);
-        
+
         // modify the superbundles and write them to mod data
         foreach (KeyValuePair<int, SuperBundleModInfo> sb in m_superBundleModInfos)
         {
@@ -126,7 +126,7 @@ public partial class FrostyModExecutor
 
             // write all data in this superbundle to cas files in the correct install chunk
             InstallChunkWriter installChunkWriter = WriteCasArchives(sb.Value, sbIc);
-            
+
             switch (FileSystemManager.BundleFormat)
             {
                 case BundleFormat.Dynamic2018:
@@ -140,7 +140,7 @@ public partial class FrostyModExecutor
                     break;
             }
         }
-        
+
         // create symbolic links for everything that is in gamePatchPath but not in modDataPath
         foreach (string file in Directory.EnumerateFiles(m_gamePatchPath, string.Empty, SearchOption.AllDirectories))
         {
@@ -161,14 +161,14 @@ public partial class FrostyModExecutor
         {
             m_installChunkWriters.Add(sbIc.InstallChunk.Id, installChunkWriter = new InstallChunkWriter(sbIc.InstallChunk, m_gamePatchPath, m_modDataPath));
         }
-        
+
         foreach (Sha1 sha1 in inModInfo.Data)
         {
-            (Block<byte>, bool) data = GetData(sha1);
-            installChunkWriter.WriteData(sha1, data.Item1);
-            if (data.Item2)
+            (Block<byte> Block, bool NeedsToDispose) data = GetData(sha1);
+            installChunkWriter.WriteData(sha1, data.Block);
+            if (data.NeedsToDispose)
             {
-                data.Item1.Dispose();
+                data.Block.Dispose();
             }
         }
 
@@ -219,16 +219,16 @@ public partial class FrostyModExecutor
                         // asset was already modified by another mod so just skip to the bundle part
                         break;
                     }
-                    
+
                     EbxModEntry modEntry;
-                    
+
                     if (resource.HasHandler)
                     {
                         if (!m_handlers.TryGetValue(resource.HandlerHash, out Type? type))
                         {
                             continue;
                         }
-                        
+
                         if (exists)
                         {
                             modEntry = m_modifiedEbx[resource.Name];
@@ -246,7 +246,7 @@ public partial class FrostyModExecutor
                             m_modifiedEbx.Add(resource.Name, modEntry);
                             m_handlerAssets.Add(modEntry);
                         }
-                        
+
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
                         break;
                     }
@@ -261,7 +261,7 @@ public partial class FrostyModExecutor
                             // we skip the bundle part here
                             continue;
                         }
-                        
+
                         // only add asset to bundles, use base games data
                         Block<byte> data = AssetManager.GetRawAsset(entry);
                         Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
@@ -272,14 +272,14 @@ public partial class FrostyModExecutor
                         ResourceData data = container.GetData(resource.ResourceIndex);
                         Debug.Assert(m_data.TryAdd(resource.Sha1, data));
                         modEntry = new EbxModEntry(ebx, data.Size);
-                            
+
                         if (entry is not null)
                         {
                             // add in existing bundles
                             foreach (int bundle in entry.Bundles)
                             {
                                 modifiedBundles.Add(bundle);
-                            }   
+                            }
                         }
                     }
                     m_modifiedEbx.Add(resource.Name, modEntry);
@@ -293,16 +293,16 @@ public partial class FrostyModExecutor
                         // asset was already modified by another mod so just skip to the bundle part
                         break;
                     }
-                    
+
                     ResModEntry modEntry;
-                    
+
                     if (resource.HasHandler)
                     {
                         if (!m_handlers.TryGetValue(resource.HandlerHash, out Type? type))
                         {
                             continue;
                         }
-                        
+
                         if (exists)
                         {
                             modEntry = m_modifiedRes[resource.Name];
@@ -320,7 +320,7 @@ public partial class FrostyModExecutor
                             m_modifiedRes.Add(resource.Name, modEntry);
                             m_handlerAssets.Add(modEntry);
                         }
-                        
+
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
                         break;
                     }
@@ -335,7 +335,7 @@ public partial class FrostyModExecutor
                             // we skip the bundle part here
                             continue;
                         }
-                        
+
                         // only add asset to bundles, use base games data
                         Block<byte> data = AssetManager.GetRawAsset(entry);
                         Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
@@ -346,7 +346,7 @@ public partial class FrostyModExecutor
                         ResourceData data = container.GetData(resource.ResourceIndex);
                         Debug.Assert(m_data.TryAdd(resource.Sha1, data));
                         modEntry = new ResModEntry(res, data.Size);
-                            
+
                         if (entry is not null)
                         {
                             // add in existing bundles
@@ -368,16 +368,16 @@ public partial class FrostyModExecutor
                         // asset was already modified by another mod so just skip to the bundle part
                         break;
                     }
-                    
+
                     ChunkModEntry modEntry;
-                    
+
                     if (resource.HasHandler)
                     {
                         if (!m_handlers.TryGetValue(resource.HandlerHash, out Type? type))
                         {
                             continue;
                         }
-                        
+
                         if (exists)
                         {
                             modEntry = m_modifiedChunks[id];
@@ -395,7 +395,7 @@ public partial class FrostyModExecutor
                             m_modifiedChunks.Add(id, modEntry);
                             m_handlerAssets.Add(modEntry);
                         }
-                        
+
                         modEntry.Handler.Load(container.GetData(resource.ResourceIndex).GetData());
                         break;
                     }
@@ -410,7 +410,7 @@ public partial class FrostyModExecutor
                             // we skip the bundle part here
                             continue;
                         }
-                        
+
                         // only add asset to bundles, use base games data
                         Block<byte> data = AssetManager.GetRawAsset(entry);
                         Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
@@ -421,7 +421,7 @@ public partial class FrostyModExecutor
                         ResourceData data = container.GetData(resource.ResourceIndex);
                         Debug.Assert(m_data.TryAdd(resource.Sha1, data));
                         modEntry = new ChunkModEntry(chunk, data.Size);
-                            
+
                         if (entry is not null)
                         {
                             // add in existing bundles
@@ -524,7 +524,7 @@ public partial class FrostyModExecutor
                 {
                     sb.Data.Add(resource.Sha1);
                 }
-                
+
                 if (!sb.Modified.Bundles.TryGetValue(modifiedBundle, out BundleModInfo? modInfo))
                 {
                     modInfo = new BundleModInfo();
@@ -599,7 +599,7 @@ public partial class FrostyModExecutor
             {
                 continue;
             }
-            
+
             if (modDetails is null)
             {
                 return modInfoList;
@@ -613,13 +613,13 @@ public partial class FrostyModExecutor
                 Link = modDetails.ModPageLink,
                 FileName = path
             };
-            
+
             modInfoList.Add(modInfo);
         }
         return modInfoList;
     }
 
-    private (Block<byte>, bool) GetData(Sha1 sha1)
+    private (Block<byte> Block, bool NeedsToDispose) GetData(Sha1 sha1)
     {
         if (m_data.TryGetValue(sha1, out ResourceData? data))
         {

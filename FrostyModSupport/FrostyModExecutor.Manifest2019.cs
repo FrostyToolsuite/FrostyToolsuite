@@ -47,7 +47,7 @@ public partial class FrostyModExecutor
                 }
 
                 m_mapping.Add(inString, retVal);
-            
+
                 return retVal;
             }
 
@@ -62,10 +62,10 @@ public partial class FrostyModExecutor
                 // TODO: encode strings
             }
         }
-        
+
         public Block<byte>? TocData { get; private set; }
         public Block<byte>? SbData { get; private set; }
-        
+
         private readonly Dictionary<string, EbxModEntry> m_modifiedEbx;
         private readonly Dictionary<string, ResModEntry> m_modifiedRes;
         private readonly Dictionary<Guid, ChunkModEntry> m_modifiedChunks;
@@ -86,7 +86,7 @@ public partial class FrostyModExecutor
 
             bool encodeStrings = false;
             byte bundleLoadFlag = 0;
-            
+
             Block<byte> modifiedSuperBundle = new(100); // TODO: estimate size
             using (BlockStream modifiedStream = new(modifiedSuperBundle, true))
             {
@@ -95,27 +95,27 @@ public partial class FrostyModExecutor
                     stream.Position += sizeof(uint); // bundleHashMapOffset
                     uint bundleDataOffset = stream.ReadUInt32(Endian.Big);
                     int bundlesCount = stream.ReadInt32(Endian.Big);
-            
+
                     stream.Position += sizeof(uint); // chunkHashMapOffset
                     uint chunkGuidOffset = stream.ReadUInt32(Endian.Big);
                     int chunksCount = stream.ReadInt32(Endian.Big);
-            
+
                     // not used by any game rn, maybe crypto stuff
                     stream.Position += sizeof(uint);
                     stream.Position += sizeof(uint);
-            
+
                     uint namesOffset = stream.ReadUInt32(Endian.Big);
-            
+
                     uint chunkDataOffset = stream.ReadUInt32(Endian.Big);
                     int dataCount = stream.ReadInt32(Endian.Big);
-            
+
                     Manifest2019AssetLoader.Flags flags = (Manifest2019AssetLoader.Flags)stream.ReadInt32(Endian.Big);
-            
+
                     uint namesCount = 0;
                     uint tableCount = 0;
                     uint tableOffset = uint.MaxValue;
                     HuffmanDecoder? huffmanDecoder = null;
-                    
+
                     if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
                     {
                         encodeStrings = true;
@@ -126,18 +126,18 @@ public partial class FrostyModExecutor
                     }
 
                     stringHelper = new StringHelper(encodeStrings);
-                    
+
                     if (bundlesCount != 0)
                     {
                         if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
                         {
                             stream.Position = namesOffset;
                             huffmanDecoder!.ReadEncodedData(stream, namesCount, Endian.Big);
-            
+
                             stream.Position = tableOffset;
                             huffmanDecoder.ReadHuffmanTable(stream, tableCount, Endian.Big);
                         }
-                        
+
                         stream.Position = bundleDataOffset;
                         BlockStream? sbStream = null;
                         for (int i = 0; i < bundlesCount; i++)
@@ -145,7 +145,7 @@ public partial class FrostyModExecutor
                             int nameOffset = stream.ReadInt32(Endian.Big);
                             uint bundleSize = stream.ReadUInt32(Endian.Big);
                             long bundleOffset = stream.ReadInt64(Endian.Big);
-            
+
                             // get name either from huffman table or raw string table at the end
                             string name;
                             if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
@@ -159,14 +159,14 @@ public partial class FrostyModExecutor
                                 name = stream.ReadNullTerminatedString();
                                 stream.Position = curPos;
                             }
-                            
+
                             int id = Utils.HashString(name + inSbIc.Name, true);
                             bundleLoadFlag = (byte)(bundleSize >> 30);
                             bundleSize &= 0x3FFFFFFFU;
-            
+
                             uint newOffset = (uint)modifiedStream.Position;
                             long newBundleSize;
-                            
+
                             if (!inModInfo.Modified.Bundles.TryGetValue(id, out BundleModInfo? bundleModInfo))
                             {
                                 // load and write unmodified bundle
@@ -208,16 +208,16 @@ public partial class FrostyModExecutor
                                 (Block<byte> BundleMeta, List<(CasFileIdentifier, uint, uint)> Files, bool IsInline)
                                     bundle = ModifyBundle(bundleStream, bundleOffset, bundleModInfo,
                                         inInstallChunkWriter);
-            
+
                                 Block<byte> data = WriteModifiedBundle(bundle, inInstallChunkWriter);
                                 modifiedStream.Write(data);
                                 newBundleSize = data.Size;
                                 data.Dispose();
-                                
+
                                 // remove bundle so we can check if the base superbundle needs to be loaded to modify a base bundle
                                 inModInfo.Modified.Bundles.Remove(id);
                             }
-                            
+
                             bundles.Add((stringHelper.AddString(name), newOffset, newBundleSize));
                         }
                         huffmanDecoder?.Dispose();
@@ -225,13 +225,13 @@ public partial class FrostyModExecutor
 
                     if (chunksCount != 0)
                     {
-                        
+
                     }
                 }
             }
-            
+
             stringHelper.Fixup();
-            
+
             uint offset = encodeStrings ? 0x3Cu : 0x30u;
             TocData = new Block<byte>(100); // TODO: size
             using (BlockStream stream = new(TocData, true))
@@ -241,18 +241,18 @@ public partial class FrostyModExecutor
                 stream.WriteUInt32(offset, Endian.Big);
                 offset += (uint)bundles.Count * (sizeof(int) + sizeof(uint) + sizeof(long));
                 stream.WriteInt32(bundles.Count, Endian.Big);
-            
+
                 stream.WriteUInt32(offset, Endian.Big);
                 offset += (uint)chunks.Count * sizeof(int);
                 stream.WriteUInt32(offset, Endian.Big);
                 offset += (uint)chunks.Count * (16 + sizeof(int));
                 stream.WriteInt32(chunks.Count, Endian.Big);
-            
+
                 stream.WriteUInt32(offset, Endian.Big);
                 stream.WriteUInt32(offset, Endian.Big);
-            
+
                 stream.WriteUInt32(0xdeadbeef); // stringsOffset
-            
+
                 stream.WriteUInt32(offset, Endian.Big);
                 stream.WriteUInt32(0xdeadbeef); // dataCount
 
@@ -349,7 +349,7 @@ public partial class FrostyModExecutor
             long curPos = stream.Position;
 
             stream.Position = inOffset;
-            
+
             int bundleOffset = stream.ReadInt32(Endian.Big);
             int bundleSize = stream.ReadInt32(Endian.Big);
             uint locationOffset = stream.ReadUInt32(Endian.Big);
@@ -361,14 +361,14 @@ public partial class FrostyModExecutor
             stream.Position += sizeof(uint);
             // maybe count for the offsets above
             stream.Position += sizeof(int);
-            
+
             bool inlineBundle = !(bundleOffset == 0 && bundleSize == 0);
 
             stream.Position = inOffset + locationOffset;
-            
+
             Block<byte> fileIdentifierFlags = new(totalCount);
             stream.ReadExactly(fileIdentifierFlags);
-            
+
             CasFileIdentifier file = default;
             int currentIndex = 0;
 
@@ -376,10 +376,10 @@ public partial class FrostyModExecutor
             for (; currentIndex < totalCount; currentIndex++)
             {
                 file = ReadCasFileIdentifier(stream, fileIdentifierFlags[currentIndex], file);
-                
+
                 files.Add((file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big)));
             }
-            
+
             Block<byte> bundleMeta;
             if (inlineBundle)
             {
@@ -396,7 +396,7 @@ public partial class FrostyModExecutor
                             files[i] = inInstallChunkWriter.GetFileInfo(entry.Sha1);
                         }
                     });
-                
+
                 // go to the start of the data
                 stream.Position = inOffset + dataOffset;
             }
@@ -424,18 +424,18 @@ public partial class FrostyModExecutor
                             {
                                 files[i + 1] = inInstallChunkWriter.GetFileInfo(entry.Sha1);
                             }
-                        });                
+                        });
                     Debug.Assert(bundleStream.Position == bundleStream.Length, "We did not read the bundle meta completely");
                 }
             }
-            
+
             fileIdentifierFlags.Dispose();
-            
+
             stream.Position = curPos;
 
             return (bundleMeta, files, inlineBundle);
         }
-            
+
         private CasFileIdentifier ReadCasFileIdentifier(DataStream stream, byte inFlag, CasFileIdentifier current)
         {
             switch (inFlag)
@@ -453,11 +453,11 @@ public partial class FrostyModExecutor
 
         public void Dispose()
         {
-            TocData.Dispose();
+            TocData?.Dispose();
             SbData?.Dispose();
         }
     }
-    
+
     private void ModManifest2019(SuperBundleInstallChunk inSbIc, SuperBundleModInfo inModInfo, InstallChunkWriter inInstallChunkWriter)
     {
         string tocPath = Path.Combine(m_gamePatchPath, $"{inSbIc.Name}.toc");
@@ -497,6 +497,6 @@ public partial class FrostyModExecutor
                 }
             }
         }
-        
+
     }
 }
