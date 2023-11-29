@@ -315,7 +315,17 @@ public class ModUpdater
                     // not supported yet
                     break;
                 case "bundle":
-                    throw new NotImplementedException();
+                {
+                    int superBundleHash = Utils.HashString(resource.AsString("sb"), true);
+                    string sbIcName = s_superBundleMapping[superBundleHash];
+                    s_bundleMapping.Add(Utils.HashString(name, true), new HashSet<int>
+                    {
+                        Utils.HashString(name + sbIcName, true)
+                    });
+
+                    resources.Add(new BundleModResource(name, superBundleHash));
+                    break;
+                }
                 case "ebx":
                 {
                     BaseModResource.ResourceFlags flags = AssetManager.GetEbxAssetEntry(name) is null
@@ -648,7 +658,7 @@ public class ModUpdater
                     {
                         case BundleFormat.Dynamic2018:
                         case BundleFormat.Manifest2019:
-                            if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/chunks0",
+                            if (!superBundleInfo.Name.Contains(FileSystemManager.GamePlatform + "/chunks",
                                     StringComparison.OrdinalIgnoreCase))
                             {
                                 continue;
@@ -674,12 +684,14 @@ public class ModUpdater
 
                             break;
                         case BundleFormat.SuperBundleManifest:
+                            // TODO:
                             continue;
                     }
 
                     break;
                 }
 
+                Debug.Assert(temp.Count > 0);
                 superBundlesToAdd = temp;
             }
         }
