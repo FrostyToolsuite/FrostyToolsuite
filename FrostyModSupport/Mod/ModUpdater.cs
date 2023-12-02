@@ -46,14 +46,20 @@ public class ModUpdater
             s_bundleMapping.TryAdd(hash, new HashSet<int>());
             s_bundleMapping[hash].Add(bundle.Id);
         }
-
-        foreach (SuperBundleInfo superBundle in FileSystemManager.EnumerateSuperBundles())
+        if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
         {
-            int hash = Utils.HashString(superBundle.Name, true);
-            foreach (SuperBundleInstallChunk sbIc in superBundle.InstallChunks)
+            s_superBundleMapping.Add(Utils.HashString("<none>"), FileSystemManager.GetSuperBundle(FileSystemManager.DefaultInstallChunk!.SuperBundles.First()).InstallChunks[0].Name);
+        }
+        else
+        {
+            foreach (SuperBundleInfo superBundle in FileSystemManager.EnumerateSuperBundles())
             {
-                s_superBundleMapping.Add(hash, sbIc.Name);
-                break;
+                int hash = Utils.HashString(superBundle.Name, true);
+                foreach (SuperBundleInstallChunk sbIc in superBundle.InstallChunks)
+                {
+                    s_superBundleMapping.Add(hash, sbIc.Name);
+                    break;
+                }
             }
         }
 
@@ -652,43 +658,21 @@ public class ModUpdater
             if (!inHasBundlesToAdd || firstMip != -1)
             {
                 HashSet<int> temp = new();
-                foreach (SuperBundleInfo superBundleInfo in FileSystemManager.EnumerateSuperBundles())
+                SuperBundleInfo? superBundleInfo = null;
+                foreach (SuperBundleInfo sb in FileSystemManager.EnumerateSuperBundles())
                 {
-                    switch (FileSystemManager.BundleFormat)
+                    if (sb.Name.Contains("chunks", StringComparison.OrdinalIgnoreCase))
                     {
-                        case BundleFormat.Dynamic2018:
-                        case BundleFormat.Manifest2019:
-                            if (!superBundleInfo.Name.Contains(FileSystemManager.GamePlatform + "/chunks",
-                                    StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
-
-                            foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
-                            {
-                                temp.Add(Utils.HashString(sbIc.Name, true));
-                            }
-
-                            break;
-                        case BundleFormat.Kelvin:
-                            if (!superBundleInfo.Name.Equals(FileSystemManager.GamePlatform + "/globals",
-                                    StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
-
-                            foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
-                            {
-                                temp.Add(Utils.HashString(sbIc.Name, true));
-                            }
-
-                            break;
-                        case BundleFormat.SuperBundleManifest:
-                            // TODO:
-                            continue;
+                        superBundleInfo = sb;
+                        break;
                     }
+                }
 
-                    break;
+                superBundleInfo ??= FileSystemManager.GetSuperBundle($"{FileSystemManager.GamePlatform}/globals");
+
+                foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
+                {
+                    temp.Add(Utils.HashString(sbIc.Name, true));
                 }
 
                 Debug.Assert(temp.Count > 0);
