@@ -11,34 +11,30 @@ using System.Collections;
 using System.Collections.Generic;
 using Frosty.Sdk.IO.Ebx;
 using System.Runtime.CompilerServices;
+using System.Data;
 
 namespace Frosty.Sdk.IO;
-public class DbxReader : IDisposable
+public class DbxReader
 {
     private static Type s_pointerType = typeof(PointerRef);
     private static Type s_collectionType = typeof(ObservableCollection<>);
 
-    private XmlReader m_xmlReader;
-    private string m_filepath;
+    private XmlDocument m_xml = new();
+    private string m_filepath = string.Empty;
     private EbxAsset m_ebx = new();
     private Guid m_primaryInstGuid;
     // incremented when an internal id is requested
     private int m_internalId = -1;
+    private Dictionary<Guid, Tuple<object, XmlNode>> m_guidToObjAndXmlNode = new();
 
-    public DbxReader(string inFilePath)
+    public DbxReader() { }
+
+    public EbxAsset Read(string filepath)
     {
-        m_filepath = inFilePath;
-        XmlReaderSettings settings = new() { IgnoreWhitespace = true };
-        m_xmlReader = XmlReader.Create(inFilePath, settings);
-    }
-    public EbxAsset Read()
-    {
+        m_filepath = filepath;
+        m_xml.Load(filepath);
+        m_guidToObjAndXmlNode.Clear();
         return ReadDbx();
-    }
-
-    public void Dispose()
-    {
-        m_xmlReader.Dispose();
     }
 
     private EbxAsset ReadDbx()
@@ -47,13 +43,11 @@ public class DbxReader : IDisposable
         Stopwatch w = new();
         w.Start();
 #endif
-        m_xmlReader.Read();
-        // skip xml declaration
-        m_xmlReader.Read();
+        XmlNode? rootNode = m_xml.DocumentElement;
 
-        Debug.Assert(m_xmlReader.NodeType == XmlNodeType.Element && m_xmlReader.Name == "partition", "Invalid DBX (root element is not a partition)");
+        Debug.Assert(rootNode != null && rootNode.Name == "partition", "Invalid DBX (root element is not a partition)");
 
-        ReadPartition();
+        ReadPartition(rootNode);
 #if FROSTY_DEVELOPER
         w.Stop();
         Console.WriteLine($"Dbx {m_filepath} read in {w.ElapsedMilliseconds} ms");
@@ -61,137 +55,138 @@ public class DbxReader : IDisposable
         return m_ebx;
     }
 
-    private void ReadPartition()
+    private void ReadPartition(XmlNode partitionNode)
     {
-        Guid partitionGuid = Guid.Parse(m_xmlReader.GetAttribute("guid")!);
-        m_primaryInstGuid = Guid.Parse(m_xmlReader.GetAttribute("primaryInstance")!);
+        Guid partitionGuid = Guid.Parse(GetAttributeValue(partitionNode, "guid")!);
+        m_primaryInstGuid = Guid.Parse(GetAttributeValue(partitionNode, "primaryInstance")!);
 
         m_ebx.partitionGuid = partitionGuid;
 
-        while(m_xmlReader.Read())
+        foreach(XmlNode child in partitionNode.ChildNodes)
         {
-            if(m_xmlReader.NodeType == XmlNodeType.EndElement)
-            {
-                break;
-            }
-            switch (m_xmlReader.Name)
-            {
-                case "instance":
-                {
-                    ReadInstance();
-                    break;
-                }
-                default:
-                {
-                    Console.WriteLine($"Child element of partition isn't an instance? {m_xmlReader.Name}");
-                    break;
-                }
-            }
+            CreateInstance(child);
+        }
+
+        // because of pointers, instances must be initialized before being parsed
+        foreach(var kvp in m_guidToObjAndXmlNode)
+        {
+            ParseInstance(kvp.Value.Item2, kvp.Value.Item1, kvp.Key);
         }
     }
 
-    private void ReadInstance()
+    private void CreateInstance(XmlNode node)
     {
-        Type? ebxType = TypeLibrary.GetType(m_xmlReader.GetAttribute("id")!);
+        Type? ebxType = TypeLibrary.GetType(GetAttributeValue(node, "id")!);
         if(ebxType is null)
         {
             return;
         }
 
         dynamic? obj = Activator.CreateInstance(ebxType);
-        if(obj == null)
+        if(obj is null)
         {
             return;
         }
 
-        bool isExported = bool.Parse(m_xmlReader.GetAttribute("exported")!);
-        Guid instGuid = Guid.Parse(m_xmlReader.GetAttribute("guid")!);
+        bool isExported = bool.Parse(GetAttributeValue(node, "exported")!);
+        Guid instGuid = Guid.Parse(GetAttributeValue(node, "guid")!);
 
         AssetClassGuid assetGuid = new
             (isExported ? instGuid : Guid.Empty,
             ++m_internalId);
 
         obj.SetInstanceGuid(assetGuid);
+        m_guidToObjAndXmlNode.Add(instGuid, new(obj, node));
+    }
 
-        ReadInstanceFields(obj, ebxType);
+    private void ParseInstance(XmlNode node, object obj, Guid instGuid)
+    {
+        ReadInstanceFields(node, obj, obj.GetType());
         m_ebx.AddObject(obj, instGuid == m_primaryInstGuid);
     }
 
-    private void ReadInstanceFields(dynamic obj, Type objType)
+    private PointerRef ParseRef(XmlNode node, string refGuid)
     {
-        m_xmlReader.Read();
-        while(!(m_xmlReader.NodeType == XmlNodeType.EndElement && m_xmlReader.Name == "instance"))
+        if (refGuid == "null")
         {
-            ReadField(ref obj, objType);
+            return new PointerRef();
+        }
+
+        string? refEbxGuid = GetAttributeValue(node, "partitionGuid");
+        // external
+        if (refEbxGuid != null)
+        {
+            string extGuid = refGuid.Split('\\')[1];
+            EbxImportReference import = new() { ClassGuid = Guid.Parse(extGuid), FileGuid = Guid.Parse(refEbxGuid) };
+            return new PointerRef(import);
+        }
+        // internal
+        else
+        {
+            Guid refInstGuid = Guid.Parse(refGuid);
+            return new PointerRef(m_guidToObjAndXmlNode[refInstGuid].Item1);
         }
     }
 
-    private void ReadField(ref object obj, Type objType, bool isArray = false, bool isRef = false, Type? arrayElementType = null, TypeEnum? arrayElementTypeEnum = null)
+    private void ReadInstanceFields(XmlNode node, dynamic obj, Type objType)
     {
-        switch (m_xmlReader.NodeType)
+        foreach(XmlNode child in node.ChildNodes)
         {
-            case XmlNodeType.Element:
-            {
-                switch (m_xmlReader.Name)
+            ReadField(ref obj, child, objType);
+        }
+    }
+
+    private void ReadField(ref object obj, XmlNode node, Type objType, bool isArray = false, bool isRef = false, Type? arrayElementType = null, TypeEnum? arrayElementTypeEnum = null)
+    {
+        switch (node.Name)
+        {
+            case "field":
+                string? refGuid = GetAttributeValue(node, "ref");
+                if (refGuid != null)
                 {
-                    case "field":
-                        string? refGuid = m_xmlReader.GetAttribute("ref");
-                        if(refGuid != null)
-                        {
-                            // @todo: pointers
-                            //SetPropertyFromRefValue(objType, m_xmlReader.GetAttribute("name")!, refGuid!, m_xmlReader.GetAttribute("partitionGuid"));
-                            m_xmlReader.Read();
-                        }
-                        else
-                        {
-                            SetPropertyFromStringValue(obj, objType, m_xmlReader.GetAttribute("name")!, m_xmlReader.ReadElementContentAsString());
-                        }
-                        break;
-                    case "item":
-                        if(isRef)
-                        {
-                            ((dynamic)obj).Add(new PointerRef());
-                            m_xmlReader.Read();
-                        }
-                        else
-                        {
-                            ((dynamic)obj).Add(GetValueFromString(arrayElementType!, m_xmlReader.ReadElementContentAsString(), arrayElementTypeEnum));
-                        }
-                        break;
-                    case "array":
-                        string arrayFieldName = m_xmlReader.GetAttribute("name")!;
-                        dynamic? array = ReadArray();
-                        SetProperty(obj, objType, arrayFieldName, array);
-                        break;
-                    case "complex":
-                        string? structFieldName = m_xmlReader.GetAttribute("name");
-                        dynamic? structObj = ReadStruct(arrayElementType);
-                        if(isArray)
-                        {
-                            ((dynamic)obj).Add(structObj);
-                        }
-                        else
-                        {
-                            SetProperty(obj, objType, structFieldName!, structObj);
-                        }
-                        break;
+                    SetProperty(obj, objType, GetAttributeValue(node, "name")!, ParseRef(node, refGuid));
+                }
+                else
+                {
+                    SetPropertyFromStringValue(obj, objType, GetAttributeValue(node, "name")!, node.InnerText!);
                 }
                 break;
-            }
-            case XmlNodeType.EndElement:
-            {
-                m_xmlReader.Read();
+            case "item":
+                if (isRef)
+                {
+                    ((dynamic)obj).Add(ParseRef(node, GetAttributeValue(node, "ref")!));
+                }
+                else
+                {
+                    ((dynamic)obj).Add(GetValueFromString(arrayElementType!, node.InnerText!, arrayElementTypeEnum));
+                }
                 break;
-            }
+            case "array":
+                string arrayFieldName = GetAttributeValue(node, "name")!;
+                dynamic? array = ReadArray(node);
+                SetProperty(obj, objType, arrayFieldName, array);
+                break;
+            case "complex":
+                string? structFieldName = GetAttributeValue(node, "name")!;
+                dynamic? structObj = ReadStruct(arrayElementType, node);
+                if (isArray)
+                {
+                    ((dynamic)obj).Add(structObj);
+                }
+                else
+                {
+                    SetProperty(obj, objType, structFieldName!, structObj);
+                }
+                break;
         }
     }
 
-    private dynamic? ReadArray()
+    private dynamic? ReadArray(XmlNode node)
     {
-        string arrayTypeStr = m_xmlReader.GetAttribute("type")!;
+        string arrayTypeStr = GetAttributeValue(node, "type")!;
         bool isRef = arrayTypeStr.StartsWith("ref(");
 
-        Type? arrayElementType = isRef ? s_pointerType : TypeLibrary.GetType(m_xmlReader.GetAttribute("type")!);
+        Type? arrayElementType = isRef ? s_pointerType : TypeLibrary.GetType(GetAttributeValue(node, "type")!);
         if(arrayElementType == null)
         {
             return null;
@@ -206,25 +201,20 @@ public class DbxReader : IDisposable
             return null;
         }
 
-        if(!m_xmlReader.IsEmptyElement)
+        if(node.ChildNodes.Count > 0)
         {
-            m_xmlReader.Read();
-            while (!(m_xmlReader.NodeType == XmlNodeType.EndElement && m_xmlReader.Name == "array"))
+            foreach(XmlNode child in node.ChildNodes)
             {
-                ReadField(ref array, arrayType, true, isRef, arrayElementType!, arrayTypeMeta?.Flags.GetTypeEnum());
+                ReadField(ref array, child, arrayType, true, isRef, arrayElementType!, arrayTypeMeta?.Flags.GetTypeEnum());
             }
-        }
-        else
-        {
-            m_xmlReader.Read();
         }
 
         return array;
     }
 
-    private dynamic? ReadStruct(Type? structType)
+    private dynamic? ReadStruct(Type? structType, XmlNode node)
     {
-        Type? type = structType != null ? structType : TypeLibrary.GetType(m_xmlReader.GetAttribute("type")!);
+        Type? type = structType != null ? structType : TypeLibrary.GetType(GetAttributeValue(node, "type")!);
         if(type is null)
         {
             return null;
@@ -236,18 +226,12 @@ public class DbxReader : IDisposable
             return null;
         }
 
-        if(!m_xmlReader.IsEmptyElement)
+        if(node.ChildNodes.Count > 0)
         {
-            m_xmlReader.Read();
-            while(!(m_xmlReader.NodeType == XmlNodeType.EndElement && m_xmlReader.Name == "complex"))
+            foreach(XmlNode child in node.ChildNodes)
             {
-                ReadField(ref obj, type);
+                ReadField(ref obj, child, type);
             }
-            m_xmlReader.Read();
-        }
-        else
-        {
-            m_xmlReader.Read();
         }
 
         return obj;
@@ -359,6 +343,19 @@ public class DbxReader : IDisposable
         }
     }
 
+    private string? GetAttributeValue(XmlNode node, string name)
+    {
+        if (node.Attributes != null)
+        {
+            XmlNode? attribute = node.Attributes.GetNamedItem(name);
+            if (attribute != null)
+            {
+                return attribute.Value;
+            }
+        }
+        return null;
+    }
+
     // Converts the given value to a frostbite primitive type (an int will be converted to Frostbite.Core.Int32)
     private object ValueToPrimitive(object value, Type valueType)
     {
@@ -366,16 +363,4 @@ public class DbxReader : IDisposable
         primitive.FromActualType(value);
         return primitive;
     }
-
-    //private int GetNextInternalId()
-    //{
-    //    return ++m_internalId;
-    //}
-
-    //private int GetInternalIdFromGuid(Guid guid)
-    //{
-    //    int id = guid.ToByteArray()[15];
-    //    m_internalId = id;
-    //    return id;
-    //}
 }

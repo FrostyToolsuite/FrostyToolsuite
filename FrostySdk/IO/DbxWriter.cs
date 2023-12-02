@@ -317,7 +317,7 @@ public class DbxWriter : IDisposable
             EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(value.External.FileGuid);
             if (entry != null)
             {
-                m_xmlWriter.WriteAttributeString("ref", $"{entry!.Name}/{value.External.ClassGuid}");
+                m_xmlWriter.WriteAttributeString("ref", $"{entry!.Name}\\{value.External.ClassGuid}");
                 m_xmlWriter.WriteAttributeString("partitionGuid", entry.Guid.ToString());
             }
             else
