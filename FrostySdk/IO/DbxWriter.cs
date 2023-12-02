@@ -15,6 +15,7 @@ namespace Frosty.Sdk.IO;
 public class DbxWriter : IDisposable
 {
     private static readonly string s_instanceGuidName = "__InstanceGuid";
+    private static readonly string s_instanceIdName = "__Id";
 
     private string m_filePath;
     private XmlWriter m_xmlWriter;
@@ -154,7 +155,7 @@ public class DbxWriter : IDisposable
                 WriteFieldWithValue(fieldName!, Enum.GetName(objType, GetFieldValue<object>(obj))!, isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.ResourceRef:
-                WriteFieldWithValue(fieldName!, (ResourceRef)obj, isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName!, GetFieldValue<ResourceRef>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Class:
                 WriteFieldWithValue(fieldName!, (PointerRef)obj, isArrayItem, isTransient, isHidden);
@@ -578,7 +579,7 @@ public class DbxWriter : IDisposable
 
         foreach (var pi in currentTypeProps)
         {
-            if (pi.Name.Equals(s_instanceGuidName))
+            if (pi.Name.Equals(s_instanceGuidName) || pi.Name.Equals(s_instanceIdName))
             {
                 continue;
             }
