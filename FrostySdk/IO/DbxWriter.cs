@@ -438,10 +438,7 @@ public class DbxWriter : IDisposable
     {
         m_xmlWriter.WriteStartElement("boxed");
         m_xmlWriter.WriteAttributeString("name", name);
-        if(!string.IsNullOrEmpty(valueType))
-        {
-            m_xmlWriter.WriteAttributeString("type", valueType);
-        }
+        m_xmlWriter.WriteAttributeString("type", valueType);
     }
 
     private void WriteBoxedValueRefEnd()
