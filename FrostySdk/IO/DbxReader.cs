@@ -23,7 +23,7 @@ public class DbxReader : IDisposable
     private EbxAsset m_ebx = new();
     private Guid m_primaryInstGuid;
     // incremented when an internal id is requested
-    private int m_internalId;
+    private int m_internalId = -1;
 
     public DbxReader(string inFilePath)
     {
@@ -109,7 +109,7 @@ public class DbxReader : IDisposable
 
         AssetClassGuid assetGuid = new
             (isExported ? instGuid : Guid.Empty,
-            isExported ? GetNextInternalId() : GetInternalIdFromGuid(instGuid));
+            ++m_internalId);
 
         obj.SetInstanceGuid(assetGuid);
 
@@ -367,13 +367,15 @@ public class DbxReader : IDisposable
         return primitive;
     }
 
-    private int GetNextInternalId()
-    {
-        return ++m_internalId;
-    }
+    //private int GetNextInternalId()
+    //{
+    //    return ++m_internalId;
+    //}
 
-    private int GetInternalIdFromGuid(Guid guid)
-    {
-        return guid.ToByteArray()[15];
-    }
+    //private int GetInternalIdFromGuid(Guid guid)
+    //{
+    //    int id = guid.ToByteArray()[15];
+    //    m_internalId = id;
+    //    return id;
+    //}
 }
