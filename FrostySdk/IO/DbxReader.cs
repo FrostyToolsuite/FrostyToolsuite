@@ -17,8 +17,9 @@ namespace Frosty.Sdk.IO;
 public sealed class DbxReader
 {
     private static readonly Type s_pointerType = typeof(PointerRef);
-    private static readonly Type s_boxedType = typeof(BoxedValueRef);
     private static readonly Type s_collectionType = typeof(ObservableCollection<>);
+    private static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef");
+    private static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef");
 
     private static readonly BindingFlags s_propertyBindingFlags = BindingFlags.Public | BindingFlags.Instance;
 
@@ -347,12 +348,22 @@ public sealed class DbxReader
 
                 object value = GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
                 BoxedValueRef boxed = new(value, typeMeta!.Flags.GetTypeEnum());
-                SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(boxed, s_boxedType));
+                SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(boxed, s_boxedValueRefType!));
                 break;
             }
             case "typeref":
             {
-                throw new NotImplementedException("reading typerefs from DBX");
+                string typeGuid = GetAttributeValue(node, "typeGuid")!;
+
+                Type? type = TypeLibrary.GetType(typeGuid) ?? TypeLibrary.GetType(GetAttributeValue(node, "typeName")!);
+                if (type is null)
+                {
+                    throw new ArgumentException("TypeRef references a null type");
+                }
+
+                TypeRef typeRef = new(Guid.Parse(typeGuid));
+                SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(typeRef, s_typeRefType!));
+                break;
             }
         }
     }
