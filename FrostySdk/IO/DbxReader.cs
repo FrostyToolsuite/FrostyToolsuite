@@ -14,19 +14,24 @@ using System.Runtime.CompilerServices;
 using System.Data;
 
 namespace Frosty.Sdk.IO;
-public class DbxReader
+public sealed class DbxReader
 {
-    private static Type s_pointerType = typeof(PointerRef);
-    private static Type s_boxedType = typeof(BoxedValueRef);
-    private static Type s_collectionType = typeof(ObservableCollection<>);
+    private static readonly Type s_pointerType = typeof(PointerRef);
+    private static readonly Type s_boxedType = typeof(BoxedValueRef);
+    private static readonly Type s_collectionType = typeof(ObservableCollection<>);
 
-    private XmlDocument m_xml = new();
-    private string m_filepath = string.Empty;
+    private static readonly BindingFlags s_propertyBindingFlags = BindingFlags.Public | BindingFlags.Instance;
+
+    // the loaded dbx file
+    private readonly XmlDocument m_xml = new();
+    // key - instance guid, value - instance and its xml representation
+    private readonly Dictionary<Guid, Tuple<object, XmlNode>> m_guidToObjAndXmlNode = new();
+
     private EbxAsset? m_ebx = null;
     private Guid m_primaryInstGuid;
     // incremented when an internal id is requested
     private int m_internalId = -1;
-    private Dictionary<Guid, Tuple<object, XmlNode>> m_guidToObjAndXmlNode = new();
+    private string m_filepath = string.Empty;
 
     public DbxReader() { }
 
@@ -36,7 +41,139 @@ public class DbxReader
         m_xml.Load(filepath);
         m_ebx = new();
         m_guidToObjAndXmlNode.Clear();
+
         return ReadDbx();
+    }
+
+    private static void SetProperty(object obj, Type objType, string propName, object propValue)
+    {
+        PropertyInfo? property = objType.GetProperty(propName, s_propertyBindingFlags);
+        if (property != null && property.CanWrite)
+        {
+            if (propValue is null)
+            {
+                Console.WriteLine($"Null property {propName}");
+                return;
+            }
+            property.SetValue(obj, propValue);
+        }
+    }
+
+    private static void SetPropertyFromStringValue(object obj, Type objType, string propName, string propValue)
+    {
+        PropertyInfo? property = objType.GetProperty(propName, s_propertyBindingFlags);
+        if (property != null && property.CanWrite)
+        {
+            object value = DbxReader.GetValueFromString(property.PropertyType, propValue, property.GetCustomAttribute<EbxFieldMetaAttribute>()?.Flags.GetTypeEnum());
+            if (value is null)
+            {
+                Console.WriteLine($"Null value {propName}");
+                return;
+            }
+            property.SetValue(obj, value!);
+        }
+    }
+
+    private static dynamic GetValueFromString(Type propType, string propValue, TypeEnum? frostbiteType = null)
+    {
+        if (propType.IsPrimitive)
+        {
+            return Convert.ChangeType(propValue, propType);
+        }
+        else
+        {
+            switch (frostbiteType)
+            {
+                case TypeEnum.Boolean:
+                {
+                    return ValueToPrimitive(bool.Parse(propValue), propType);
+                }
+                case TypeEnum.Float32:
+                {
+                    return ValueToPrimitive(float.Parse(propValue), propType);
+                }
+                case TypeEnum.Float64:
+                {
+                    return ValueToPrimitive(double.Parse(propValue), propType);
+                }
+                case TypeEnum.Int8:
+                {
+                    return ValueToPrimitive(sbyte.Parse(propValue), propType);
+                }
+                case TypeEnum.Int16:
+                {
+                    return ValueToPrimitive(short.Parse(propValue), propType);
+                }
+                case TypeEnum.Int32:
+                {
+                    return ValueToPrimitive(int.Parse(propValue), propType);
+                }
+                case TypeEnum.Int64:
+                {
+                    return ValueToPrimitive(long.Parse(propValue), propType);
+                }
+                case TypeEnum.UInt8:
+                {
+                    return ValueToPrimitive(byte.Parse(propValue), propType);
+                }
+                case TypeEnum.UInt16:
+                {
+                    return ValueToPrimitive(ushort.Parse(propValue), propType);
+                }
+                case TypeEnum.UInt32:
+                {
+                    return ValueToPrimitive(uint.Parse(propValue), propType);
+                }
+                case TypeEnum.UInt64:
+                {
+                    return ValueToPrimitive(ulong.Parse(propValue), propType);
+                }
+                case TypeEnum.Enum:
+                {
+                    // @todo: some enum fields have no value? sdk issue?
+                    return string.IsNullOrEmpty(propValue) ? null : Enum.Parse(propType, propValue);
+                }
+                case TypeEnum.Guid:
+                {
+                    return ValueToPrimitive(Guid.Parse(propValue), propType);
+                }
+                case TypeEnum.FileRef:
+                {
+                    return ValueToPrimitive(new FileRef(propValue), propType);
+                }
+                case TypeEnum.String:
+                {
+                    return ValueToPrimitive(propValue, propType);
+                }
+                case TypeEnum.CString:
+                {
+                    return ValueToPrimitive((CString)propValue, propType);
+                }
+                case TypeEnum.Class:
+                {
+                    return new PointerRef();
+                }
+                case TypeEnum.ResourceRef:
+                {
+                    return ValueToPrimitive(new ResourceRef(ulong.Parse(propValue, System.Globalization.NumberStyles.HexNumber)), propType);
+                }
+                default:
+                    throw new NotImplementedException("Unimplemented property type: " + frostbiteType);
+            }
+        }
+    }
+
+    private static string? GetAttributeValue(XmlNode node, string name)
+    {
+        return node.Attributes?.GetNamedItem(name)?.Value;
+    }
+
+    // Converts the given value to the given frostbite primitive type (an int will be converted to Frostbite.Core.Int32)
+    private static object ValueToPrimitive(object value, Type valueType)
+    {
+        IPrimitive primitive = (IPrimitive)Activator.CreateInstance(valueType)!;
+        primitive.FromActualType(value);
+        return primitive;
     }
 
     private EbxAsset ReadDbx()
@@ -168,7 +305,7 @@ public class DbxReader
                 }
                 else
                 {
-                    ((dynamic)obj).Add(GetValueFromString(arrayElementType!, node.InnerText!, arrayElementTypeEnum));
+                    ((dynamic)obj).Add(DbxReader.GetValueFromString(arrayElementType!, node.InnerText!, arrayElementTypeEnum));
                 }
                 break;
             }
@@ -208,7 +345,7 @@ public class DbxReader
 
                 EbxTypeMetaAttribute? typeMeta = valueType.GetCustomAttribute<EbxTypeMetaAttribute>();
 
-                object value = GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
+                object value = DbxReader.GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
                 BoxedValueRef boxed = new(value, typeMeta!.Flags.GetTypeEnum());
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(boxed, s_boxedType));
                 break;
@@ -225,22 +362,16 @@ public class DbxReader
         string arrayTypeStr = GetAttributeValue(node, "type")!;
         bool isRef = arrayTypeStr.StartsWith("ref(");
 
-        Type? arrayElementType = isRef ? s_pointerType : TypeLibrary.GetType(GetAttributeValue(node, "type")!);
-        if(arrayElementType is null)
-        {
-            throw new ArgumentException($"array element type doesn't exist? {GetAttributeValue(node, "type"!)}");
-        }
+        Type? arrayElementType = (isRef ? s_pointerType : TypeLibrary.GetType(GetAttributeValue(node, "type")!))
+            ?? throw new ArgumentException($"array element type doesn't exist? {GetAttributeValue(node, "type"!)}");
 
         EbxTypeMetaAttribute? arrayTypeMeta = arrayElementType.GetCustomAttribute<EbxTypeMetaAttribute>();
         Type arrayType = s_collectionType.MakeGenericType(arrayElementType);
 
-        object? array = Activator.CreateInstance(arrayType);
-        if(array is null)
-        {
-            throw new ArgumentException($"failed to create array with element type {arrayElementType.Name}");
-        }
+        object? array = Activator.CreateInstance(arrayType)
+            ?? throw new ArgumentException($"failed to create array with element type {arrayElementType.Name}");
 
-        if(node.ChildNodes.Count > 0)
+        if (node.ChildNodes.Count > 0)
         {
             foreach(XmlNode child in node.ChildNodes)
             {
@@ -253,19 +384,13 @@ public class DbxReader
 
     private dynamic ReadStruct(Type? structType, XmlNode node)
     {
-        Type? type = structType != null ? structType : TypeLibrary.GetType(GetAttributeValue(node, "type")!);
-        if(type is null)
-        {
-            throw new ArgumentException($"struct type doesn't exist?");
-        }
+        Type? type = (structType ?? TypeLibrary.GetType(GetAttributeValue(node, "type")!))
+            ?? throw new ArgumentException($"struct type doesn't exist?");
 
-        dynamic? obj = Activator.CreateInstance(type);
-        if(obj is null)
-        {
-            throw new ArgumentException($"failed to create struct of type {type.Name}");
-        }
+        dynamic? obj = Activator.CreateInstance(type)
+            ?? throw new ArgumentException($"failed to create struct of type {type.Name}");
 
-        if(node.ChildNodes.Count > 0)
+        if (node.ChildNodes.Count > 0)
         {
             foreach(XmlNode child in node.ChildNodes)
             {
@@ -274,144 +399,5 @@ public class DbxReader
         }
 
         return obj;
-    }
-
-    private void SetProperty(object obj, Type objType, string propName, object propValue)
-    {
-        PropertyInfo? property = objType.GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
-        if(property != null && property.CanWrite)
-        {
-            if(propValue is null)
-            {
-                Console.WriteLine($"Null property {propName}");
-                return;
-            }
-            property.SetValue(obj, propValue);
-        }
-    }
-
-    private void SetPropertyFromStringValue(object obj, Type objType, string propName, string propValue)
-    {
-        PropertyInfo? property = objType.GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
-        if (property != null && property.CanWrite)
-        {
-            object value = GetValueFromString(property.PropertyType, propValue, property.GetCustomAttribute<EbxFieldMetaAttribute>()?.Flags.GetTypeEnum());
-            if (value is null)
-            {
-                Console.WriteLine($"Null value {propName}");
-                return;
-            }
-            property.SetValue(obj, value!);
-        }
-    }
-
-    private dynamic GetValueFromString(Type propType, string propValue, TypeEnum? frostbiteType = null)
-    {
-        if (propType.IsPrimitive)
-        {
-            return Convert.ChangeType(propValue, propType);
-        }
-        else
-        {
-            switch (frostbiteType)
-            {
-                case TypeEnum.Boolean:
-                {
-                    return ValueToPrimitive(bool.Parse(propValue), propType);
-                }
-                case TypeEnum.Float32:
-                {
-                    return ValueToPrimitive(float.Parse(propValue), propType);
-                }
-                case TypeEnum.Float64:
-                {
-                    return ValueToPrimitive(double.Parse(propValue), propType);
-                }
-                case TypeEnum.Int8:
-                {
-                    return ValueToPrimitive(sbyte.Parse(propValue), propType);
-                }
-                case TypeEnum.Int16:
-                {
-                    return ValueToPrimitive(short.Parse(propValue), propType);
-                }
-                case TypeEnum.Int32:
-                {
-                    return ValueToPrimitive(int.Parse(propValue), propType);
-                }
-                case TypeEnum.Int64:
-                {
-                    return ValueToPrimitive(long.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt8:
-                {
-                    return ValueToPrimitive(byte.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt16:
-                {
-                    return ValueToPrimitive(ushort.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt32:
-                {
-                    return ValueToPrimitive(uint.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt64:
-                {
-                    return ValueToPrimitive(ulong.Parse(propValue), propType);
-                }
-                case TypeEnum.Enum:
-                {
-                    // @todo: some enum fields have no value? sdk issue?
-                    return string.IsNullOrEmpty(propValue) ? null : Enum.Parse(propType, propValue);
-                }
-                case TypeEnum.Guid:
-                {
-                    return ValueToPrimitive(Guid.Parse(propValue), propType);
-                }
-                case TypeEnum.FileRef:
-                {
-                    return ValueToPrimitive(new FileRef(propValue), propType);
-                }
-                case TypeEnum.String:
-                {
-                    return ValueToPrimitive(propValue, propType);
-                }
-                case TypeEnum.CString:
-                {
-                    return ValueToPrimitive((CString)propValue, propType);
-                }
-                case TypeEnum.Class:
-                {
-                    return new PointerRef();
-                }
-                case TypeEnum.ResourceRef:
-                {
-                    return ValueToPrimitive(new ResourceRef(ulong.Parse(propValue, System.Globalization.NumberStyles.HexNumber)), propType);
-                }
-                default:
-                    throw new NotImplementedException("Unimplemented property type: " + frostbiteType);
-            }
-        }
-    }
-
-    private string? GetAttributeValue(XmlNode node, string name)
-    {
-        if (node.Attributes != null)
-        {
-            XmlNode? attribute = node.Attributes.GetNamedItem(name);
-            if (attribute != null)
-            {
-                return attribute.Value;
-            }
-        }
-        return null;
-    }
-
-    // Converts the given value to a frostbite primitive type (an int will be converted to Frostbite.Core.Int32)
-    private object ValueToPrimitive(object value, Type valueType)
-    {
-        IPrimitive primitive = (IPrimitive)Activator.CreateInstance(valueType)!;
-        primitive.FromActualType(value);
-        return primitive;
     }
 }
