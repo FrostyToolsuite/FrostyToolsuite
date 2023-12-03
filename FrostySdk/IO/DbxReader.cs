@@ -64,7 +64,7 @@ public sealed class DbxReader
         PropertyInfo? property = objType.GetProperty(propName, s_propertyBindingFlags);
         if (property != null && property.CanWrite)
         {
-            object value = DbxReader.GetValueFromString(property.PropertyType, propValue, property.GetCustomAttribute<EbxFieldMetaAttribute>()?.Flags.GetTypeEnum());
+            object value = GetValueFromString(property.PropertyType, propValue, property.GetCustomAttribute<EbxFieldMetaAttribute>()?.Flags.GetTypeEnum());
             if (value is null)
             {
                 Console.WriteLine($"Null value {propName}");
@@ -305,7 +305,7 @@ public sealed class DbxReader
                 }
                 else
                 {
-                    ((dynamic)obj).Add(DbxReader.GetValueFromString(arrayElementType!, node.InnerText!, arrayElementTypeEnum));
+                    ((dynamic)obj).Add(GetValueFromString(arrayElementType!, node.InnerText!, arrayElementTypeEnum));
                 }
                 break;
             }
@@ -345,7 +345,7 @@ public sealed class DbxReader
 
                 EbxTypeMetaAttribute? typeMeta = valueType.GetCustomAttribute<EbxTypeMetaAttribute>();
 
-                object value = DbxReader.GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
+                object value = GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
                 BoxedValueRef boxed = new(value, typeMeta!.Flags.GetTypeEnum());
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(boxed, s_boxedType));
                 break;
