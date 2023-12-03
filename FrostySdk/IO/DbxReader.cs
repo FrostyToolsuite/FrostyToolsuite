@@ -373,8 +373,8 @@ public sealed class DbxReader
         string arrayTypeStr = GetAttributeValue(node, "type")!;
         bool isRef = arrayTypeStr.StartsWith("ref(");
 
-        Type? arrayElementType = (isRef ? s_pointerType : TypeLibrary.GetType(GetAttributeValue(node, "type")!))
-            ?? throw new ArgumentException($"array element type doesn't exist? {GetAttributeValue(node, "type"!)}");
+        Type? arrayElementType = (isRef ? s_pointerType : TypeLibrary.GetType(arrayTypeStr))
+            ?? throw new ArgumentException($"array element type doesn't exist? {arrayTypeStr}");
 
         EbxTypeMetaAttribute? arrayTypeMeta = arrayElementType.GetCustomAttribute<EbxTypeMetaAttribute>();
         Type arrayType = s_collectionType.MakeGenericType(arrayElementType);
