@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Xml;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Frosty.Sdk.IO;
 public sealed class DbxReader
@@ -24,6 +25,8 @@ public sealed class DbxReader
     private readonly XmlDocument m_xml = new();
     // key - instance guid, value - instance and its xml representation
     private readonly Dictionary<Guid, Tuple<object, XmlNode>> m_guidToObjAndXmlNode = new();
+    // used to keep track of number of refs pointing to an instance
+    private readonly Dictionary<Guid, int> m_guidToRefCount = new();
 
     private EbxAsset? m_ebx = null;
     private Guid m_primaryInstGuid;
@@ -39,6 +42,7 @@ public sealed class DbxReader
         m_xml.Load(filepath);
         m_ebx = new();
         m_guidToObjAndXmlNode.Clear();
+        m_guidToRefCount.Clear();
 
         return ReadDbx();
     }
@@ -209,6 +213,8 @@ public sealed class DbxReader
         {
             ParseInstance(kvp.Value.Item2, kvp.Value.Item1, kvp.Key);
         }
+
+        m_ebx!.refCounts = m_guidToRefCount.Values.ToList();
     }
 
     private void CreateInstance(XmlNode node)
@@ -234,6 +240,7 @@ public sealed class DbxReader
 
         obj.SetInstanceGuid(assetGuid);
         m_guidToObjAndXmlNode.Add(instGuid, new(obj, node));
+        m_guidToRefCount.Add(instGuid, 0);
     }
 
     private void ParseInstance(XmlNode node, object obj, Guid instGuid)
@@ -253,14 +260,18 @@ public sealed class DbxReader
         // external
         if (refEbxGuid != null)
         {
-            string extGuid = refGuid.Split('\\')[1];
-            EbxImportReference import = new() { ClassGuid = Guid.Parse(extGuid), FileGuid = Guid.Parse(refEbxGuid) };
+            Guid extGuid = Guid.Parse(refGuid.Split('\\')[1]);
+            EbxImportReference import = new() { ClassGuid = extGuid, FileGuid = Guid.Parse(refEbxGuid) };
+            m_ebx!.AddDependency(extGuid);
             return new PointerRef(import);
         }
         // internal
         else
         {
-            return new PointerRef(m_guidToObjAndXmlNode[Guid.Parse(refGuid)].Item1);
+            Guid instGuid = Guid.Parse(refGuid);
+            PointerRef internalRef = new PointerRef(m_guidToObjAndXmlNode[instGuid].Item1);
+            m_guidToRefCount[instGuid]++;
+            return internalRef;
         }
     }
 
