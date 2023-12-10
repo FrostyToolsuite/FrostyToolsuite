@@ -21,6 +21,7 @@ public unsafe class DataStream : IDisposable
 
     protected Stream m_stream;
     private readonly StringBuilder m_stringBuilder;
+    private long m_curPos = -1;
 
     protected DataStream()
     {
@@ -516,6 +517,23 @@ public unsafe class DataStream : IDisposable
         {
             m_stream.Position += alignment - (m_stream.Position % alignment);
         }
+    }
+
+    public void StepIn(long inPosition)
+    {
+        m_curPos = Position;
+        Position = inPosition;
+    }
+
+    public void StepOut()
+    {
+        if (m_curPos == -1)
+        {
+            throw new Exception("Need to call StepIn before StepOut.");
+        }
+
+        Position = m_curPos;
+        m_curPos = -1;
     }
 
     public static implicit operator Stream(DataStream stream) => stream.m_stream;
