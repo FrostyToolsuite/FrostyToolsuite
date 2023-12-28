@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using Frosty.Sdk.Utils;
+using Microsoft.Win32.SafeHandles;
 
 namespace Frosty.Sdk.IO;
 
@@ -12,23 +17,57 @@ struct PatternType
     public byte Value;
 }
 
-public class MemoryReader : IDisposable
+public partial class MemoryReader : IDisposable
 {
     private const int PROCESS_WM_READ = 0x0010;
 
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+    #region -- Windows --
 
-    [DllImport("kernel32.dll")]
+    private enum SystemErrorCode
+    {
+        InvalidParameter = 0x57,
+        PartialCopy = 0x12B
+    }
+
+    [Flags]
+    private enum AllocationType
+    {
+        Commit = 0x1000
+    }
+
+    [Flags]
+    private enum ProtectionType
+    {
+        NoAccess = 0x1,
+        Guard = 0x100
+    }
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ReadProcessMemory(IntPtr hProcess, long lpBaseAddress, byte[] lpBuffer, int dwSize, ref int lpNumberOfBytesRead);
+    private static partial bool ReadProcessMemory(SafeProcessHandle processHandle, nint address, nint bytes, nint size, out nint bytesReadCount);
 
-    [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool VirtualProtectEx(IntPtr hProcess, long lpAddress, UIntPtr dwSize, uint flNewProtect, ref uint lpflOldProtect);
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial nint VirtualQueryEx(SafeProcessHandle processHandle, nint address, out MemoryBasicInformation64 memoryInformation, nint size);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool CloseHandle(IntPtr hObject);
+    [StructLayout(LayoutKind.Explicit, Size = 48)]
+    private readonly record struct MemoryBasicInformation64([field: FieldOffset(0x0)] long BaseAddress, [field: FieldOffset(0x18)] nint RegionSize, [field: FieldOffset(0x20)] AllocationType State, [field: FieldOffset(0x24)] ProtectionType Protect);
+
+    #endregion
+
+    #region -- Linux --
+
+    [StructLayout(LayoutKind.Sequential)]
+    private unsafe struct iovec
+    {
+        public void* iov_base;
+        public nuint iov_len;
+    }
+
+    [LibraryImport("libc")]
+    private static unsafe partial nint process_vm_readv(int pid, iovec* local_iov, nuint liovcnt, iovec* remote_iov,
+        nuint riovcnt, nuint flags);
+
+    #endregion
 
     public virtual long Position
     {
@@ -36,26 +75,33 @@ public class MemoryReader : IDisposable
         set => m_position = value;
     }
 
-    private IntPtr m_handle;
+    private Process m_process;
+    private ProcessModule m_module;
     protected readonly byte[] m_buffer = new byte[20];
     protected long m_position;
 
-    public MemoryReader(Process process, long initialAddr)
+    public MemoryReader(Process inProcess, ProcessModule inModule)
     {
-        m_handle = OpenProcess(PROCESS_WM_READ, false, process.Id);
-        m_position = initialAddr;
+        m_process = inProcess;
+        m_position = inModule.BaseAddress;
+        m_module = inModule;
+    }
+
+    public MemoryReader(Process inProcess, long inModule)
+    {
+        m_process = inProcess;
+        m_position = inModule;
     }
 
     public virtual void Dispose()
     {
-        CloseHandle(m_handle);
     }
 
     public void Pad(int alignment)
     {
-        while (Position % alignment != 0)
+        if (Position % alignment != 0)
         {
-            Position++;
+            Position += alignment - Position % alignment;
         }
     }
 
@@ -181,14 +227,6 @@ public class MemoryReader : IDisposable
         uint oldProtect = 0;
         int bytesRead = 0;
 
-        VirtualProtectEx(m_handle, m_position, new UIntPtr((uint)numBytes), 0x02, ref oldProtect);
-        if (!ReadProcessMemory(m_handle, m_position, outBuffer, numBytes, ref bytesRead))
-        {
-            return null;
-        }
-
-        VirtualProtectEx(m_handle, m_position, new UIntPtr((uint)numBytes), oldProtect, ref oldProtect);
-
         m_position += numBytes;
         return outBuffer;
     }
@@ -258,14 +296,138 @@ public class MemoryReader : IDisposable
         return retList;
     }
 
+    public IList<nint> ScanPatter(string pattern)
+    {
+        string[] patternComponents = pattern.Split(' ');
+        byte?[] patternBytes = new byte?[patternComponents.Length];
+
+        for (int i = 0; i < patternComponents.Length; i++)
+        {
+            if (patternComponents[i] == "??")
+            {
+                patternBytes[i] = null;
+            }
+            else
+            {
+                patternBytes[i] = Convert.ToByte(patternComponents[i], 16);
+            }
+        }
+
+        int[] shiftTable = new int[256];
+        int defaultShift = patternBytes.Length;
+        int lastWildcardIndex = Array.LastIndexOf(patternBytes, "??");
+
+        if (lastWildcardIndex != -1)
+        {
+            defaultShift -= lastWildcardIndex;
+        }
+
+        Array.Fill(shiftTable, defaultShift);
+
+        for (int i = 0; i < patternBytes.Length - 1; i++)
+        {
+            byte? @byte = patternBytes[i];
+
+            if (@byte is not null)
+            {
+                shiftTable[@byte.Value] = patternBytes.Length - 1 - i;
+            }
+        }
+
+        List<nint> occurrences = new();
+
+        foreach ((nint Address, int Size) region in GetRegions())
+        {
+            Block<byte> regionBytes = new(region.Size);
+
+            ReadMemory(region.Address, regionBytes, out nint bytesRead);
+
+            for (int i = patternBytes.Length - 1; i < bytesRead; i += shiftTable[regionBytes[i]])
+            {
+                for (int j = patternBytes.Length - 1; patternBytes[j] is null || patternBytes[j] == regionBytes[i - patternBytes.Length + 1 + j]; j--)
+                {
+                    if (j == 0)
+                    {
+                        occurrences.Add(m_module.BaseAddress + i - patternBytes.Length + 1);
+                        break;
+                    }
+                }
+            }
+
+            regionBytes.Dispose();
+        }
+
+        return occurrences;
+    }
+
+    private IEnumerable<(nint Address, int Size)> GetRegions()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            nint currentAddress = 0;
+
+            while (true)
+            {
+                if (VirtualQueryEx(m_process.SafeHandle, currentAddress, out MemoryBasicInformation64 region, Unsafe.SizeOf<MemoryBasicInformation64>()) == 0)
+                {
+                    if (Marshal.GetLastPInvokeError() == (int) SystemErrorCode.InvalidParameter)
+                    {
+                        break;
+                    }
+
+                    throw new Win32Exception();
+                }
+
+                if (region.State.HasFlag(AllocationType.Commit) && region.Protect != ProtectionType.NoAccess && !region.Protect.HasFlag(ProtectionType.Guard))
+                {
+                    yield return (currentAddress, (int) region.RegionSize);
+                }
+
+                currentAddress = (nint) region.BaseAddress + region.RegionSize;
+            }
+        }
+        else
+        {
+            string path = $"/proc/{m_process.Id}/maps";
+            foreach (string region in File.ReadLines(path))
+            {
+                string[] arr = region.Split(' ');
+                int index = arr[0].IndexOf('-');
+                nint start = nint.Parse(arr[0][..index]);
+                nint end = nint.Parse(arr[0][(index + 1)..]);
+
+                // TODO: check for access
+
+                yield return (start, (int)(end - start));
+            }
+        }
+    }
+
+    private unsafe void ReadMemory(nint inAddress, Block<byte> outData, out nint bytesRead)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            if (!ReadProcessMemory(m_process.SafeHandle, inAddress, (nint)outData.Ptr, outData.Size, out bytesRead))
+            {
+                throw new Win32Exception();
+            }
+        }
+        else
+        {
+            iovec localIo = new() { iov_base = outData.Ptr, iov_len = (nuint)outData.Size };
+            iovec remoteIo = new() { iov_base = inAddress.ToPointer(), iov_len = (nuint)outData.Size };
+
+            if ((bytesRead = process_vm_readv(m_process.Id, &localIo, 1, &remoteIo, 1, 0)) == -1)
+            {
+                throw new Exception();
+            }
+        }
+    }
+
     protected virtual void FillBuffer(int numBytes)
     {
         uint oldProtect = 0;
         int bytesRead = 0;
-
-        VirtualProtectEx(m_handle, m_position, new UIntPtr((uint)numBytes), 0x02, ref oldProtect);
-        ReadProcessMemory(m_handle, m_position, m_buffer, numBytes, ref bytesRead);
-        VirtualProtectEx(m_handle, m_position, new UIntPtr((uint)numBytes), oldProtect, ref oldProtect);
 
         m_position += numBytes;
     }

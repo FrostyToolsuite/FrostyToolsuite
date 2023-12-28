@@ -1,12 +1,14 @@
 ﻿using System;
+using System.Buffers.Binary;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Basic.Reference.Assemblies;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
@@ -30,12 +32,20 @@ public class TypeSdkGenerator
         //     "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10", // new games
         // };
 
-        long startAddress = process.MainModule?.BaseAddress.ToInt64() ?? 0;
+        ProcessModule? module = process.MainModule!;
 
-        using (MemoryReader reader = new(process, startAddress))
+        foreach (ProcessModule m in process.Modules)
         {
-            reader.Position = startAddress;
-            IList<long> offsets = reader.Scan(ProfilesLibrary.TypeInfoSignature);
+            if (m.BaseAddress == (nint)0x140000000)
+            {
+                module = m;
+                break;
+            }
+        }
+
+        using (MemoryReader reader = new(process, module))
+        {
+            IList<nint> offsets = reader.ScanPatter(ProfilesLibrary.TypeInfoSignature);
 
             if (offsets.Count == 0)
             {
@@ -56,6 +66,21 @@ public class TypeSdkGenerator
         {
             return false;
         }
+
+        string stringsPath = $"Sdk/Strings/{ProfilesLibrary.InternalName}.json";
+        if (ProfilesLibrary.HasStrippedTypeNames && File.Exists(stringsPath))
+        {
+            // load strings file
+            Dictionary<uint, string>? mapping = JsonSerializer.Deserialize<Dictionary<uint, string>>(File.ReadAllText(stringsPath));
+            if (mapping is null)
+            {
+                return false;
+            }
+
+            Strings.Mapping = mapping;
+            Strings.HasStrings = true;
+        }
+
         using (MemoryReader reader = new(process, typeInfoOffset))
         {
             TypeInfo.TypeInfoMapping.Clear();
@@ -65,7 +90,66 @@ public class TypeSdkGenerator
             do
             {
                 ti = ti.GetNextTypeInfo(reader);
-            } while (ti != null);
+            } while (ti is not null);
+        }
+
+        Directory.CreateDirectory("Sdk/Strings");
+
+        if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
+        {
+            // try to resolve hashes from other games
+            foreach (string file in Directory.EnumerateFiles("Sdk/Strings/*.json"))
+            {
+                Dictionary<uint, string>? mapping = JsonSerializer.Deserialize<Dictionary<uint, string>>(File.ReadAllText(file));
+                if (mapping is null)
+                {
+                    continue;
+                }
+
+                foreach (string name in mapping.Values)
+                {
+                    uint hash = HashTypeName(name);
+                    if (!Strings.Mapping.TryGetValue(hash, out string? currentName))
+                    {
+                        Strings.Mapping[hash] = name;
+                    }
+                    else
+                    {
+                        // They changed some capitalization stuff like Uint32 and UInt32, but shouldn't really matter that much
+                        Debug.Assert(currentName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+            }
+
+            Strings.HasStrings = true;
+
+            foreach (string name in Strings.Mapping.Values)
+            {
+                if (string.IsNullOrEmpty(name))
+                {
+                    // TODO: remove entry from dict
+                }
+            }
+
+            // save file and reload TypeInfo
+            File.WriteAllText(stringsPath, JsonSerializer.Serialize(Strings.Mapping));
+
+            using (MemoryReader reader = new(process, typeInfoOffset))
+            {
+                TypeInfo.TypeInfoMapping.Clear();
+
+                TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
+
+                do
+                {
+                    ti = ti.GetNextTypeInfo(reader);
+                } while (ti is not null);
+            }
+        }
+        else
+        {
+            // write all names to a file so we can resolve most hashes for games that have names stripped
+            File.WriteAllText(stringsPath, JsonSerializer.Serialize(Strings.Mapping));
         }
 
         return TypeInfo.TypeInfoMapping.Count != 0;
@@ -189,5 +273,14 @@ public class TypeSdkGenerator
         }
 
         return true;
+    }
+
+
+    private static uint HashTypeName(string inName)
+    {
+        Span<byte> hash = stackalloc byte[32];
+        ReadOnlySpan<byte> str = Encoding.ASCII.GetBytes(inName.ToLower() + ProfilesLibrary.TypeHashSeed);
+        SHA256.HashData(str, hash);
+        return BinaryPrimitives.ReadUInt32BigEndian(hash[28..]);
     }
 }

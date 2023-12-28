@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Text;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
@@ -35,10 +36,23 @@ internal class TypeInfoData
         if (TypeInfo.Version > 4)
         {
             nameHash = reader.ReadUInt();
+
+            if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
+            {
+                Strings.Mapping.TryAdd(nameHash, string.Empty);
+            }
         }
         else
         {
             nameHash = (uint)Utils.Utils.HashString(name);
+        }
+
+        if (!ProfilesLibrary.HasStrippedTypeNames)
+        {
+            if (!Strings.Mapping.TryAdd(nameHash, name))
+            {
+                Debug.Assert(Strings.Mapping[nameHash] == name);
+            }
         }
 
         TypeFlags flags = reader.ReadUShort();
@@ -91,16 +105,9 @@ internal class TypeInfoData
                 break;
         }
 
-        if (!ProfilesLibrary.HasStrippedTypeNames)
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.Mapping.TryGetValue(nameHash, out string? resolvedName))
         {
-            if (Strings.ClassHashes.TryGetValue(nameHash, out string? hash))
-            {
-                name = hash;
-            }
-            else if (Strings.StringHashes.TryGetValue(nameHash, out hash))
-            {
-                name = hash;
-            }
+            name = resolvedName;
         }
 
         retVal.m_name = name;

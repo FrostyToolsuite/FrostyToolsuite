@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Text;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
@@ -24,14 +25,29 @@ internal class FieldInfo : IComparable
         {
             m_name = reader.ReadNullTerminatedString();
         }
+
         if (TypeInfo.Version > 4)
         {
             m_nameHash = reader.ReadUInt();
+
+            if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
+            {
+                Strings.Mapping.TryAdd(m_nameHash, string.Empty);
+            }
         }
         else
         {
             m_nameHash = (uint)Utils.Utils.HashString(m_name);
         }
+
+        if (!ProfilesLibrary.HasStrippedTypeNames)
+        {
+            if (!Strings.Mapping.TryAdd(m_nameHash, m_name))
+            {
+                Debug.Assert(Strings.Mapping[m_nameHash] == m_name);
+            }
+        }
+
         m_flags = reader.ReadUShort();
         m_offset = reader.ReadUShort();
 
@@ -39,18 +55,7 @@ internal class FieldInfo : IComparable
 
         if (ProfilesLibrary.HasStrippedTypeNames)
         {
-            if (Strings.FieldHashes.ContainsKey(classHash) && Strings.FieldHashes[classHash].ContainsKey(m_nameHash))
-            {
-                m_name = Strings.FieldHashes[classHash][m_nameHash];
-            }
-            else if (Strings.StringHashes.TryGetValue(m_nameHash, out string? hash))
-            {
-                m_name = hash;
-            }
-            else
-            {
-                m_name = $"Field_{m_nameHash:x8}";
-            }
+            m_name = Strings.Mapping.TryGetValue(m_nameHash, out string? resolvedName) ? resolvedName : $"Field_{m_nameHash:x8}";
         }
     }
 
