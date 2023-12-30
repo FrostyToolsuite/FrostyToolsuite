@@ -52,6 +52,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
     public Block(int inSize)
     {
         BasePtr = (T*)Marshal.AllocHGlobal(inSize * sizeof(T));
+        GC.AddMemoryPressure(inSize * sizeof(T));
         Ptr = BasePtr;
         BaseSize = inSize;
     }
@@ -114,6 +115,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             int size = inArray.Length * sizeof(T);
             BasePtr = (T*)Marshal.AllocHGlobal(size);
+            GC.AddMemoryPressure(inArray.Length * sizeof(T));
             Ptr = BasePtr;
             BaseSize = inArray.Length;
             Buffer.MemoryCopy(ptr, BasePtr, size, size);
@@ -175,7 +177,9 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         int currentOffset = ShiftAmount;
         int newSize = inNewSize * sizeof(T);
         BasePtr = (T*)Marshal.ReAllocHGlobal((IntPtr)BasePtr, newSize);
+        GC.RemoveMemoryPressure(BaseSize * sizeof(T));
         BaseSize = newSize;
+        GC.AddMemoryPressure(BaseSize * sizeof(T));
         // Adjust Ptr since BasePtr has changed.
         Ptr = BasePtr + currentOffset;
     }
@@ -417,6 +421,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
             if (!m_fragileMemory)
             {
                 Marshal.FreeHGlobal((IntPtr)BasePtr);
+                GC.RemoveMemoryPressure(BaseSize * sizeof(T));
             }
             m_usable = false;
         }
