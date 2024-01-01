@@ -23,6 +23,7 @@ public class TypeSdkGenerator
 {
     private long FindTypeInfoOffset(Process process)
     {
+        // TODO: remove this once all games have their correct pattern
         // string[] patterns =
         // {
         //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
@@ -32,31 +33,18 @@ public class TypeSdkGenerator
         //     "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10", // new games
         // };
 
-        ProcessModule? module = process.MainModule!;
+        MemoryReader reader = new(process);
+        nint offset = reader.ScanPatter(ProfilesLibrary.TypeInfoSignature);
 
-        foreach (ProcessModule m in process.Modules)
+        if (offset == nint.Zero)
         {
-            if (m.BaseAddress == (nint)0x140000000)
-            {
-                module = m;
-                break;
-            }
+            return -1;
         }
 
-        using (MemoryReader reader = new(process, module))
-        {
-            IList<nint> offsets = reader.ScanPatter(ProfilesLibrary.TypeInfoSignature);
-
-            if (offsets.Count == 0)
-            {
-                return -1;
-            }
-
-            reader.Position = offsets[0] + 3;
-            int newValue = reader.ReadInt(false);
-            reader.Position = offsets[0] + 3 + newValue + 4;
-            return reader.ReadLong(false);
-        }
+        reader.Position = offset + 3;
+        int newValue = reader.ReadInt(false);
+        reader.Position = offset + 3 + newValue + 4;
+        return reader.ReadLong(false);
     }
 
     public bool DumpTypes(Process process)
@@ -81,17 +69,15 @@ public class TypeSdkGenerator
             Strings.HasStrings = true;
         }
 
-        using (MemoryReader reader = new(process, typeInfoOffset))
+        MemoryReader reader = new(process) { Position = typeInfoOffset };
+        TypeInfo.TypeInfoMapping.Clear();
+
+        TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
+
+        do
         {
-            TypeInfo.TypeInfoMapping.Clear();
-
-            TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
-
-            do
-            {
-                ti = ti.GetNextTypeInfo(reader);
-            } while (ti is not null);
-        }
+            ti = ti.GetNextTypeInfo(reader);
+        } while (ti is not null);
 
         Directory.CreateDirectory("Sdk/Strings");
 
@@ -123,28 +109,33 @@ public class TypeSdkGenerator
 
             Strings.HasStrings = true;
 
-            foreach (string name in Strings.Mapping.Values)
+            HashSet<uint> toRemove = new();
+            foreach (KeyValuePair<uint, string> kv in Strings.Mapping)
             {
-                if (string.IsNullOrEmpty(name))
+                if (string.IsNullOrEmpty(kv.Value))
                 {
-                    // TODO: remove entry from dict
+                    toRemove.Add(kv.Key);
                 }
+            }
+
+            foreach (uint key in toRemove)
+            {
+                // remove entry from dict
+                Strings.Mapping.Remove(key);
             }
 
             // save file and reload TypeInfo
             File.WriteAllText(stringsPath, JsonSerializer.Serialize(Strings.Mapping));
 
-            using (MemoryReader reader = new(process, typeInfoOffset))
+            // reparse the typeinfo with now hopefully more typenames
+            TypeInfo.TypeInfoMapping.Clear();
+
+            ti = TypeInfo.ReadTypeInfo(reader);
+
+            do
             {
-                TypeInfo.TypeInfoMapping.Clear();
-
-                TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
-
-                do
-                {
-                    ti = ti.GetNextTypeInfo(reader);
-                } while (ti is not null);
-            }
+                ti = ti.GetNextTypeInfo(reader);
+            } while (ti is not null);
         }
         else
         {

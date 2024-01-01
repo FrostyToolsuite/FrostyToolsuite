@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -11,16 +13,8 @@ using Microsoft.Win32.SafeHandles;
 
 namespace Frosty.Sdk.IO;
 
-struct PatternType
+public sealed unsafe partial class MemoryReader
 {
-    public bool IsWildcard;
-    public byte Value;
-}
-
-public partial class MemoryReader : IDisposable
-{
-    private const int PROCESS_WM_READ = 0x0010;
-
     #region -- Windows --
 
     private enum SystemErrorCode
@@ -57,7 +51,7 @@ public partial class MemoryReader : IDisposable
     #region -- Linux --
 
     [StructLayout(LayoutKind.Sequential)]
-    private unsafe struct iovec
+    private struct iovec
     {
         public void* iov_base;
         public nuint iov_len;
@@ -69,32 +63,18 @@ public partial class MemoryReader : IDisposable
 
     #endregion
 
-    public virtual long Position
+    public long Position
     {
         get => m_position;
         set => m_position = value;
     }
 
     private Process m_process;
-    private ProcessModule m_module;
-    protected readonly byte[] m_buffer = new byte[20];
-    protected long m_position;
+    private long m_position;
 
-    public MemoryReader(Process inProcess, ProcessModule inModule)
+    public MemoryReader(Process inProcess)
     {
         m_process = inProcess;
-        m_position = inModule.BaseAddress;
-        m_module = inModule;
-    }
-
-    public MemoryReader(Process inProcess, long inModule)
-    {
-        m_process = inProcess;
-        m_position = inModule;
-    }
-
-    public virtual void Dispose()
-    {
     }
 
     public void Pad(int alignment)
@@ -107,8 +87,9 @@ public partial class MemoryReader : IDisposable
 
     public byte ReadByte()
     {
-        FillBuffer(1);
-        return m_buffer[0];
+        Span<byte> buffer = stackalloc byte[sizeof(byte)];
+        ReadExactly(buffer);
+        return buffer[0];
     }
 
     public short ReadShort(bool pad = true)
@@ -118,19 +99,15 @@ public partial class MemoryReader : IDisposable
             Pad(sizeof(short));
         }
 
-        FillBuffer(2);
-        return (short)(m_buffer[0] | m_buffer[1] << 8);
+        Span<byte> buffer = stackalloc byte[sizeof(short)];
+        ReadExactly(buffer);
+
+        return BinaryPrimitives.ReadInt16LittleEndian(buffer);
     }
 
     public ushort ReadUShort(bool pad = true)
     {
-        if (pad)
-        {
-            Pad(sizeof(ushort));
-        }
-
-        FillBuffer(2);
-        return (ushort)(m_buffer[0] | m_buffer[1] << 8);
+        return (ushort)ReadShort(pad);
     }
 
     public int ReadInt(bool pad = true)
@@ -140,19 +117,15 @@ public partial class MemoryReader : IDisposable
             Pad(sizeof(int));
         }
 
-        FillBuffer(4);
-        return m_buffer[0] | m_buffer[1] << 8 | m_buffer[2] << 16 | m_buffer[3] << 24;
+        Span<byte> buffer = stackalloc byte[sizeof(int)];
+        ReadExactly(buffer);
+
+        return BinaryPrimitives.ReadInt32LittleEndian(buffer);
     }
 
     public uint ReadUInt(bool pad = true)
     {
-        if (pad)
-        {
-            Pad(sizeof(uint));
-        }
-
-        FillBuffer(4);
-        return (uint)(m_buffer[0] | m_buffer[1] << 8 | m_buffer[2] << 16 | m_buffer[3] << 24);
+        return (uint)ReadInt(pad);
     }
 
     public long ReadLong(bool pad = true)
@@ -162,21 +135,15 @@ public partial class MemoryReader : IDisposable
             Pad(sizeof(long));
         }
 
-        FillBuffer(8);
-        return (long)(uint)(m_buffer[4] | m_buffer[5] << 8 | m_buffer[6] << 16 | m_buffer[7] << 24) << 32 |
-               (long)(uint)(m_buffer[0] | m_buffer[1] << 8 | m_buffer[2] << 16 | m_buffer[3] << 24);
+        Span<byte> buffer = stackalloc byte[sizeof(long)];
+        ReadExactly(buffer);
+
+        return BinaryPrimitives.ReadInt64LittleEndian(buffer);
     }
 
     public ulong ReadULong(bool pad = true)
     {
-        if (pad)
-        {
-            Pad(sizeof(ulong));
-        }
-
-        FillBuffer(8);
-        return (ulong)(uint)(m_buffer[4] | m_buffer[5] << 8 | m_buffer[6] << 16 | m_buffer[7] << 24) << 32 |
-               (ulong)(uint)(m_buffer[0] | m_buffer[1] << 8 | m_buffer[2] << 16 | m_buffer[3] << 24);
+        return (ulong)ReadLong(pad);
     }
 
     public Guid ReadGuid(bool pad = true)
@@ -186,11 +153,10 @@ public partial class MemoryReader : IDisposable
             Pad(4);
         }
 
-        FillBuffer(16);
-        return new Guid(new byte[] {
-                    m_buffer[0], m_buffer[1], m_buffer[2], m_buffer[3], m_buffer[4], m_buffer[5], m_buffer[6], m_buffer[7],
-                    m_buffer[8], m_buffer[9], m_buffer[10], m_buffer[11], m_buffer[12], m_buffer[13], m_buffer[14], m_buffer[15]
-                });
+        Span<byte> span = stackalloc byte[sizeof(Guid)];
+        ReadExactly(span);
+
+        return new Guid(span);
     }
 
     public string ReadNullTerminatedString(bool pad = true)
@@ -220,144 +186,76 @@ public partial class MemoryReader : IDisposable
         return sb.ToString();
     }
 
-    public byte[]? ReadBytes(int numBytes)
+    public nint ReadExactly(Span<byte> buffer)
     {
-        byte[] outBuffer = new byte[numBytes];
-
-        uint oldProtect = 0;
-        int bytesRead = 0;
-
-        m_position += numBytes;
-        return outBuffer;
+        ReadMemory((nint)Position, buffer, out nint bytesRead);
+        Debug.Assert(bytesRead == buffer.Length);
+        Position += bytesRead;
+        return bytesRead;
     }
 
-    public unsafe IList<long> Scan(string pattern)
+    public nint ScanPatter(string pattern)
     {
-        List<long> retList = new List<long>();
-        pattern = pattern.Replace(" ", "");
-
-        PatternType[] bytePattern = new PatternType[pattern.Length / 2];
-        for (int i = 0; i < bytePattern.Length; i++)
-        {
-            string str = pattern.Substring(i * 2, 2);
-            bytePattern[i] = new PatternType() { IsWildcard = (str == "??"), Value = (str != "??") ? byte.Parse(pattern.Substring(i * 2, 2), System.Globalization.NumberStyles.HexNumber) : (byte)0x00 };
-        }
-
-        bool bFound = false;
-
-        long pos = Position;
-        byte[]? buf = ReadBytes(1024 * 1024);
-        byte* startPtr = buf == null ? null : (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(buf, 0);
-        byte* ptr = startPtr;
-        byte* endPtr = ptr + (1024 * 1024);
-        byte* tmpPtr = ptr;
-
-        while (buf != null)
-        {
-            if (*ptr == bytePattern[0].Value)
-            {
-                tmpPtr = ptr;
-                bFound = true;
-
-                for (int i = 0; i < bytePattern.Length; i++)
-                {
-                    if (!bytePattern[i].IsWildcard && *tmpPtr != bytePattern[i].Value)
-                    {
-                        bFound = false;
-                        break;
-                    }
-
-                    tmpPtr++;
-                }
-
-                if (bFound)
-                {
-                    retList.Add(tmpPtr - startPtr - bytePattern.Length + pos);
-                    bFound = false;
-                }
-            }
-
-            ptr++;
-            if (ptr == endPtr)
-            {
-                pos = Position;
-                buf = ReadBytes(1024 * 1024);
-                if (buf == null)
-                {
-                    break;
-                }
-
-                startPtr = (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(buf, 0);
-                ptr = startPtr;
-                endPtr = ptr + (1024 * 1024);
-            }
-        }
-
-        return retList;
-    }
-
-    public IList<nint> ScanPatter(string pattern)
-    {
-        string[] patternComponents = pattern.Split(' ');
-        byte?[] patternBytes = new byte?[patternComponents.Length];
-
-        for (int i = 0; i < patternComponents.Length; i++)
-        {
-            if (patternComponents[i] == "??")
-            {
-                patternBytes[i] = null;
-            }
-            else
-            {
-                patternBytes[i] = Convert.ToByte(patternComponents[i], 16);
-            }
-        }
-
-        int[] shiftTable = new int[256];
-        int defaultShift = patternBytes.Length;
-        int lastWildcardIndex = Array.LastIndexOf(patternBytes, "??");
-
-        if (lastWildcardIndex != -1)
-        {
-            defaultShift -= lastWildcardIndex;
-        }
-
-        Array.Fill(shiftTable, defaultShift);
-
-        for (int i = 0; i < patternBytes.Length - 1; i++)
-        {
-            byte? @byte = patternBytes[i];
-
-            if (@byte is not null)
-            {
-                shiftTable[@byte.Value] = patternBytes.Length - 1 - i;
-            }
-        }
-
-        List<nint> occurrences = new();
+        ConvertPatternToAob(pattern, out string mask, out Block<byte> currentAob);
 
         foreach ((nint Address, int Size) region in GetRegions())
         {
             Block<byte> regionBytes = new(region.Size);
 
-            ReadMemory(region.Address, regionBytes, out nint bytesRead);
+            ReadMemory(region.Address, regionBytes, out nint _);
 
-            for (int i = patternBytes.Length - 1; i < bytesRead; i += shiftTable[regionBytes[i]])
+            int address;
+            if ((address = SearchPattern(regionBytes, 0, currentAob, mask)) != 0)
             {
-                for (int j = patternBytes.Length - 1; patternBytes[j] is null || patternBytes[j] == regionBytes[i - patternBytes.Length + 1 + j]; j--)
-                {
-                    if (j == 0)
-                    {
-                        occurrences.Add(m_module.BaseAddress + i - patternBytes.Length + 1);
-                        break;
-                    }
-                }
+                currentAob.Dispose();
+                regionBytes.Dispose();
+                return region.Address + address;
             }
 
             regionBytes.Dispose();
         }
 
-        return occurrences;
+        currentAob.Dispose();
+
+        return nint.Zero;
+    }
+
+    private int SearchPattern(Block<byte> buffer, int initIndex, Block<byte> currentAob, string mask)
+    {
+        for (var i = initIndex; i < buffer.Size; ++i)
+        {
+            for (var x = 0; x < currentAob.Size; x++)
+            {
+                if (currentAob[x] != buffer[i + x] && mask[x] != '?')
+                    goto end;
+            }
+            return i;
+            end:;
+        }
+        return 0;
+    }
+
+    private void ConvertPatternToAob(string inPatternString, out string mask, out Block<byte> currentAob)
+    {
+        var tratedStr = inPatternString.Replace("  ", "");
+        tratedStr = (tratedStr[0] == ' ') ? tratedStr.Substring(1, tratedStr.Length - 1) : tratedStr;
+        tratedStr = (tratedStr.Substring(tratedStr.Length - 1, 1) == " ") ? tratedStr[..^1] : tratedStr;
+
+
+        mask = "";
+        var partHex = inPatternString.Split(' ');
+        currentAob = new Block<byte>(partHex.Length);
+        for (var i = 0; i < partHex.Length; ++i)
+        {
+            if (partHex[i].Contains("?"))
+            {
+                currentAob[i] = 0xCC;
+                mask += "?";
+            } else {
+                currentAob[i] = Convert.ToByte(partHex[i], 16);
+                mask += "x";
+            }
+        }
     }
 
     private IEnumerable<(nint Address, int Size)> GetRegions()
@@ -393,17 +291,21 @@ public partial class MemoryReader : IDisposable
             {
                 string[] arr = region.Split(' ');
                 int index = arr[0].IndexOf('-');
-                nint start = nint.Parse(arr[0][..index]);
-                nint end = nint.Parse(arr[0][(index + 1)..]);
+                nint start = nint.Parse(arr[0][..index], NumberStyles.HexNumber);
+                nint end = nint.Parse(arr[0][(index + 1)..], NumberStyles.HexNumber);
 
-                // TODO: check for access
+                string perm = arr[1];
+                if (perm[0] == '-'|| perm[2] != 'x')
+                {
+                    continue;
+                }
 
                 yield return (start, (int)(end - start));
             }
         }
     }
 
-    private unsafe void ReadMemory(nint inAddress, Block<byte> outData, out nint bytesRead)
+    private void ReadMemory(nint inAddress, Block<byte> outData, out nint bytesRead)
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -424,11 +326,27 @@ public partial class MemoryReader : IDisposable
         }
     }
 
-    protected virtual void FillBuffer(int numBytes)
+    private void ReadMemory(nint inAddress, Span<byte> outData, out nint bytesRead)
     {
-        uint oldProtect = 0;
-        int bytesRead = 0;
+        fixed (byte* ptr = outData)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                if (!ReadProcessMemory(m_process.SafeHandle, inAddress, (nint)ptr, outData.Length, out bytesRead))
+                {
+                    throw new Win32Exception();
+                }
+            }
+            else
+            {
+                iovec localIo = new() { iov_base = ptr, iov_len = (nuint)outData.Length };
+                iovec remoteIo = new() { iov_base = inAddress.ToPointer(), iov_len = (nuint)outData.Length };
 
-        m_position += numBytes;
+                if ((bytesRead = process_vm_readv(m_process.Id, &localIo, 1, &remoteIo, 1, 0)) == -1)
+                {
+                    throw new Exception();
+                }
+            }
+        }
     }
 }
