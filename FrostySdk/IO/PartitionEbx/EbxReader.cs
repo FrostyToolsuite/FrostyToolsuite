@@ -142,6 +142,8 @@ public class EbxReader : BaseEbxReader
                     break;
             }
         }
+
+        m_stream.Pad(inTypeDescriptor.GetAlignment());
     }
 
     private void ReadField(EbxTypeDescriptor? inParentTypeDescriptor, TypeFlags.TypeEnum inType, ushort inTypeDescriptorRef, Action<object> inAddFunc)
