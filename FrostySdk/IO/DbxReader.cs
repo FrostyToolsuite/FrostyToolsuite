@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace Frosty.Sdk.IO;
+
 public sealed class DbxReader
 {
     private static readonly Type s_pointerType = typeof(PointerRef);
