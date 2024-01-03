@@ -198,7 +198,7 @@ public static class ResourceManager
         Dictionary<Sha1, List<CasFileInfo>> retVal = new();
 
         int installChunkIndex = FileSystemManager.GetInstallChunkIndex(info);
-        bool patch = inSource == FileSystemSource.Patch;
+        bool patch = inSource.Path == FileSystemSource.Patch.Path;
 
         using (CatStream stream = new(filePath))
         {
