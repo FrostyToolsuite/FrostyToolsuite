@@ -46,6 +46,10 @@ public class ModUpdater
             s_bundleMapping.TryAdd(hash, new HashSet<int>());
             s_bundleMapping[hash].Add(bundle.Id);
         }
+
+        // v1 used a chunks bundle to add chunks to the superbundle we dont need that, so just add an empty collection
+        s_bundleMapping.Add(Utils.HashString("chunks"), new HashSet<int>());
+
         if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
         {
             s_superBundleMapping.Add(Utils.HashString("<none>"), FileSystemManager.GetSuperBundle(FileSystemManager.DefaultInstallChunk!.SuperBundles.First()).InstallChunks[0].Name);
@@ -143,14 +147,17 @@ public class ModUpdater
                     break;
                 case ModResourceType.Ebx:
                     b = ReadBaseModResource(inStream, version);
-                    flags = AssetManager.GetEbxAssetEntry(b.Name) is not null ? BaseModResource.ResourceFlags.IsAdded : 0;
 
                     // we now store ebx names the same way they are stored in the bundle, so all lowercase
-                    resources[i] = new EbxModResource(b.ResourceIndex, b.Name.ToLower(), b.Sha1, b.OriginalSize, flags, b.HandlerHash, b.UserData, b.BundlesToAdd, Enumerable.Empty<int>());
+                    b.Name = b.Name.ToLower();
+
+                    flags = AssetManager.GetEbxAssetEntry(b.Name) is null ? BaseModResource.ResourceFlags.IsAdded : 0;
+
+                    resources[i] = new EbxModResource(b.ResourceIndex, b.Name, b.Sha1, b.OriginalSize, flags, b.HandlerHash, b.UserData, b.BundlesToAdd, Enumerable.Empty<int>());
                     break;
                 case ModResourceType.Res:
                     b = ReadBaseModResource(inStream, version);
-                    flags = AssetManager.GetResAssetEntry(b.Name) is not null ? BaseModResource.ResourceFlags.IsAdded : 0;
+                    flags = AssetManager.GetResAssetEntry(b.Name) is null ? BaseModResource.ResourceFlags.IsAdded : 0;
 
                     resources[i] = new ResModResource(b.ResourceIndex, b.Name, b.Sha1, b.OriginalSize, flags, b.HandlerHash, b.UserData, b.BundlesToAdd,
                         Enumerable.Empty<int>(), inStream.ReadUInt32(), inStream.ReadUInt64(),
@@ -230,7 +237,15 @@ public class ModUpdater
         foreach (DbObject actionObj in mod.AsList("actions"))
         {
             DbObjectDict action = actionObj.AsDict();
-            int bundleHash = Utils.HashString(action.AsString("bundle"), true);
+            string bundleName = action.AsString("bundle");
+
+            if (bundleName == "chunks")
+            {
+                // not sure if the old format actually used the chunks bundle, but just to be sure we skip
+                continue;
+            }
+
+            int bundleHash = Utils.HashString(bundleName, true);
             string type = action.AsString("type");
             int resourceId = action.AsInt("resourceId");
 
@@ -525,7 +540,7 @@ public class ModUpdater
                             resMeta[i] = byte.Parse(resMetaString.Slice(i * 2, 2), NumberStyles.HexNumber);
                         }
 
-                        resources.Add(new ResModResource(resourceId, name, sha1, originalSize, flags, 0,
+                        resources.Add(new ResModResource(resourceId, resourceName, sha1, originalSize, flags, 0,
                             string.Empty, bundlesToAdd, bundlesToRemove,
                             (uint)int.Parse(resource.GetAttribute("resType")),
                             (ulong)long.Parse(resource.GetAttribute("resRid")), resMeta));
