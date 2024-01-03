@@ -136,12 +136,18 @@ public class ManifestAssetLoader : IAssetLoader
                 Guid chunkId = stream.ReadGuid();
                 (CasFileIdentifier, uint, long) resourceInfo = files[stream.ReadInt32()];
 
-                //ChunkAssetEntry entry = new(chunkId, Sha1.Zero, resourceInfo.Item3, 0, 0, 0);
+                InstallChunkInfo ic = FileSystemManager.GetInstallChunkInfo(resourceInfo.Item1.InstallChunkIndex);
+                string superbundle = ic.SuperBundles.FirstOrDefault() ?? string.Empty;
+                Debug.Assert(!string.IsNullOrEmpty(superbundle), "no super bundle found for install chunk");
+                // hack we just assume there are no splitSuperBundles
+                SuperBundleInstallChunk sbIc = FileSystemManager.GetSuperBundleInstallChunk(superbundle);
 
-                //entry.FileInfos.Add(
-                    //new CasFileInfo(resourceInfo.Item1, resourceInfo.Item2, (uint)resourceInfo.Item3, 0));
+                ChunkAssetEntry entry = new(chunkId, Sha1.Zero, 0, (uint)resourceInfo.Item3, Utils.Utils.HashString(sbIc.Name, true));
 
-                //AssetManager.AddSuperBundleChunk(entry);
+                entry.FileInfos.Add(
+                    new CasFileInfo(resourceInfo.Item1, resourceInfo.Item2, (uint)resourceInfo.Item3, 0));
+
+                AssetManager.AddSuperBundleChunk(entry);
             }
         }
     }

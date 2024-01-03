@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
@@ -200,7 +201,7 @@ public static class AssetManager
     /// <returns>The <see cref="BundleInfo"/> or null if it doesn't exist.</returns>
     public static BundleInfo? GetBundleInfo(int inHash)
     {
-        return s_bundleMapping.TryGetValue(inHash, out BundleInfo? bundleInfo) ? bundleInfo : null;
+        return s_bundleMapping.GetValueOrDefault(inHash);
     }
 
     #endregion
@@ -217,7 +218,7 @@ public static class AssetManager
     public static EbxAssetEntry? GetEbxAssetEntry(string name)
     {
         int nameHash = Utils.Utils.HashString(name, true);
-        return s_ebxNameHashMapping.TryGetValue(nameHash, out EbxAssetEntry? value) ? value : null;
+        return s_ebxNameHashMapping.GetValueOrDefault(nameHash);
     }
 
     /// <summary>
@@ -227,7 +228,7 @@ public static class AssetManager
     /// <returns>The <see cref="EbxAssetEntry"/> or null if it doesn't exist.</returns>
     public static EbxAssetEntry? GetEbxAssetEntry(Guid guid)
     {
-        return s_ebxGuidMapping.TryGetValue(guid, out EbxAssetEntry? value) ? value : null;
+        return s_ebxGuidMapping.GetValueOrDefault(guid);
     }
 
     #endregion
@@ -242,7 +243,7 @@ public static class AssetManager
     public static ResAssetEntry? GetResAssetEntry(string name)
     {
         int nameHash = Utils.Utils.HashString(name, true);
-        return s_resNameHashMapping.TryGetValue(nameHash, out ResAssetEntry? value) ? value : null;
+        return s_resNameHashMapping.GetValueOrDefault(nameHash);
     }
 
     /// <summary>
@@ -252,7 +253,7 @@ public static class AssetManager
     /// <returns>The <see cref="ResAssetEntry"/> or null if it doesn't exist.</returns>
     public static ResAssetEntry? GetResAssetEntry(ulong resRid)
     {
-        return s_resRidMapping.TryGetValue(resRid, out ResAssetEntry? value) ? value : null;
+        return s_resRidMapping.GetValueOrDefault(resRid);
     }
 
     #endregion
@@ -266,7 +267,7 @@ public static class AssetManager
     /// <returns>The <see cref="ChunkAssetEntry"/> or null if it doesn't exist.</returns>
     public static ChunkAssetEntry? GetChunkAssetEntry(Guid chunkId)
     {
-        return s_chunkGuidMapping.TryGetValue(chunkId, out ChunkAssetEntry? value) ? value : null;
+        return s_chunkGuidMapping.GetValueOrDefault(chunkId);
     }
 
     #endregion
@@ -332,6 +333,13 @@ public static class AssetManager
         BundleInfo bundle = new(name, sbIc);
         Debug.Assert(s_bundleMapping.TryAdd(bundle.Id, bundle), "fuck");
         return bundle;
+    }
+
+    private static void UpdateBundle(string inName, BundleInfo inBundleInfo)
+    {
+        BundleInfo bundle = new(inName, inBundleInfo.Parent);
+        s_bundleMapping.Remove(inBundleInfo.Id);
+        Debug.Assert(s_bundleMapping.TryAdd(bundle.Id, bundle), "fuck");
     }
 
     private static IAssetLoader GetAssetLoader()
@@ -449,9 +457,6 @@ public static class AssetManager
 
     private static void DoEbxIndexing()
     {
-        // TODO: implement GetAsset()
-        return;
-
         if (s_ebxGuidMapping.Count > 0)
         {
             return;
@@ -459,60 +464,34 @@ public static class AssetManager
 
         foreach (EbxAssetEntry entry in s_ebxNameHashMapping.Values)
         {
-            /*using (EbxReader reader = EbxReader.CreateReader(GetAsset(entry)))
+            using (BlockStream stream = new(GetAsset(entry)))
             {
-                entry.Type = reader.RootType;
-                entry.Guid = reader.FileGuid;
+                BaseEbxReader reader = BaseEbxReader.CreateReader(stream);
+                entry.Type = reader.GetRootType();
+                entry.Guid = reader.GetPartitionGuid();
 
-                // now grab the actual asset name
-                reader.Position = reader.m_stringsOffset;
-                string name = reader.ReadNullTerminatedString();
-                int newNameHash = Utils.Utils.HashString(name, true);
-
-                // only if the lower case one matches
-                if (newNameHash == Utils.Utils.HashString(entry.Name, true))
+                foreach (Guid dependency in reader.GetDependencies())
                 {
-                    entry.Name = name;
-                }
-
-                foreach (EbxImportReference import in reader.Imports)
-                {
-                    entry.DependentAssets.Add(import.FileGuid);
+                    entry.DependentAssets.Add(dependency);
                 }
 
                 s_ebxGuidMapping.Add(entry.Guid, entry);
+            }
 
-                // Manifest AssetLoader has stripped the bundle names, so we need to figure them out
-                // if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
-                // {
-                //     // need to work out bundle here (as bundles are hashed names only)
-                //     if (TypeLibrary.IsSubClassOf(entry.Type, "BlueprintBundle") ||
-                //         TypeLibrary.IsSubClassOf(entry.Type, "SubWorldData"))
-                //     {
-                //         BundleEntry be = s_bundleMapping[entry.Bundles.First()];
-                //
-                //         be.Name = entry.Name;
-                //         if (!be.Name.StartsWith("win32/", StringComparison.OrdinalIgnoreCase))
-                //         {
-                //             be.Name = "win32/" + entry.Name;
-                //         }
-                //         be.Blueprint = entry;
-                //
-                //     }
-                //     else if (TypeLibrary.IsSubClassOf(entry.Type, "UIItemDescriptionAsset") ||
-                //              TypeLibrary.IsSubClassOf(entry.Type, "UIMetaDataAsset"))
-                //     {
-                //         string bundleName = "win32/" + entry.Name.ToLower() + "_bundle";
-                //         int h = Utils.Utils.HashString(bundleName);
-                //         BundleEntry? be = s_bundleMapping.Find(a => a.Name.Equals(h.ToString("x8")));
-                //
-                //         if (be != null)
-                //         {
-                //             be.Name = bundleName;
-                //         }
-                //     }
-                // }
-            }*/
+            // Manifest AssetLoader has stripped the bundle names, so we need to figure out the ui bundles, since the ebx are not in the bundle with the same name
+            if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest &&
+                (TypeLibrary.IsSubClassOf(entry.Type, "UIItemDescriptionAsset") ||
+                 TypeLibrary.IsSubClassOf(entry.Type, "UIMetaDataAsset")))
+            {
+                string name = $"{FileSystemManager.GamePlatform}/{entry.Name}_bundle";
+                string hash = Utils.Utils.HashString(name, true).ToString("X8");
+
+                BundleInfo? bundle = s_bundleMapping.Values.FirstOrDefault(b => b.Name == hash);
+                if (bundle is not null)
+                {
+                    UpdateBundle(name, bundle);
+                }
+            }
         }
     }
 
