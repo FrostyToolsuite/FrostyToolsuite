@@ -9,6 +9,7 @@ using Frosty.Sdk.IO.Compression;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
+using Frosty.Sdk.Profiles;
 using Frosty.Sdk.Utils;
 
 namespace Frosty.ModSupport.Mod;
@@ -413,7 +414,7 @@ public class ModUpdater
 
     private static (BaseModResource[], Block<byte>[], FrostyModDetails, uint)? ConvertDaiMod(BlockStream inStream)
     {
-        if (inStream.ReadFixedSizedString(8) != "DAIMODV2")
+        if (inStream.ReadFixedSizedString(8) != "DAIMODV2" || !ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeInquisition))
         {
             return null;
         }
@@ -520,18 +521,23 @@ public class ModUpdater
                 {
                     case "ebx":
                     {
-                        BaseModResource.ResourceFlags flags = AssetManager.GetEbxAssetEntry(name) is null
+                        BaseModResource.ResourceFlags flags = AssetManager.GetEbxAssetEntry(resourceName) is null
                             ? BaseModResource.ResourceFlags.IsAdded
                             : 0;
+
+                        Debug.Assert(flags.HasFlag(BaseModResource.ResourceFlags.IsAdded) == (action == "add"));
+
                         resources.Add(new EbxModResource(resourceId, resourceName, sha1, originalSize, flags, 0,
                             string.Empty, bundlesToAdd, bundlesToRemove));
                         break;
                     }
                     case "res":
                     {
-                        BaseModResource.ResourceFlags flags = AssetManager.GetResAssetEntry(name) is null
+                        BaseModResource.ResourceFlags flags = AssetManager.GetResAssetEntry(resourceName) is null
                             ? BaseModResource.ResourceFlags.IsAdded
                             : 0;
+
+                        Debug.Assert(flags.HasFlag(BaseModResource.ResourceFlags.IsAdded) == (action == "add"));
 
                         ReadOnlySpan<char> resMetaString = resource.GetAttribute("meta");
                         byte[] resMeta = new byte[0x10];
@@ -579,6 +585,8 @@ public class ModUpdater
                         BaseModResource.ResourceFlags flags = FixChunk(resourceId, hasBundlesToAdd, id,
                             ref logicalOffset, ref logicalSize, ref rangeStart, ref rangeEnd, ref firstMip,
                             out IEnumerable<int> superBundlesToAdd);
+
+                        Debug.Assert(flags.HasFlag(BaseModResource.ResourceFlags.IsAdded) == (action == "add"));
 
                         resources.Add(new ChunkModResource(resourceId, id.ToString(), sha1, originalSize, flags, 0,
                             string.Empty, bundlesToAdd, bundlesToRemove, rangeStart, rangeEnd, logicalOffset,
