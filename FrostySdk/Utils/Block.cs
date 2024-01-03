@@ -52,7 +52,10 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
     public Block(int inSize)
     {
         BasePtr = (T*)Marshal.AllocHGlobal(inSize * sizeof(T));
-        GC.AddMemoryPressure(inSize * sizeof(T));
+        if (inSize > 0)
+        {
+            GC.AddMemoryPressure(inSize * sizeof(T));
+        }
         Ptr = BasePtr;
         BaseSize = inSize;
     }
@@ -421,7 +424,10 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
             if (!m_fragileMemory)
             {
                 Marshal.FreeHGlobal((IntPtr)BasePtr);
-                GC.RemoveMemoryPressure(BaseSize * sizeof(T));
+                if (BaseSize > 0)
+                {
+                    GC.RemoveMemoryPressure(BaseSize * sizeof(T));
+                }
             }
             m_usable = false;
         }
