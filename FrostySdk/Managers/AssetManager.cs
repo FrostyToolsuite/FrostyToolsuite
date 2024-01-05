@@ -280,11 +280,10 @@ public static class AssetManager
 
     public static EbxAsset GetEbx(EbxAssetEntry entry)
     {
-        //using (EbxReader reader = EbxReader.CreateReader(GetAsset(entry)))
+        using (BlockStream stream = new(GetAsset(entry)))
         {
-            //return reader.ReadAsset<EbxAsset>();
+            return EbxAsset.Deserialize(stream);
         }
-        throw new NotImplementedException();
     }
 
     public static T GetResAs<T>(ResAssetEntry entry)
@@ -302,12 +301,12 @@ public static class AssetManager
 
     public static Block<byte> GetAsset(AssetEntry entry)
     {
-        return entry.FileInfo.GetData((int)entry.OriginalSize);
+        return entry.FileInfo!.GetData((int)entry.OriginalSize);
     }
 
     public static Block<byte> GetRawAsset(AssetEntry entry)
     {
-        return entry.FileInfo.GetRawData();
+        return entry.FileInfo!.GetRawData();
     }
 
     #endregion
@@ -323,6 +322,22 @@ public static class AssetManager
     public static IEnumerable<EbxAssetEntry> EnumerateEbxAssetEntries()
     {
         foreach (EbxAssetEntry entry in s_ebxNameHashMapping.Values)
+        {
+            yield return entry;
+        }
+    }
+
+    public static IEnumerable<ResAssetEntry> EnumerateResAssetEntries()
+    {
+        foreach (ResAssetEntry entry in s_resNameHashMapping.Values)
+        {
+            yield return entry;
+        }
+    }
+
+    public static IEnumerable<ChunkAssetEntry> EnumerateChunkAssetEntries()
+    {
+        foreach (ChunkAssetEntry entry in s_chunkGuidMapping.Values)
         {
             yield return entry;
         }
@@ -365,7 +380,10 @@ public static class AssetManager
     {
         if (s_ebxNameHashMapping.TryGetValue(entry.NameHash, out EbxAssetEntry? existing))
         {
-            existing.FileInfos.UnionWith(entry.FileInfos);
+            if (entry.FileInfo is not null)
+            {
+                existing.AddFileInfo(entry.FileInfo);
+            }
 
             existing.Bundles.Add(bundleId);
         }
@@ -380,7 +398,10 @@ public static class AssetManager
     {
         if (s_resNameHashMapping.TryGetValue(entry.NameHash, out ResAssetEntry? existing))
         {
-            existing.FileInfos.UnionWith(entry.FileInfos);
+            if (entry.FileInfo is not null)
+            {
+                existing.AddFileInfo(entry.FileInfo);
+            }
 
             existing.Bundles.Add(bundleId);
         }
@@ -399,7 +420,10 @@ public static class AssetManager
     {
         if (s_chunkGuidMapping.TryGetValue(entry.Id, out ChunkAssetEntry? existing))
         {
-            existing.FileInfos.UnionWith(entry.FileInfos);
+            if (entry.FileInfo is not null)
+            {
+                existing.AddFileInfo(entry.FileInfo);
+            }
 
             existing.Bundles.Add(bundleId);
 
@@ -432,15 +456,17 @@ public static class AssetManager
             // add existing Bundles
             entry.Bundles.UnionWith(existing.Bundles);
 
-            entry.FileInfos.UnionWith(existing.FileInfos);
+            if (existing.FileInfo is not null)
+            {
+                entry.AddFileInfo(existing.FileInfo);
+            }
 
             // add logicalOffset/Size, since those are only stored in bundles
             entry.LogicalOffset = existing.LogicalOffset;
             entry.LogicalSize = existing.LogicalSize;
             entry.OriginalSize = existing.OriginalSize;
 
-            // merge SuperBundles
-            // TODO: SuperBundleInstallChunk storing
+            // merge SuperBundleInstallChunks
             entry.SuperBundleInstallChunks.UnionWith(existing.SuperBundleInstallChunks);
 
             s_chunkGuidMapping[entry.Id] = entry;
@@ -559,18 +585,7 @@ public static class AssetManager
                     Type = stream.ReadNullTerminatedString()
                 };
 
-                int numFileInfos = stream.ReadInt32();
-                for (int j = 0; j < numFileInfos; j++)
-                {
-                    bool isDefault = stream.ReadBoolean();
-
-                    IFileInfo fileInfo = IFileInfo.Deserialize(stream);
-                    entry.FileInfos.Add(fileInfo);
-                    if (isDefault)
-                    {
-                        entry.FileInfo = fileInfo;
-                    }
-                }
+                entry.AddFileInfo(IFileInfo.Deserialize(stream));
 
                 int numBundles = stream.ReadInt32();
                 for (int j = 0; j < numBundles; j++)
@@ -584,11 +599,7 @@ public static class AssetManager
                 }
                 else
                 {
-                    // TODO: remove this when the ebx indexing is working
-                    if (entry.Guid != Guid.Empty)
-                    {
-                        s_ebxGuidMapping.Add(entry.Guid, entry);
-                    }
+                    s_ebxGuidMapping.Add(entry.Guid, entry);
                     s_ebxNameHashMapping.Add(entry.NameHash, entry);
                 }
             }
@@ -603,18 +614,7 @@ public static class AssetManager
                 ResAssetEntry entry = new(name, stream.ReadSha1(), stream.ReadInt64(),
                     stream.ReadUInt64(), stream.ReadUInt32(), stream.ReadBytes(stream.ReadInt32()));
 
-                int numFileInfos = stream.ReadInt32();
-                for (int j = 0; j < numFileInfos; j++)
-                {
-                    bool isDefault = stream.ReadBoolean();
-
-                    IFileInfo fileInfo = IFileInfo.Deserialize(stream);
-                    entry.FileInfos.Add(fileInfo);
-                    if (isDefault)
-                    {
-                        entry.FileInfo = fileInfo;
-                    }
-                }
+                entry.AddFileInfo(IFileInfo.Deserialize(stream));
 
                 int numBundles = stream.ReadInt32();
                 for (int j = 0; j < numBundles; j++)
@@ -644,18 +644,7 @@ public static class AssetManager
                 ChunkAssetEntry entry = new(stream.ReadGuid(), stream.ReadSha1(),
                     stream.ReadUInt32(), stream.ReadUInt32());
 
-                int numFileInfos = stream.ReadInt32();
-                for (int j = 0; j < numFileInfos; j++)
-                {
-                    bool isDefault = stream.ReadBoolean();
-
-                    IFileInfo fileInfo = IFileInfo.Deserialize(stream);
-                    entry.FileInfos.Add(fileInfo);
-                    if (isDefault)
-                    {
-                        entry.FileInfo = fileInfo;
-                    }
-                }
+                entry.AddFileInfo(IFileInfo.Deserialize(stream));
 
                 int numSuperBundles = stream.ReadInt32();
                 for (int j = 0; j < numSuperBundles; j++)
@@ -714,12 +703,7 @@ public static class AssetManager
                 stream.WriteGuid(entry.Guid);
                 stream.WriteNullTerminatedString(entry.Type);
 
-                stream.WriteInt32(entry.FileInfos.Count);
-                foreach (IFileInfo fileInfo in entry.FileInfos)
-                {
-                    stream.WriteBoolean(fileInfo.Equals(entry.FileInfo));
-                    IFileInfo.Serialize(stream, fileInfo);
-                }
+                IFileInfo.Serialize(stream, entry.FileInfo!);
 
                 stream.WriteInt32(entry.Bundles.Count);
                 foreach (int bundleId in entry.Bundles)
@@ -741,12 +725,7 @@ public static class AssetManager
                 stream.WriteInt32(entry.ResMeta.Length);
                 stream.Write(entry.ResMeta, 0, entry.ResMeta.Length);
 
-                stream.WriteInt32(entry.FileInfos.Count);
-                foreach (IFileInfo fileInfo in entry.FileInfos)
-                {
-                    stream.WriteBoolean(fileInfo.Equals(entry.FileInfo));
-                    IFileInfo.Serialize(stream, fileInfo);
-                }
+                IFileInfo.Serialize(stream, entry.FileInfo!);
 
                 stream.WriteInt32(entry.Bundles.Count);
                 foreach (int bundleId in entry.Bundles)
@@ -765,12 +744,7 @@ public static class AssetManager
                 stream.WriteUInt32(entry.LogicalOffset);
                 stream.WriteUInt32(entry.LogicalSize);
 
-                stream.WriteInt32(entry.FileInfos.Count);
-                foreach (IFileInfo fileInfo in entry.FileInfos)
-                {
-                    stream.WriteBoolean(fileInfo.Equals(entry.FileInfo));
-                    IFileInfo.Serialize(stream, fileInfo);
-                }
+                IFileInfo.Serialize(stream, entry.FileInfo!);
 
                 stream.WriteInt32(entry.SuperBundleInstallChunks.Count);
                 foreach (int superBundleId in entry.SuperBundleInstallChunks)

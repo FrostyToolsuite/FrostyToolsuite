@@ -12,7 +12,7 @@ public class KelvinFileInfo : IFileInfo
     private readonly uint m_offset;
     private readonly uint m_size;
     private readonly uint m_logicalOffset;
-    
+
     public KelvinFileInfo(int inCasIndex, uint inOffset, uint inSize, uint inLogicalOffset)
     {
         m_casIndex = inCasIndex;
@@ -20,6 +20,8 @@ public class KelvinFileInfo : IFileInfo
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
     }
+
+    public bool IsDelta() => false;
 
     public bool IsComplete() => m_logicalOffset != 0;
 
@@ -30,7 +32,7 @@ public class KelvinFileInfo : IFileInfo
             stream.Position = m_offset;
 
             Block<byte> retVal = new((int)m_size);
-            
+
             stream.ReadExactly(retVal);
             return retVal;
         }
@@ -43,7 +45,7 @@ public class KelvinFileInfo : IFileInfo
             return Cas.DecompressData(stream, originalSize);
         }
     }
-    
+
     void IFileInfo.SerializeInternal(DataStream stream)
     {
         stream.WriteInt32(m_casIndex);
@@ -65,7 +67,7 @@ public class KelvinFileInfo : IFileInfo
                m_size == b.m_size &&
                m_logicalOffset == b.m_logicalOffset;
     }
-    
+
     public override bool Equals(object? obj)
     {
         if (obj is KelvinFileInfo b)

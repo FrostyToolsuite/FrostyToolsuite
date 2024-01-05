@@ -29,14 +29,14 @@ public static class Cas
         {
             uint packed = inDeltaStream.ReadUInt32(Endian.Big);
             int instructionType = (int)(packed & 0xF0000000) >> 28;
+            int instructionSize = (int)(packed & 0x0FFFFFFF);
 
             switch (instructionType)
             {
                 case 0:
                 {
                     // read base blocks
-                    int blockCount = (int)(packed & 0x0FFFFFFF);
-                    while (blockCount-- > 0)
+                    while (instructionSize-- > 0)
                     {
                         ReadBlock(inBaseStream, outBuffer);
                     }
@@ -45,74 +45,94 @@ public static class Cas
                 case 1:
                 {
                     // make large fixes in base block
-                    int blockCount = (int)(packed & 0x0FFFFFFF);
-                    
-                    // read base block
                     using (Block<byte> toPatch = ReadBlock(inBaseStream))
                     {
-                        while (blockCount-- > 0)
+                        while (instructionSize-- > 0)
                         {
                             ushort offset = inDeltaStream.ReadUInt16(Endian.Big);
                             ushort skipCount = inDeltaStream.ReadUInt16(Endian.Big);
 
                             // use base
                             int baseSize = offset - toPatch.ShiftAmount;
-                            toPatch.CopyTo(outBuffer, baseSize);
-                            toPatch.Shift(baseSize);
-                            outBuffer.Shift(baseSize);
-                        
+                            if (baseSize > 0)
+                            {
+                                toPatch.CopyTo(outBuffer, baseSize);
+                                toPatch.Shift(baseSize);
+                                outBuffer.Shift(baseSize);
+                            }
+
                             // use delta
                             ReadBlock(inDeltaStream, outBuffer);
-                        
+
                             // skip base
                             toPatch.Shift(skipCount);
                         }
+
+                        // fill rest with base block
+                        if (toPatch.Size > 0)
+                        {
+                            toPatch.CopyTo(outBuffer, toPatch.Size);
+                            toPatch.Shift(toPatch.Size);
+                            outBuffer.Shift(toPatch.Size);
+                        }
                     }
-                    
+
                     break;
                 }
                 case 2:
                 {
                     // make small fixes in base block
-                    int deltaBlockSize = (int)(packed & 0x0FFFFFFF);
-                    long curPos = inDeltaStream.Position;
-                    
                     int newBlockSize = inDeltaStream.ReadUInt16(Endian.Big) + 1;
                     int currentOffset = outBuffer.ShiftAmount;
+
+                    long curPos = inDeltaStream.Position;
 
                     // read base block
                     using (Block<byte> toPatch = ReadBlock(inBaseStream))
                     {
-                        while (inDeltaStream.Position < curPos + deltaBlockSize)
+                        while (inDeltaStream.Position < curPos + instructionSize)
                         {
                             ushort offset = inDeltaStream.ReadUInt16(Endian.Big);
                             byte skipCount = inDeltaStream.ReadByte();
                             byte addCount = inDeltaStream.ReadByte();
-                        
+
                             // use base
                             int baseSize = offset - toPatch.ShiftAmount;
-                            toPatch.CopyTo(outBuffer, baseSize);
-                            toPatch.Shift(baseSize);
-                            outBuffer.Shift(baseSize);
+                            if (baseSize > 0)
+                            {
+                                toPatch.CopyTo(outBuffer, baseSize);
+                                toPatch.Shift(baseSize);
+                                outBuffer.Shift(baseSize);
+                            }
 
                             // skip base
                             toPatch.Shift(skipCount);
-                        
+
                             // add delta
                             inDeltaStream.ReadExactly(outBuffer.ToSpan(0, addCount));
                             outBuffer.Shift(addCount);
                         }
+
+                        // fill rest with base block
+                        int restSize = newBlockSize - (outBuffer.ShiftAmount - currentOffset);
+                        if (restSize > 0)
+                        {
+                            toPatch.CopyTo(outBuffer, restSize);
+                            toPatch.Shift(restSize);
+                            outBuffer.Shift(restSize);
+                        }
+
+                        Debug.Assert(toPatch.Size == 0, "Didnt read base block completely");
                     }
-                    
+
                     Debug.Assert(outBuffer.ShiftAmount - currentOffset == newBlockSize, "Fuck");
-                    
+
                     break;
                 }
                 case 3:
                 {
                     // read delta blocks
-                    int blockCount = (int)(packed & 0x0FFFFFFF);
-                    while (blockCount-- > 0)
+                    while (instructionSize-- > 0)
                     {
                         ReadBlock(inDeltaStream, outBuffer);
                     }
@@ -120,9 +140,8 @@ public static class Cas
                 }
                 case 4:
                 {
-                    // skip blocks
-                    int blockCount = (int)(packed & 0x0FFFFFFF);
-                    while (blockCount-- > 0)
+                    // skip base blocks
+                    while (instructionSize-- > 0)
                     {
                         ReadBlock(inBaseStream, null);
                     }
@@ -132,34 +151,34 @@ public static class Cas
                     throw new InvalidDataException("block type");
             }
         }
-        
 
         outBuffer.ResetShift();
+
         return outBuffer;
     }
 
     public static long GetUncompressedSize(DataStream inStream)
     {
-        long uncompressedSize = 0;
-        while (inStream.Position < inStream.Length)
+        ulong packed = inStream.ReadUInt64(Endian.Big);
+
+        if (packed == 0)
         {
-            ulong packed = inStream.ReadUInt64(Endian.Big);
-            int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
-            CompressionType compressionType = (CompressionType)(packed >> 24);
-            Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
-            int bufferSize = (int)(packed & 0x000FFFFF);
-
-            if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
-            {
-                bufferSize = decompressedSize;
-            }
-
-            uncompressedSize += decompressedSize;
-
-            inStream.Position += bufferSize;
+            return 0;
         }
 
-        return uncompressedSize;
+        int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
+        CompressionType compressionType = (CompressionType)(packed >> 24);
+        Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
+        int bufferSize = (int)(packed & 0x000FFFFF);
+
+        if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
+        {
+            bufferSize = decompressedSize;
+        }
+
+        inStream.Position += bufferSize;
+
+        return decompressedSize;
     }
 
     public static long GetCompressedSize(DataStream inStream, long inUncompressedSize)
@@ -181,7 +200,7 @@ public static class Cas
             compressedSize += bufferSize + sizeof(ulong);
 
             inStream.Position += bufferSize;
-            
+
             inUncompressedSize -= decompressedSize;
             if (inUncompressedSize <= 0)
             {
@@ -191,10 +210,16 @@ public static class Cas
 
         return compressedSize;
     }
-    
+
     private static unsafe void ReadBlock(DataStream inStream, Block<byte>? outBuffer)
     {
         ulong packed = inStream.ReadUInt64(Endian.Big);
+
+        if (packed == 0)
+        {
+            // empty block just return, no point in parsing the header
+            return;
+        }
 
         byte flags = (byte)(packed >> 56);
         int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
@@ -206,7 +231,7 @@ public static class Cas
         {
             bufferSize = decompressedSize;
         }
-        
+
         Block<byte> compressedBuffer;
         if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None && outBuffer is not null)
         {
@@ -218,9 +243,10 @@ public static class Cas
             compressedBuffer = new Block<byte>(bufferSize);
         }
 
+        inStream.ReadExactly(compressedBuffer);
         if (outBuffer is not null)
         {
-            Decompress(inStream, compressedBuffer, compressionType, flags, bufferSize, outBuffer);
+            Decompress(compressedBuffer, compressionType, flags, bufferSize, outBuffer);
         }
 
         compressedBuffer.Dispose();
@@ -243,7 +269,7 @@ public static class Cas
         {
             bufferSize = decompressedSize;
         }
-        
+
         Block<byte> compressedBuffer;
         if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
         {
@@ -253,23 +279,22 @@ public static class Cas
         {
             compressedBuffer = new Block<byte>(bufferSize);
         }
-        
-        Decompress(inStream, compressedBuffer, compressionType, flags, bufferSize, outBuffer);
+
+        inStream.ReadExactly(compressedBuffer);
+        Decompress(compressedBuffer, compressionType, flags, bufferSize, outBuffer);
 
         // dispose compressed buffer, unless there wasn't a compressed buffer
         if ((compressionType & ~CompressionType.Obfuscated) != CompressionType.None)
         {
-            compressedBuffer.Dispose();   
+            compressedBuffer.Dispose();
         }
 
         return outBuffer;
     }
 
-    private static void Decompress(DataStream inStream, Block<byte> inCompressedBuffer,
-        CompressionType inCompressionType, byte inFlags, int inBufferSize, Block<byte> outBuffer)
+    private static void Decompress(Block<byte> inCompressedBuffer, CompressionType inCompressionType, byte inFlags,
+        int inBufferSize, Block<byte> outBuffer)
     {
-        inStream.ReadExactly(inCompressedBuffer);
-
         if (inCompressionType.HasFlag(CompressionType.Obfuscated))
         {
             // this probably only exist in FIFA 19
@@ -287,7 +312,6 @@ public static class Cas
             }
         }
 
-        // TODO: compression methods https://github.com/users/CadeEvs/projects/1?pane=issue&itemId=25477869
         switch (inCompressionType & ~CompressionType.Obfuscated)
         {
             case CompressionType.None:
@@ -302,7 +326,8 @@ public static class Cas
                 zstd.Decompress(inCompressedBuffer, ref outBuffer, inFlags != 0 ? CompressionFlags.ZStdUseDicts : CompressionFlags.None);
                 break;
             case CompressionType.LZ4:
-                //LZ4.Decompress(compressedBuffer, ref outBuffer);
+                CompressionLZ4 lz4 = new();
+                lz4.Decompress(inCompressedBuffer, ref outBuffer);
                 break;
             case CompressionType.OodleKraken:
             {

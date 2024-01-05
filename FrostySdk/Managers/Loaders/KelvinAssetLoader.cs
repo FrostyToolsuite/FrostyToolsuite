@@ -143,7 +143,7 @@ public class KelvinAssetLoader : IAssetLoader
                          uint offset = (uint)dataStream.Position;
                          uint size = (uint)Helper.GetSize(dataStream, ebx.OriginalSize);
 
-                         ebx.FileInfos.Add(new KelvinFileInfo(resourceInfo.FileIndex,
+                         ebx.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
                              resourceInfo.Offset + offset, size, 0));
 
                          AssetManager.AddEbx(ebx, bundle.Id);
@@ -162,7 +162,7 @@ public class KelvinAssetLoader : IAssetLoader
                          uint offset = (uint)dataStream.Position;
                          uint size = (uint)Helper.GetSize(dataStream, res.OriginalSize);
 
-                         res.FileInfos.Add(new KelvinFileInfo(resourceInfo.FileIndex,
+                         res.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
                              resourceInfo.Offset + offset, size, 0));
 
                          AssetManager.AddRes(res, bundle.Id);
@@ -182,7 +182,7 @@ public class KelvinAssetLoader : IAssetLoader
                          uint size = (uint)Helper.GetSize(dataStream,
                              (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize);
 
-                         chunk.FileInfos.Add(new KelvinFileInfo(resourceInfo.FileIndex,
+                         chunk.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
                              resourceInfo.Offset + offset, size, chunk.LogicalOffset));
 
                          AssetManager.AddChunk(chunk, bundle.Id);
@@ -214,7 +214,7 @@ public class KelvinAssetLoader : IAssetLoader
 
                     ChunkAssetEntry chunk = new(guid, Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
 
-                    chunk.FileInfos.Add(new KelvinFileInfo(fileIndex, dataOffset, dataSize, 0));
+                    chunk.AddFileInfo(new KelvinFileInfo(fileIndex, dataOffset, dataSize, 0));
 
                     AssetManager.AddSuperBundleChunk(chunk);
 
