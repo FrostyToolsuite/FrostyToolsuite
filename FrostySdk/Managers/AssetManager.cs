@@ -26,10 +26,10 @@ public static class AssetManager
 
     private static readonly Dictionary<int, BundleInfo> s_bundleMapping = new();
 
-    private static readonly Dictionary<int, EbxAssetEntry> s_ebxNameHashMapping = new();
+    private static readonly Dictionary<string, EbxAssetEntry> s_ebxNameMapping = new();
     private static readonly Dictionary<Guid, EbxAssetEntry> s_ebxGuidMapping = new();
 
-    private static readonly Dictionary<int, ResAssetEntry> s_resNameHashMapping = new();
+    private static readonly Dictionary<string, ResAssetEntry> s_resNameHashMapping = new();
     private static readonly Dictionary<ulong, ResAssetEntry> s_resRidMapping = new();
 
     private static readonly Dictionary<Guid, ChunkAssetEntry> s_chunkGuidMapping = new();
@@ -103,7 +103,7 @@ public static class AssetManager
                 if (patchResult != null)
                 {
                     // modified/added ebx
-                    foreach (EbxAssetEntry ebxAssetEntry in s_ebxNameHashMapping.Values)
+                    foreach (EbxAssetEntry ebxAssetEntry in s_ebxNameMapping.Values)
                     {
                         EbxAssetEntry? prePatch = prePatchEbx.Find(e =>
                             e.Name.Equals(ebxAssetEntry.Name, StringComparison.OrdinalIgnoreCase));
@@ -217,8 +217,7 @@ public static class AssetManager
     /// <returns>The <see cref="EbxAssetEntry"/> or null if it doesn't exist.</returns>
     public static EbxAssetEntry? GetEbxAssetEntry(string name)
     {
-        int nameHash = Utils.Utils.HashString(name, true);
-        return s_ebxNameHashMapping.GetValueOrDefault(nameHash);
+        return s_ebxNameMapping.GetValueOrDefault(name.ToLower());
     }
 
     /// <summary>
@@ -242,8 +241,7 @@ public static class AssetManager
     /// <returns>The <see cref="ResAssetEntry"/> or null if it doesn't exist.</returns>
     public static ResAssetEntry? GetResAssetEntry(string name)
     {
-        int nameHash = Utils.Utils.HashString(name, true);
-        return s_resNameHashMapping.GetValueOrDefault(nameHash);
+        return s_resNameHashMapping.GetValueOrDefault(name.ToLower());
     }
 
     /// <summary>
@@ -321,7 +319,7 @@ public static class AssetManager
 
     public static IEnumerable<EbxAssetEntry> EnumerateEbxAssetEntries()
     {
-        foreach (EbxAssetEntry entry in s_ebxNameHashMapping.Values)
+        foreach (EbxAssetEntry entry in s_ebxNameMapping.Values)
         {
             yield return entry;
         }
@@ -378,7 +376,12 @@ public static class AssetManager
 
     internal static void AddEbx(EbxAssetEntry entry, int bundleId)
     {
-        if (s_ebxNameHashMapping.TryGetValue(entry.NameHash, out EbxAssetEntry? existing))
+        if (entry.Name == "characters/plants/playable/citron/tattoo/citron_tattoo_icestripes_icecitron_unlockasset")
+        {
+
+        }
+
+        if (s_ebxNameMapping.TryGetValue(entry.Name, out EbxAssetEntry? existing))
         {
             if (entry.FileInfo is not null)
             {
@@ -390,13 +393,13 @@ public static class AssetManager
         else
         {
             entry.Bundles.Add(bundleId);
-            s_ebxNameHashMapping.Add(entry.NameHash, entry);
+            s_ebxNameMapping.Add(entry.Name, entry);
         }
     }
 
     internal static void AddRes(ResAssetEntry entry, int bundleId)
     {
-        if (s_resNameHashMapping.TryGetValue(entry.NameHash, out ResAssetEntry? existing))
+        if (s_resNameHashMapping.TryGetValue(entry.Name, out ResAssetEntry? existing))
         {
             if (entry.FileInfo is not null)
             {
@@ -412,7 +415,7 @@ public static class AssetManager
             {
                 s_resRidMapping.Add(entry.ResRid, entry);
             }
-            s_resNameHashMapping.Add(entry.NameHash, entry);
+            s_resNameHashMapping.Add(entry.Name, entry);
         }
     }
 
@@ -488,8 +491,15 @@ public static class AssetManager
             return;
         }
 
-        foreach (EbxAssetEntry entry in s_ebxNameHashMapping.Values)
+        foreach (EbxAssetEntry entry in s_ebxNameMapping.Values)
         {
+            if (entry.Name == "sound/vo/ingame/gnomes/configs/vo_gnome_jumpup")
+            {
+                var b = GetAsset(entry);
+                File.WriteAllBytes("test.ebx", b.ToArray());
+                b.Dispose();
+            }
+
             using (BlockStream stream = new(GetAsset(entry)))
             {
                 BaseEbxReader reader = BaseEbxReader.CreateReader(stream);
@@ -499,6 +509,12 @@ public static class AssetManager
                 foreach (Guid dependency in reader.GetDependencies())
                 {
                     entry.DependentAssets.Add(dependency);
+                }
+
+                if (s_ebxGuidMapping.TryGetValue(entry.Guid, out var entry2))
+                {
+                    EbxAsset asset = reader.ReadAsset<EbxAsset>();
+                    var a2 = GetEbx(entry2);
                 }
 
                 s_ebxGuidMapping.Add(entry.Guid, entry);
@@ -600,7 +616,7 @@ public static class AssetManager
                 else
                 {
                     s_ebxGuidMapping.Add(entry.Guid, entry);
-                    s_ebxNameHashMapping.Add(entry.NameHash, entry);
+                    s_ebxNameMapping.Add(entry.Name, entry);
                 }
             }
 
@@ -632,7 +648,7 @@ public static class AssetManager
                     {
                         s_resRidMapping.Add(entry.ResRid, entry);
                     }
-                    s_resNameHashMapping.Add(Utils.Utils.HashString(name, true), entry);
+                    s_resNameHashMapping.Add(name, entry);
                 }
             }
 
@@ -692,8 +708,8 @@ public static class AssetManager
                 stream.WriteNullTerminatedString(bundle.Parent.Name);
             }
 
-            stream.WriteInt32(s_ebxNameHashMapping.Count);
-            foreach (EbxAssetEntry entry in s_ebxNameHashMapping.Values)
+            stream.WriteInt32(s_ebxNameMapping.Count);
+            foreach (EbxAssetEntry entry in s_ebxNameMapping.Values)
             {
                 stream.WriteNullTerminatedString(entry.Name);
 

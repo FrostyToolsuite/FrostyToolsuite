@@ -69,7 +69,19 @@ public class NonCasFileInfo : IFileInfo
     {
         if (m_isDelta)
         {
-            throw new NotImplementedException();
+            BlockStream? baseStream = null;
+            if (m_baseSize > 0)
+            {
+                baseStream = BlockStream.FromFile(FileSystemSource.Base.ResolvePath($"{m_superBundleName}.sb"),
+                    m_baseOffset, (int)m_baseSize);
+            }
+
+            using (BlockStream deltaStream = BlockStream.FromFile(FileSystemManager.ResolvePath(true, $"{m_superBundleName}.sb"), m_offset, (int)m_size))
+            {
+                var retVal = Cas.DecompressData(deltaStream, baseStream, inOriginalSize, m_midInstructionSize);
+                baseStream?.Dispose();
+                return retVal;
+            }
         }
 
         using (BlockStream stream = BlockStream.FromFile(FileSystemManager.ResolvePath(m_isPatch, $"{m_superBundleName}.sb"), m_offset, (int)m_size))

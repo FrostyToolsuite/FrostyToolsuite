@@ -141,7 +141,7 @@ public class KelvinAssetLoader : IAssetLoader
                          }
 
                          uint offset = (uint)dataStream.Position;
-                         uint size = (uint)Helper.GetSize(dataStream, ebx.OriginalSize);
+                         uint size = (uint)Cas.GetCompressedSize(dataStream, ebx.OriginalSize);
 
                          ebx.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
                              resourceInfo.Offset + offset, size, 0));
@@ -160,7 +160,7 @@ public class KelvinAssetLoader : IAssetLoader
                          }
 
                          uint offset = (uint)dataStream.Position;
-                         uint size = (uint)Helper.GetSize(dataStream, res.OriginalSize);
+                         uint size = (uint)Cas.GetCompressedSize(dataStream, res.OriginalSize);
 
                          res.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
                              resourceInfo.Offset + offset, size, 0));
@@ -179,7 +179,7 @@ public class KelvinAssetLoader : IAssetLoader
                          }
 
                          uint offset = (uint)dataStream.Position;
-                         uint size = (uint)Helper.GetSize(dataStream,
+                         uint size = (uint)Cas.GetCompressedSize(dataStream,
                              (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize);
 
                          chunk.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,

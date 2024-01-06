@@ -361,10 +361,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 midInstructionSize = -1;
             }
 
-            if (entry?.Name == "d657b459-2780-bcdd-7c3d-73982b1cbfd9")
-            {
-
-            }
+            uint lastDeltaOffset = (uint)inDeltaStream.Position;
+            uint lastBaseOffset = (uint)(inBaseStream?.Position ?? 0);
 
             // read patched storing
             uint packed = inDeltaStream.ReadUInt32(Endian.Big);
@@ -395,6 +393,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
                                 if (instructionSize != 0)
                                 {
                                     midInstructionSize = instructionSize;
+                                    deltaOffset = lastDeltaOffset;
+                                    baseOffset = lastBaseOffset;
                                 }
                             }
                         }
@@ -440,6 +440,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
                                 if (instructionSize != 0)
                                 {
                                     midInstructionSize = instructionSize;
+                                    deltaOffset = lastDeltaOffset;
+                                    baseOffset = lastBaseOffset;
                                 }
                             }
                         }
@@ -521,6 +523,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
                                 if (instructionSize != 0)
                                 {
                                     midInstructionSize = instructionSize;
+                                    deltaOffset = lastDeltaOffset;
+                                    baseOffset = lastBaseOffset;
                                 }
                             }
                         }
@@ -541,16 +545,10 @@ public class Dynamic2018AssetLoader : IAssetLoader
             }
         }
 
-        if (inBundle.Name ==
-            "win32/characters/plants/playable/assaultcorn/faceprop/assaultcorn_faceprop_pinkmetalmaskgold_unlockasset_bpb")
-        {
-
-        }
-
         // ??? this makes no sense
         long extraSize = 0;
 
-        while (inBaseStream?.Position - inBaseOffset <  inBaseSize)
+        while ((inBaseStream?.Position ?? 0) - inBaseOffset <  inBaseSize)
         {
             Debug.Assert(inBaseStream is not null);
 
@@ -560,13 +558,14 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 continue;
             }
 
-            if (entry is not null && sizeLeft == originalSize)
+            if (sizeLeft == originalSize)
             {
                 deltaOffset = (uint)inDeltaStream.Position;
-                baseOffset = (uint)(inBaseStream?.Position ?? 0);
+                baseOffset = (uint)inBaseStream.Position;
                 midInstructionSize = -1;
             }
-            sizeLeft -= Cas.GetUncompressedSize(inBaseStream);
+
+            sizeLeft -= Cas.GetUncompressedSize(inBaseStream!); // no idea why rider complains here, the Debug.Asset should take care of it
 
             if (sizeLeft <= 0)
             {
@@ -585,7 +584,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         if (extraSize != 0)
         {
-            // TODO: this is not correct, we definitely fucked up the parsing somewhere
+            Debug.WriteLine($"{extraSize} decompressed bytes ignored at the end of bundle {inBundle.Name}");
         }
     }
 
@@ -645,7 +644,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
         {
             uint offset = (uint)stream.Position;
-            uint size = (uint)Helper.GetSize(stream, ebx.OriginalSize);
+            uint size = (uint)Cas.GetCompressedSize(stream, ebx.OriginalSize);
             ebx.AddFileInfo(new NonCasFileInfo(bundle.Parent.Name, inIsPatch, offset, size));
 
             AssetManager.AddEbx(ebx, bundle.Id);
@@ -654,7 +653,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         foreach (ResAssetEntry res in bundleMeta.ResList)
         {
             uint offset = (uint)stream.Position;
-            uint size = (uint)Helper.GetSize(stream, res.OriginalSize);
+            uint size = (uint)Cas.GetCompressedSize(stream, res.OriginalSize);
             res.AddFileInfo(new NonCasFileInfo(bundle.Parent.Name, inIsPatch, offset, size));
 
             AssetManager.AddRes(res, bundle.Id);
@@ -664,7 +663,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         {
             uint offset = (uint)stream.Position;
             // the size of the range is different than the logical size, since the range wont get decreased further once it fits in one block
-            uint size = (uint)Helper.GetSize(stream, (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize);
+            uint size = (uint)Cas.GetCompressedSize(stream, (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize);
             chunk.AddFileInfo(new NonCasFileInfo(bundle.Parent.Name, inIsPatch, offset, size, chunk.LogicalOffset));
 
             AssetManager.AddChunk(chunk, bundle.Id);

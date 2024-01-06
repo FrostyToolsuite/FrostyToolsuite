@@ -18,7 +18,10 @@ public static class Cas
             ReadBlock(inStream, outBuffer);
         }
 
+        Debug.Assert(outBuffer.Size == 0);
+
         outBuffer.ResetShift();
+
         return outBuffer;
     }
 
@@ -152,6 +155,235 @@ public static class Cas
             }
         }
 
+        Debug.Assert(inBaseStream.Position == inBaseStream.Length);
+        Debug.Assert(outBuffer.Size == 0);
+
+        outBuffer.ResetShift();
+
+        return outBuffer;
+    }
+
+    public static Block<byte> DecompressData(DataStream inDeltaStream, DataStream? inBaseStream, int inOriginalSize, int inMidInstructionSize)
+    {
+        Block<byte> outBuffer = new(inOriginalSize);
+        bool startBlock = true;
+        while (inDeltaStream.Position < inDeltaStream.Length)
+        {
+            uint packed = inDeltaStream.ReadUInt32(Endian.Big);
+            int instructionType = (int)(packed & 0xF0000000) >> 28;
+            int instructionSize = (int)(packed & 0x0FFFFFFF);
+
+            switch (instructionType)
+            {
+                case 0:
+                {
+                    // read base blocks
+                    Debug.Assert(inBaseStream is not null);
+                    while (instructionSize-- > 0)
+                    {
+                        if (startBlock && inMidInstructionSize != -1 && instructionSize >= inMidInstructionSize)
+                        {
+                            ReadBlock(inBaseStream, null);
+                        }
+                        else
+                        {
+                            ReadBlock(inBaseStream, outBuffer);
+                        }
+
+                        if (inBaseStream.Position >= inBaseStream.Length && inDeltaStream.Position >= inDeltaStream.Length)
+                        {
+                            Debug.Assert(inBaseStream.Position == inBaseStream.Length);
+                            Debug.Assert(inDeltaStream.Position == inDeltaStream.Length);
+
+                            outBuffer.ResetShift();
+
+                            return outBuffer;
+                        }
+                    }
+                    break;
+                }
+                case 1:
+                {
+                    // make large fixes in base block
+                    Debug.Assert(inBaseStream is not null);
+                    using (Block<byte> toPatch = ReadBlock(inBaseStream))
+                    {
+                        while (instructionSize-- > 0)
+                        {
+                            ushort offset = inDeltaStream.ReadUInt16(Endian.Big);
+                            ushort skipCount = inDeltaStream.ReadUInt16(Endian.Big);
+
+                            // use base
+                            int baseSize = offset - toPatch.ShiftAmount;
+                            if (baseSize > 0)
+                            {
+                                if (!startBlock || inMidInstructionSize == -1 || instructionSize < inMidInstructionSize)
+                                {
+                                    toPatch.CopyTo(outBuffer, baseSize);
+                                    outBuffer.Shift(baseSize);
+                                }
+
+                                toPatch.Shift(baseSize);
+                            }
+
+                            // use delta
+                            if (startBlock && inMidInstructionSize != -1 && instructionSize >= inMidInstructionSize)
+                            {
+                                ReadBlock(inDeltaStream, null);
+                            }
+                            else
+                            {
+                                ReadBlock(inDeltaStream, outBuffer);
+                            }
+
+                            // skip base
+                            toPatch.Shift(skipCount);
+
+                            if (instructionSize != 0 && inBaseStream.Position >= inBaseStream.Length && inDeltaStream.Position >= inDeltaStream.Length)
+                            {
+                                Debug.Assert(inBaseStream.Position == inBaseStream.Length);
+                                Debug.Assert(inDeltaStream.Position == inDeltaStream.Length);
+
+                                outBuffer.ResetShift();
+
+                                return outBuffer;
+                            }
+                        }
+
+                        // fill rest with base block
+                        if (toPatch.Size > 0)
+                        {
+                            toPatch.CopyTo(outBuffer, toPatch.Size);
+                            toPatch.Shift(toPatch.Size);
+                            outBuffer.Shift(toPatch.Size);
+                        }
+                    }
+
+                    break;
+                }
+                case 2:
+                {
+                    // make small fixes in base block
+                    Debug.Assert(inBaseStream is not null);
+
+                    int newBlockSize = inDeltaStream.ReadUInt16(Endian.Big) + 1;
+                    int currentOffset = outBuffer.ShiftAmount;
+
+                    long curPos = inDeltaStream.Position;
+
+                    // read base block
+                    using (Block<byte> toPatch = ReadBlock(inBaseStream))
+                    {
+                        while (inDeltaStream.Position < curPos + instructionSize)
+                        {
+                            ushort offset = inDeltaStream.ReadUInt16(Endian.Big);
+                            byte skipCount = inDeltaStream.ReadByte();
+                            byte addCount = inDeltaStream.ReadByte();
+
+                            // use base
+                            int baseSize = offset - toPatch.ShiftAmount;
+                            if (baseSize > 0)
+                            {
+                                toPatch.CopyTo(outBuffer, baseSize);
+                                toPatch.Shift(baseSize);
+                                outBuffer.Shift(baseSize);
+                            }
+
+                            // skip base
+                            toPatch.Shift(skipCount);
+
+                            // add delta
+                            inDeltaStream.ReadExactly(outBuffer.ToSpan(0, addCount));
+                            outBuffer.Shift(addCount);
+                        }
+
+                        // fill rest with base block
+                        int restSize = newBlockSize - (outBuffer.ShiftAmount - currentOffset);
+                        if (restSize > 0)
+                        {
+                            toPatch.CopyTo(outBuffer, restSize);
+                            toPatch.Shift(restSize);
+                            outBuffer.Shift(restSize);
+                        }
+
+                        Debug.Assert(toPatch.Size == 0, "Didnt read base block completely");
+                    }
+
+                    Debug.Assert(outBuffer.ShiftAmount - currentOffset == newBlockSize, "Fuck");
+
+                    break;
+                }
+                case 3:
+                {
+                    // read delta blocks
+                    while (instructionSize-- > 0)
+                    {
+                        if (startBlock && inMidInstructionSize != -1 && instructionSize >= inMidInstructionSize)
+                        {
+                            ReadBlock(inDeltaStream, null);
+                        }
+                        else
+                        {
+                            ReadBlock(inDeltaStream, outBuffer);
+                        }
+
+                        if ((inBaseStream?.Position ?? 0) >= (inBaseStream?.Length ?? 0) && inDeltaStream.Position >= inDeltaStream.Length)
+                        {
+                            Debug.Assert(inBaseStream?.Position == inBaseStream?.Length);
+                            Debug.Assert(inDeltaStream.Position == inDeltaStream.Length);
+
+                            outBuffer.ResetShift();
+
+                            return outBuffer;
+                        }
+                    }
+                    break;
+                }
+                case 4:
+                {
+                    // skip base blocks
+                    Debug.Assert(inBaseStream is not null);
+                    while (instructionSize-- > 0)
+                    {
+                        ReadBlock(inBaseStream, null);
+
+                        // probably not needed, but just add it just in case
+                        if (inBaseStream.Position >= inBaseStream.Length && inDeltaStream.Position >= inDeltaStream.Length)
+                        {
+                            Debug.Assert(inBaseStream.Position == inBaseStream.Length);
+                            Debug.Assert(inDeltaStream.Position == inDeltaStream.Length);
+
+                            outBuffer.ResetShift();
+
+                            return outBuffer;
+                        }
+                    }
+                    break;
+                }
+                default:
+                    throw new InvalidDataException("block type");
+            }
+
+            startBlock = false;
+
+            if ((inBaseStream?.Position ?? 0) >= (inBaseStream?.Length ?? 0) && inDeltaStream.Position >= inDeltaStream.Length)
+            {
+                Debug.Assert(inBaseStream?.Position == inBaseStream?.Length);
+                Debug.Assert(inDeltaStream.Position == inDeltaStream.Length);
+
+                outBuffer.ResetShift();
+
+                return outBuffer;
+            }
+        }
+
+        while ((inBaseStream?.Position ?? 0) < (inBaseStream?.Length ?? 0))
+        {
+            ReadBlock(inBaseStream!, outBuffer);
+        }
+
+        Debug.Assert(outBuffer.Size == 0);
+
         outBuffer.ResetShift();
 
         return outBuffer;
@@ -187,6 +419,12 @@ public static class Cas
         while (inStream.Position < inStream.Length)
         {
             ulong packed = inStream.ReadUInt64(Endian.Big);
+
+            if (packed == 0)
+            {
+                continue;
+            }
+
             int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
             CompressionType compressionType = (CompressionType)(packed >> 24);
             Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
@@ -204,6 +442,7 @@ public static class Cas
             inUncompressedSize -= decompressedSize;
             if (inUncompressedSize <= 0)
             {
+                Debug.Assert(inUncompressedSize == 0);
                 break;
             }
         }
