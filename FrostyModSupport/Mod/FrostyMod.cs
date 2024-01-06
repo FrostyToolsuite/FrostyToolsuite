@@ -57,12 +57,14 @@ public class FrostyMod : IResourceContainer
     /// <exception cref="Exception">When the mod file is corrupted.</exception>
     public static FrostyMod? Load(string inPath)
     {
-        if (!File.Exists(inPath))
+
+        FileInfo fileInfo = new(inPath);
+        if (!fileInfo.Exists)
         {
             return null;
         }
 
-        using (BlockStream stream = BlockStream.FromFile(inPath, false))
+        using (BlockStream stream = BlockStream.FromFile(fileInfo.FullName, false))
         {
             // read header
             if (Magic != stream.ReadUInt64())
@@ -129,7 +131,7 @@ public class FrostyMod : IResourceContainer
             long offset = dataOffset + dataCount * 12;
             for (int i = 0; i < dataCount; i++)
             {
-                data[i] = new ResourceData(inPath, offset + stream.ReadInt64(), stream.ReadInt32());
+                data[i] = new ResourceData(fileInfo.FullName, offset + stream.ReadInt64(), stream.ReadInt32());
             }
 
             return new FrostyMod(modDetails, head, resources, data);
