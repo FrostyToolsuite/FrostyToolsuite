@@ -1,30 +1,30 @@
 using System;
 using System.Collections.Generic;
 using System.Xml;
-using static Frosty.Sdk.Sdk.TypeFlags;
-using Frosty.Sdk.IO.Ebx;
-using Frosty.Sdk.Ebx;
 using System.Reflection;
+using System.Diagnostics;
+using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers;
-using System.Diagnostics;
 using Frosty.Sdk.Interfaces;
+using static Frosty.Sdk.Sdk.TypeFlags;
 
 namespace Frosty.Sdk.IO;
 
-public class DbxWriter : IDisposable
+public sealed class DbxWriter : IDisposable
 {
     private static readonly string s_instanceGuidName = "__InstanceGuid";
+    private static readonly string s_instanceIdName = "__Id";
 
-    private string m_filePath;
-    private XmlWriter m_xmlWriter;
+    private readonly string m_filePath;
+    private readonly XmlWriter m_xmlWriter;
+    private readonly XmlWriterSettings m_settings = new() { Indent = true, IndentChars = "\t" };
 
     public DbxWriter(string inFilePath)
     {
         m_filePath = inFilePath;
-        XmlWriterSettings settings = new() { Indent = true, IndentChars = "\t" };
-        m_xmlWriter = XmlWriter.Create(m_filePath, settings);
+        m_xmlWriter = XmlWriter.Create(m_filePath, m_settings);
     }
 
     public void Write(EbxAsset inAsset)
@@ -40,6 +40,7 @@ public class DbxWriter : IDisposable
     public void Dispose()
     {
         m_xmlWriter.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #region Partition Writing
@@ -79,7 +80,40 @@ public class DbxWriter : IDisposable
         m_xmlWriter.WriteEndElement();
     }
 
+    /// <summary>
+    /// Writes the given ebx object to the dbx as an instance.
+    /// </summary>
+    /// <param name="ebxObj"></param>
+    private void WriteInstance(object ebxObj)
+    {
+        AssetClassGuid guid = ((dynamic)ebxObj).GetInstanceGuid();
+        Type ebxType = ebxObj.GetType();
+
+        WriteInstanceStart(guid,
+            $"{ebxType.Namespace}.{ebxType.GetCustomAttribute<DisplayNameAttribute>()!.Name}",
+            ((dynamic)ebxObj).__Id);
+
+        if (ebxType.IsClass)
+        {
+            WriteDbxClass(ebxType, ebxObj);
+        }
+        else
+        {
+            throw new NotImplementedException("DbxWriter: instance isn't a class?");
+        }
+
+        WriteInstanceEnd();
+    }
+
     #endregion
+
+    private static Guid CreateGuidFromInternalId(int internalId)
+    {
+        Span<byte> guid = stackalloc byte[16];
+        guid[15] = (byte)internalId;
+
+        return new Guid(guid);
+    }
 
     #region Field Writing
 
@@ -89,7 +123,7 @@ public class DbxWriter : IDisposable
     /// <typeparam name="T"></typeparam>
     /// <param name="obj"></param>
     /// <returns></returns>
-    T GetFieldValue<T>(object obj)
+    private static T GetFieldValue<T>(object obj)
     {
         if (obj is not IPrimitive primitive)
         {
@@ -155,7 +189,7 @@ public class DbxWriter : IDisposable
                 WriteFieldWithValue(fieldName!, Enum.GetName(objType, GetFieldValue<object>(obj))!, isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.ResourceRef:
-                WriteFieldWithValue(fieldName!, (ResourceRef)obj, isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName!, GetFieldValue<ResourceRef>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Class:
                 WriteFieldWithValue(fieldName!, (PointerRef)obj, isArrayItem, isTransient, isHidden);
@@ -317,7 +351,7 @@ public class DbxWriter : IDisposable
             EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(value.External.FileGuid);
             if (entry is not null)
             {
-                m_xmlWriter.WriteAttributeString("ref", $"{entry!.Name}/{value.External.ClassGuid}");
+                m_xmlWriter.WriteAttributeString("ref", $"{entry!.Name}\\{value.External.ClassGuid}");
                 m_xmlWriter.WriteAttributeString("partitionGuid", entry.Guid.ToString());
             }
             else
@@ -437,10 +471,7 @@ public class DbxWriter : IDisposable
     {
         m_xmlWriter.WriteStartElement("boxed");
         m_xmlWriter.WriteAttributeString("name", name);
-        if(!string.IsNullOrEmpty(valueType))
-        {
-            m_xmlWriter.WriteAttributeString("type", valueType);
-        }
+        m_xmlWriter.WriteAttributeString("type", valueType);
     }
 
     private void WriteBoxedValueRefEnd()
@@ -499,7 +530,7 @@ public class DbxWriter : IDisposable
 
         foreach (object ebxObj in inAsset.objects)
         {
-            WriteDbxInstance(ebxObj);
+            WriteInstance(ebxObj);
         }
 
         WritePartitionEnd();
@@ -507,31 +538,6 @@ public class DbxWriter : IDisposable
         w.Stop();
         Console.WriteLine($"Finished writing {m_filePath} in {w.ElapsedMilliseconds} ms");
 #endif
-    }
-
-    /// <summary>
-    /// Writes the given ebx object to the dbx as an instance.
-    /// </summary>
-    /// <param name="ebxObj"></param>
-    private void WriteDbxInstance(object ebxObj)
-    {
-        AssetClassGuid guid = ((dynamic)ebxObj).GetInstanceGuid();
-        Type ebxType = ebxObj.GetType();
-
-        WriteInstanceStart(guid,
-            $"{ebxType.Namespace}.{ebxType.GetCustomAttribute<DisplayNameAttribute>()!.Name}",
-            ((dynamic)ebxObj).__Id);
-
-        if (ebxType.IsClass)
-        {
-            WriteDbxClass(ebxType, ebxObj);
-        }
-        else
-        {
-            throw new NotImplementedException("DbxWriter: instance isn't a class?");
-        }
-
-        WriteInstanceEnd();
     }
 
     /// <summary>
@@ -576,7 +582,7 @@ public class DbxWriter : IDisposable
 
         foreach (PropertyInfo pi in currentTypeProps)
         {
-            if (pi.Name.Equals(s_instanceGuidName))
+            if (pi.Name.Equals(s_instanceGuidName) || pi.Name.Equals(s_instanceIdName))
             {
                 continue;
             }
@@ -603,13 +609,5 @@ public class DbxWriter : IDisposable
                 return index1.CompareTo(index2);
             });
         }
-    }
-
-    private Guid CreateGuidFromInternalId(int inInternalId)
-    {
-        Span<byte> guid = stackalloc byte[16];
-        guid[15] = (byte)inInternalId;
-
-        return new Guid(guid);
     }
 }
