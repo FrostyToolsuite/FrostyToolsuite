@@ -15,7 +15,7 @@ public static class ResourceManager
 {
     public static bool IsInitialized { get; private set; }
 
-    private static readonly Dictionary<Sha1, (List<CasFileInfo>, bool)> s_resourceEntries = new();
+    private static readonly Dictionary<Sha1, (CasFileInfo, bool)> s_resourceEntries = new();
 
     private static readonly List<CatPatchEntry> s_patchEntries = new();
 
@@ -109,35 +109,26 @@ public static class ResourceManager
         return s_sizeMap.TryGetValue(sha1, out uint size) ? size : -1;
     }
 
-    public static IEnumerable<IFileInfo>? GetPatchFileInfos(Sha1 sha1, Sha1 deltaSha1, Sha1 baseSha1)
+    public static CasFileInfo? GetPatchFileInfo(Sha1 sha1, Sha1 deltaSha1, Sha1 baseSha1)
     {
-        if (!s_resourceEntries.TryGetValue(sha1, out (List<CasFileInfo>, bool) fileInfos))
+        if (s_resourceEntries.TryGetValue(sha1, out (CasFileInfo, bool) fileInfos) && fileInfos.Item2)
         {
             return null;
         }
 
-        if (fileInfos.Item2)
-        {
-            return null;
-        }
+        CasFileInfo baseInfo = s_resourceEntries[baseSha1].Item1;
+        CasFileInfo deltaInfo = s_resourceEntries[deltaSha1].Item1;
 
-        List<CasFileInfo> baseInfos = s_resourceEntries[baseSha1].Item1;
-        List<CasFileInfo> deltaInfos = s_resourceEntries[deltaSha1].Item1;
+        CasFileInfo fileInfo = new(baseInfo.GetBase(), deltaInfo.GetBase());
 
-        for (int j = 0; j < baseInfos.Count; j++)
-        {
-            CasFileInfo fileInfo = new(deltaInfos[j].GetBase(), baseInfos[j].GetBase());
+        s_resourceEntries.TryAdd(sha1, (fileInfo, true));
 
-            s_resourceEntries.TryAdd(sha1, (new List<CasFileInfo>(), true));
-            s_resourceEntries[sha1].Item1.Add(fileInfo);
-        }
-
-        return s_resourceEntries[sha1].Item1;
+        return fileInfo;
     }
 
-    public static IEnumerable<IFileInfo>? GetFileInfos(Sha1 sha1)
+    public static CasFileInfo? GetFileInfo(Sha1 sha1)
     {
-        if (!s_resourceEntries.TryGetValue(sha1, out (List<CasFileInfo>, bool) fileInfos))
+        if (!s_resourceEntries.TryGetValue(sha1, out (CasFileInfo, bool) fileInfos))
         {
             return null;
         }
@@ -182,8 +173,7 @@ public static class ResourceManager
             }
 
             CasFileInfo fileInfo = new(baseInfo?.GetBase(), deltaFileInfos[0].GetBase());
-            s_resourceEntries.TryAdd(entry.Sha1, (new List<CasFileInfo>(), false));
-            s_resourceEntries[entry.Sha1].Item1.Add(fileInfo);
+            s_resourceEntries.TryAdd(entry.Sha1, (fileInfo, false));
         }
         s_patchEntries.Clear();
     }
@@ -198,7 +188,7 @@ public static class ResourceManager
         Dictionary<Sha1, List<CasFileInfo>> retVal = new();
 
         int installChunkIndex = FileSystemManager.GetInstallChunkIndex(info);
-        bool patch = inSource == FileSystemSource.Patch;
+        bool patch = inSource.Path == FileSystemSource.Patch.Path;
 
         using (CatStream stream = new(filePath))
         {
@@ -209,8 +199,10 @@ public static class ResourceManager
 
                 CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset);
 
-                s_resourceEntries.TryAdd(entry.Sha1, (new List<CasFileInfo>(), false));
-                s_resourceEntries[entry.Sha1].Item1.Add(fileInfo);
+                if (!s_resourceEntries.TryAdd(entry.Sha1, (fileInfo, false)) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].Item1.IsComplete())
+                {
+                    s_resourceEntries[entry.Sha1] = (fileInfo, false);
+                }
 
                 if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))
                 {
@@ -229,8 +221,10 @@ public static class ResourceManager
                 CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset,
                     entry.KeyId);
 
-                s_resourceEntries.TryAdd(entry.Sha1, (new List<CasFileInfo>(), false));
-                s_resourceEntries[entry.Sha1].Item1.Add(fileInfo);
+                if (!s_resourceEntries.TryAdd(entry.Sha1, (fileInfo, false)) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].Item1.IsComplete())
+                {
+                    s_resourceEntries[entry.Sha1] = (fileInfo, false);
+                }
 
                 if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))
                 {

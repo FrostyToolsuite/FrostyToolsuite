@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Frosty.Sdk.Interfaces;
+using Frosty.Sdk.Managers.Infos.FileInfos;
 
 namespace Frosty.Sdk.Managers.Entries;
 
@@ -16,7 +17,7 @@ public abstract class AssetEntry
     /// The AssetType of this <see cref="AssetEntry"/>.
     /// </summary>
     public virtual string AssetType => string.Empty;
-    
+
     /// <summary>
     /// The Filename of this <see cref="AssetEntry"/>.
     /// </summary>
@@ -28,7 +29,7 @@ public abstract class AssetEntry
             return id == -1 ? Name : Name[(id + 1)..];
         }
     }
-    
+
     /// <summary>
     /// The Path of this <see cref="AssetEntry"/>.
     /// </summary>
@@ -40,7 +41,7 @@ public abstract class AssetEntry
             return id == -1 ? string.Empty : Name[..id];
         }
     }
-    
+
     /// <summary>
     /// The name of this <see cref="AssetEntry"/>.
     /// </summary>
@@ -57,22 +58,13 @@ public abstract class AssetEntry
     public long OriginalSize { get; internal set; }
 
     /// <summary>
-    /// The Bundles that contain this <see cref="AssetEntry"/>. 
+    /// The Bundles that contain this <see cref="AssetEntry"/>.
     /// </summary>
     public readonly HashSet<int> Bundles = new();
 
-    internal IFileInfo FileInfo
-    {
-        get => m_fileInfo ??= GetDefaultFileInfo();
-        set => m_fileInfo = value;
-    }
+    internal IFileInfo? FileInfo => m_fileInfo;
 
     private IFileInfo? m_fileInfo;
-
-    /// <summary>
-    /// The <see cref="IFileInfo"/>s of this <see cref="AssetEntry"/>.
-    /// </summary>
-    internal readonly HashSet<IFileInfo> FileInfos = new();
 
     protected AssetEntry(Sha1 inSha1, long inOriginalSize)
     {
@@ -92,29 +84,39 @@ public abstract class AssetEntry
     /// </summary>
     public IEnumerable<int> EnumerateBundles() => Bundles;
 
-    private IFileInfo GetDefaultFileInfo()
+    internal void AddFileInfo(IFileInfo inFileInfo)
     {
-        if (FileInfos.Count == 0)
+        if (m_fileInfo is null)
         {
-            throw new Exception($"No found FileInfos for Asset: {Name}.");
-        }
-        
-        IFileInfo? retVal = default;
-        foreach (IFileInfo fileInfo in FileInfos)
-        {
-            if (fileInfo.IsComplete())
-            {
-                return fileInfo;
-            }
-
-            retVal ??= fileInfo;
+            m_fileInfo = inFileInfo;
+            return;
         }
 
-        if (retVal is null)
+        if (!m_fileInfo.IsComplete() && inFileInfo.IsComplete())
         {
-            throw new Exception("we fucked up");
+            m_fileInfo = inFileInfo;
+            return;
         }
-        
-        return retVal;
+
+        if (m_fileInfo.IsComplete() && !inFileInfo.IsComplete())
+        {
+            return;
+        }
+
+        if (inFileInfo is CasFileInfo && m_fileInfo is not CasFileInfo)
+        {
+            m_fileInfo = inFileInfo;
+            return;
+        }
+
+        if (m_fileInfo is CasFileInfo && inFileInfo is not CasFileInfo)
+        {
+            return;
+        }
+
+        if (m_fileInfo.IsDelta() && !inFileInfo.IsDelta())
+        {
+            m_fileInfo = inFileInfo;
+        }
     }
 }

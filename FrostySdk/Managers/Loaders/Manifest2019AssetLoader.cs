@@ -224,7 +224,7 @@ public class Manifest2019AssetLoader : IAssetLoader
 
                     ChunkAssetEntry chunk = new(guid, Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
 
-                    chunk.FileInfos.Add(new CasFileInfo(casFileIdentifier, offset, size, 0));
+                    chunk.AddFileInfo(new CasFileInfo(casFileIdentifier, offset, size, 0));
 
                     AssetManager.AddSuperBundleChunk(chunk);
                 }
@@ -309,7 +309,7 @@ public class Manifest2019AssetLoader : IAssetLoader
         {
             file = ReadCasFileIdentifier(stream, fileIdentifierFlags[currentIndex++], file);
 
-            ebx.FileInfos.Add(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), 0));
+            ebx.AddFileInfo(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), 0));
 
             AssetManager.AddEbx(ebx, bundle.Id);
         }
@@ -318,7 +318,7 @@ public class Manifest2019AssetLoader : IAssetLoader
         {
             file = ReadCasFileIdentifier(stream, fileIdentifierFlags[currentIndex++], file);
 
-            res.FileInfos.Add(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), 0));
+            res.AddFileInfo(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), 0));
 
             AssetManager.AddRes(res, bundle.Id);
         }
@@ -327,7 +327,7 @@ public class Manifest2019AssetLoader : IAssetLoader
         {
             file = ReadCasFileIdentifier(stream, fileIdentifierFlags[currentIndex++], file);
 
-            chunk.FileInfos.Add(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), chunk.LogicalOffset));
+            chunk.AddFileInfo(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), chunk.LogicalOffset));
 
             AssetManager.AddChunk(chunk, bundle.Id);
         }

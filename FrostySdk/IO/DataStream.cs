@@ -1,5 +1,7 @@
 using System;
 using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -21,6 +23,7 @@ public unsafe class DataStream : IDisposable
 
     protected Stream m_stream;
     private readonly StringBuilder m_stringBuilder;
+    private readonly Stack<long> m_steps = new();
 
     protected DataStream()
     {
@@ -516,6 +519,18 @@ public unsafe class DataStream : IDisposable
         {
             m_stream.Position += alignment - (m_stream.Position % alignment);
         }
+    }
+
+    public void StepIn(long inPosition)
+    {
+        m_steps.Push(Position);
+        Position = inPosition;
+    }
+
+    public void StepOut()
+    {
+        Debug.Assert(m_steps.Count > 0, "StepOut called when there were no steps taken.");
+        Position = m_steps.Pop();
     }
 
     public static implicit operator Stream(DataStream stream) => stream.m_stream;

@@ -1,6 +1,7 @@
 ﻿using System;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
+using Frosty.Sdk.Managers.Infos.FileInfos.ResourceInfo;
 using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.Managers.Infos.FileInfos;
@@ -9,10 +10,8 @@ public class CasFileInfo : IFileInfo
 {
     public CasResourceInfo? GetBase() => m_base;
 
-    private CasResourceInfo? m_base;
-    private CasResourceInfo? m_delta;
-
-    private CasFileInfo m_duplicate;
+    private readonly CasResourceInfo? m_base;
+    private readonly CasResourceInfo? m_delta;
 
     public CasFileInfo(CasResourceInfo? inBase, CasResourceInfo? inDelta = null)
     {
@@ -30,7 +29,8 @@ public class CasFileInfo : IFileInfo
         m_base = new CasCryptoResourceInfo(inCasFileIdentifier, inOffset, inSize, inLogicalOffset, inKeyId);
     }
 
-    public bool IsComplete() => (m_delta is null) && m_base?.IsComplete() == true;
+    public bool IsDelta() => m_delta is not null;
+    public bool IsComplete() => (m_delta?.IsComplete() == true) || (m_base?.IsComplete() == true);
     public long GetSize() => m_base?.GetSize() ?? 0;
 
     public long GetOriginalSize()
