@@ -67,23 +67,23 @@ public static class FileSystemManager
             ? typeof(SignatureDeobfuscator)
             : typeof(LegacyDeobfuscator);
 
-        if (!Directory.Exists($"{BasePath}/Patch"))
-        {
-            Sources.RemoveAt(0);
-        }
-
         if (Directory.Exists($"{BasePath}/Update"))
         {
             foreach (string dlc in Directory.EnumerateDirectories($"{BasePath}/Update"))
             {
+                if (!File.Exists(Path.Combine(dlc, "package.mft")))
+                {
+                    continue;
+                }
+
                 string subPath = Path.GetFileName(dlc);
                 if (subPath == "Patch")
                 {
-                    Sources.Insert(0, FileSystemSource.Patch);
+                    // do nothing
                 }
                 else
                 {
-                    Sources.Insert(0, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));
+                    Sources.Insert(1, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));
                 }
             }
         }

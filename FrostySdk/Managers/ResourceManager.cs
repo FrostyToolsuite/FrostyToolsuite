@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.CatResources;
 using Frosty.Sdk.Managers.Infos;
@@ -15,7 +14,7 @@ public static class ResourceManager
 {
     public static bool IsInitialized { get; private set; }
 
-    private static readonly Dictionary<Sha1, (CasFileInfo, bool)> s_resourceEntries = new();
+    private static readonly Dictionary<Sha1, CasFileInfo> s_resourceEntries = new();
 
     private static readonly List<CatPatchEntry> s_patchEntries = new();
 
@@ -111,35 +110,29 @@ public static class ResourceManager
 
     public static CasFileInfo? GetPatchFileInfo(Sha1 sha1, Sha1 deltaSha1, Sha1 baseSha1)
     {
-        if (s_resourceEntries.TryGetValue(sha1, out (CasFileInfo, bool) fileInfos) && fileInfos.Item2)
+        if (s_resourceEntries.TryGetValue(sha1, out CasFileInfo? fileInfo))
+        {
+            return fileInfo;
+        }
+
+        CasFileInfo? baseInfo = s_resourceEntries.GetValueOrDefault(baseSha1);
+        CasFileInfo? deltaInfo = s_resourceEntries.GetValueOrDefault(deltaSha1);
+
+        if (baseInfo is null || deltaInfo is null)
         {
             return null;
         }
 
-        CasFileInfo baseInfo = s_resourceEntries[baseSha1].Item1;
-        CasFileInfo deltaInfo = s_resourceEntries[deltaSha1].Item1;
+        fileInfo = new CasFileInfo(baseInfo.GetBase(), deltaInfo.GetBase());
 
-        CasFileInfo fileInfo = new(baseInfo.GetBase(), deltaInfo.GetBase());
-
-        s_resourceEntries.TryAdd(sha1, (fileInfo, true));
+        s_resourceEntries.TryAdd(sha1, fileInfo);
 
         return fileInfo;
     }
 
     public static CasFileInfo? GetFileInfo(Sha1 sha1)
     {
-        if (!s_resourceEntries.TryGetValue(sha1, out (CasFileInfo, bool) fileInfos))
-        {
-            return null;
-        }
-
-        if (fileInfos.Item2)
-        {
-            return null;
-        }
-
-        fileInfos.Item2 = true;
-        return fileInfos.Item1;
+        return s_resourceEntries.GetValueOrDefault(sha1);
     }
 
     private static void LoadInstallChunk(InstallChunkInfo info)
@@ -173,7 +166,7 @@ public static class ResourceManager
             }
 
             CasFileInfo fileInfo = new(baseInfo?.GetBase(), deltaFileInfos[0].GetBase());
-            s_resourceEntries.TryAdd(entry.Sha1, (fileInfo, false));
+            s_resourceEntries.TryAdd(entry.Sha1, fileInfo);
         }
         s_patchEntries.Clear();
     }
@@ -199,9 +192,9 @@ public static class ResourceManager
 
                 CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset);
 
-                if (!s_resourceEntries.TryAdd(entry.Sha1, (fileInfo, false)) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].Item1.IsComplete())
+                if (!s_resourceEntries.TryAdd(entry.Sha1, fileInfo) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].IsComplete())
                 {
-                    s_resourceEntries[entry.Sha1] = (fileInfo, false);
+                    s_resourceEntries[entry.Sha1] = fileInfo;
                 }
 
                 if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))
@@ -221,9 +214,9 @@ public static class ResourceManager
                 CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset,
                     entry.KeyId);
 
-                if (!s_resourceEntries.TryAdd(entry.Sha1, (fileInfo, false)) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].Item1.IsComplete())
+                if (!s_resourceEntries.TryAdd(entry.Sha1, fileInfo) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].IsComplete())
                 {
-                    s_resourceEntries[entry.Sha1] = (fileInfo, false);
+                    s_resourceEntries[entry.Sha1] = fileInfo;
                 }
 
                 if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))

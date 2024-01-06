@@ -98,33 +98,21 @@ public class ManifestAssetLoader : IAssetLoader
                 // we use the file infos from the catalogs, since its easier even if they are not used by the game
                 foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
                 {
-                    IFileInfo? fileInfo = ResourceManager.GetFileInfo(ebx.Sha1);
-                    if (fileInfo is not null)
-                    {
-                        ebx.AddFileInfo(fileInfo);
-                    }
+                    ebx.AddFileInfo(ResourceManager.GetFileInfo(ebx.Sha1));
 
                     AssetManager.AddEbx(ebx, bundle.Id);
                 }
 
                 foreach (ResAssetEntry res in bundleMeta.ResList)
                 {
-                    IFileInfo? fileInfo = ResourceManager.GetFileInfo(res.Sha1);
-                    if (fileInfo is not null)
-                    {
-                        res.AddFileInfo(fileInfo);
-                    }
+                    res.AddFileInfo(ResourceManager.GetFileInfo(res.Sha1));
 
                     AssetManager.AddRes(res, bundle.Id);
                 }
 
                 foreach (ChunkAssetEntry chunk in bundleMeta.ChunkList)
                 {
-                    IFileInfo? fileInfo = ResourceManager.GetFileInfo(chunk.Sha1);
-                    if (fileInfo is not null)
-                    {
-                        chunk.AddFileInfo(fileInfo);
-                    }
+                    chunk.AddFileInfo(ResourceManager.GetFileInfo(chunk.Sha1));
 
                     AssetManager.AddChunk(chunk, bundle.Id);
                 }

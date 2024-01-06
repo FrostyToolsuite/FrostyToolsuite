@@ -378,8 +378,11 @@ public static class AssetManager
     {
         if (s_ebxNameMapping.TryGetValue(entry.Name, out EbxAssetEntry? existing))
         {
-            if (entry.FileInfo is not null)
+            if (entry.Sha1 == existing.Sha1)
             {
+                // assets coming from dlc in dai are always non cas, sometimes they are also in patch, then the sha1 doesnt match up anymore and the basesha1 is the one of the dlc
+                // so my guess would be that it patches the asset from the dlc, hopefully no issues arise from using the asset from patch here
+
                 existing.AddFileInfo(entry.FileInfo);
             }
 
@@ -396,8 +399,11 @@ public static class AssetManager
     {
         if (s_resNameMapping.TryGetValue(entry.Name, out ResAssetEntry? existing))
         {
-            if (entry.FileInfo is not null)
+            if (entry.Sha1 == existing.Sha1)
             {
+                // assets coming from dlc in dai are always non cas, sometimes they are also in patch, then the sha1 doesnt match up anymore and the basesha1 is the one of the dlc
+                // so my guess would be that it patches the asset from the dlc, hopefully no issues arise from using the asset from patch here
+
                 existing.AddFileInfo(entry.FileInfo);
             }
 
@@ -418,13 +424,6 @@ public static class AssetManager
     {
         if (s_chunkGuidMapping.TryGetValue(entry.Id, out ChunkAssetEntry? existing))
         {
-            if (entry.FileInfo is not null)
-            {
-                existing.AddFileInfo(entry.FileInfo);
-            }
-
-            existing.Bundles.Add(bundleId);
-
             if (existing.LogicalSize == 0)
             {
                 // this chunk was first added as a superbundle chunk, so add logical offset/size and sha1
@@ -433,6 +432,16 @@ public static class AssetManager
                 existing.LogicalSize = existing.LogicalSize;
                 existing.OriginalSize = entry.OriginalSize;
             }
+
+            if (entry.Sha1 == existing.Sha1)
+            {
+                // assets coming from dlc in dai are always non cas, sometimes they are also in patch, then the sha1 doesnt match up anymore and the basesha1 is the one of the dlc
+                // so my guess would be that it patches the asset from the dlc, hopefully no issues arise from using the asset from patch here
+
+                existing.AddFileInfo(entry.FileInfo);
+            }
+
+            existing.Bundles.Add(bundleId);
         }
         else
         {
