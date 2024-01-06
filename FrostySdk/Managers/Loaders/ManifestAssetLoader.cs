@@ -98,10 +98,10 @@ public class ManifestAssetLoader : IAssetLoader
                 // we use the file infos from the catalogs, since its easier even if they are not used by the game
                 foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
                 {
-                    IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(ebx.Sha1);
-                    if (fileInfos is not null)
+                    IFileInfo? fileInfo = ResourceManager.GetFileInfo(ebx.Sha1);
+                    if (fileInfo is not null)
                     {
-                        ebx.FileInfos.UnionWith(fileInfos);
+                        ebx.AddFileInfo(fileInfo);
                     }
 
                     AssetManager.AddEbx(ebx, bundle.Id);
@@ -109,10 +109,10 @@ public class ManifestAssetLoader : IAssetLoader
 
                 foreach (ResAssetEntry res in bundleMeta.ResList)
                 {
-                    IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(res.Sha1);
-                    if (fileInfos is not null)
+                    IFileInfo? fileInfo = ResourceManager.GetFileInfo(res.Sha1);
+                    if (fileInfo is not null)
                     {
-                        res.FileInfos.UnionWith(fileInfos);
+                        res.AddFileInfo(fileInfo);
                     }
 
                     AssetManager.AddRes(res, bundle.Id);
@@ -120,10 +120,10 @@ public class ManifestAssetLoader : IAssetLoader
 
                 foreach (ChunkAssetEntry chunk in bundleMeta.ChunkList)
                 {
-                    IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(chunk.Sha1);
-                    if (fileInfos is not null)
+                    IFileInfo? fileInfo = ResourceManager.GetFileInfo(chunk.Sha1);
+                    if (fileInfo is not null)
                     {
-                        chunk.FileInfos.UnionWith(fileInfos);
+                        chunk.AddFileInfo(fileInfo);
                     }
 
                     AssetManager.AddChunk(chunk, bundle.Id);
@@ -144,7 +144,7 @@ public class ManifestAssetLoader : IAssetLoader
 
                 ChunkAssetEntry entry = new(chunkId, Sha1.Zero, 0, (uint)resourceInfo.Item3, Utils.Utils.HashString(sbIc.Name, true));
 
-                entry.FileInfos.Add(
+                entry.AddFileInfo(
                     new CasFileInfo(resourceInfo.Item1, resourceInfo.Item2, (uint)resourceInfo.Item3, 0));
 
                 AssetManager.AddSuperBundleChunk(entry);

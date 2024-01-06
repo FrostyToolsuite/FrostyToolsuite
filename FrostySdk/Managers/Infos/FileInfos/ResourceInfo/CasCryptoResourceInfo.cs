@@ -3,12 +3,12 @@ using System.Security.Cryptography;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Utils;
 
-namespace Frosty.Sdk.Managers.Infos.FileInfos;
+namespace Frosty.Sdk.Managers.Infos.FileInfos.ResourceInfo;
 
 public class CasCryptoResourceInfo : CasResourceInfo
 {
     private readonly string m_keyId;
-    
+
     public CasCryptoResourceInfo(CasFileIdentifier inCasFileIdentifier, uint inOffset, uint inSize, uint inLogicalOffset, string inKeyId)
         : base(inCasFileIdentifier, inOffset, inSize, inLogicalOffset)
     {
@@ -31,7 +31,7 @@ public class CasCryptoResourceInfo : CasResourceInfo
             int size = (int)GetSize();
             size += size & 15;
             Block<byte> retVal = new(size);
-            
+
             stream.ReadExactly(retVal);
             return retVal;
         }
