@@ -93,7 +93,7 @@ public class BinaryBundle
             stream.Position = stringsOffset + nameOffset;
             string name = stream.ReadNullTerminatedString();
 
-            EbxList[i] = new EbxAssetEntry(name, sha1[j], (long)originalSize);
+            EbxList[i] = new EbxAssetEntry(name, sha1[j], originalSize);
 
             stream.Position = currentPos;
         }
@@ -119,7 +119,7 @@ public class BinaryBundle
             stream.Position = resRidOffset + i * sizeof(ulong);
             ulong resRid = stream.ReadUInt64();
 
-            ResList[i] = new ResAssetEntry(name, sha1[j], (long)originalSize, resRid, resType, resMeta);
+            ResList[i] = new ResAssetEntry(name, sha1[j], originalSize, resRid, resType, resMeta);
 
             stream.Position = currentPos;
         }

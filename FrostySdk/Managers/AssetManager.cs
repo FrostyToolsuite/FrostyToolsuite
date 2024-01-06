@@ -29,7 +29,7 @@ public static class AssetManager
     private static readonly Dictionary<string, EbxAssetEntry> s_ebxNameMapping = new();
     private static readonly Dictionary<Guid, EbxAssetEntry> s_ebxGuidMapping = new();
 
-    private static readonly Dictionary<string, ResAssetEntry> s_resNameHashMapping = new();
+    private static readonly Dictionary<string, ResAssetEntry> s_resNameMapping = new();
     private static readonly Dictionary<ulong, ResAssetEntry> s_resRidMapping = new();
 
     private static readonly Dictionary<Guid, ChunkAssetEntry> s_chunkGuidMapping = new();
@@ -122,7 +122,7 @@ public static class AssetManager
                     }
 
                     // modified/added res
-                    foreach (ResAssetEntry resAssetEntry in s_resNameHashMapping.Values)
+                    foreach (ResAssetEntry resAssetEntry in s_resNameMapping.Values)
                     {
                         ResAssetEntry? prePatch = prePatchRes.Find(e =>
                             e.Name.Equals(resAssetEntry.Name, StringComparison.OrdinalIgnoreCase));
@@ -241,7 +241,7 @@ public static class AssetManager
     /// <returns>The <see cref="ResAssetEntry"/> or null if it doesn't exist.</returns>
     public static ResAssetEntry? GetResAssetEntry(string name)
     {
-        return s_resNameHashMapping.GetValueOrDefault(name.ToLower());
+        return s_resNameMapping.GetValueOrDefault(name.ToLower());
     }
 
     /// <summary>
@@ -327,7 +327,7 @@ public static class AssetManager
 
     public static IEnumerable<ResAssetEntry> EnumerateResAssetEntries()
     {
-        foreach (ResAssetEntry entry in s_resNameHashMapping.Values)
+        foreach (ResAssetEntry entry in s_resNameMapping.Values)
         {
             yield return entry;
         }
@@ -376,11 +376,6 @@ public static class AssetManager
 
     internal static void AddEbx(EbxAssetEntry entry, int bundleId)
     {
-        if (entry.Name == "characters/plants/playable/citron/tattoo/citron_tattoo_icestripes_icecitron_unlockasset")
-        {
-
-        }
-
         if (s_ebxNameMapping.TryGetValue(entry.Name, out EbxAssetEntry? existing))
         {
             if (entry.FileInfo is not null)
@@ -399,7 +394,7 @@ public static class AssetManager
 
     internal static void AddRes(ResAssetEntry entry, int bundleId)
     {
-        if (s_resNameHashMapping.TryGetValue(entry.Name, out ResAssetEntry? existing))
+        if (s_resNameMapping.TryGetValue(entry.Name, out ResAssetEntry? existing))
         {
             if (entry.FileInfo is not null)
             {
@@ -415,7 +410,7 @@ public static class AssetManager
             {
                 s_resRidMapping.Add(entry.ResRid, entry);
             }
-            s_resNameHashMapping.Add(entry.Name, entry);
+            s_resNameMapping.Add(entry.Name, entry);
         }
     }
 
@@ -493,13 +488,6 @@ public static class AssetManager
 
         foreach (EbxAssetEntry entry in s_ebxNameMapping.Values)
         {
-            if (entry.Name == "sound/vo/ingame/gnomes/configs/vo_gnome_jumpup")
-            {
-                var b = GetAsset(entry);
-                File.WriteAllBytes("test.ebx", b.ToArray());
-                b.Dispose();
-            }
-
             using (BlockStream stream = new(GetAsset(entry)))
             {
                 BaseEbxReader reader = BaseEbxReader.CreateReader(stream);
@@ -511,11 +499,7 @@ public static class AssetManager
                     entry.DependentAssets.Add(dependency);
                 }
 
-                if (s_ebxGuidMapping.TryGetValue(entry.Guid, out var entry2))
-                {
-                    EbxAsset asset = reader.ReadAsset<EbxAsset>();
-                    var a2 = GetEbx(entry2);
-                }
+                Debug.Assert(!s_ebxGuidMapping.ContainsKey(entry.Guid));
 
                 s_ebxGuidMapping.Add(entry.Guid, entry);
             }
@@ -648,7 +632,7 @@ public static class AssetManager
                     {
                         s_resRidMapping.Add(entry.ResRid, entry);
                     }
-                    s_resNameHashMapping.Add(name, entry);
+                    s_resNameMapping.Add(name, entry);
                 }
             }
 
@@ -728,8 +712,8 @@ public static class AssetManager
                 }
             }
 
-            stream.WriteInt32(s_resNameHashMapping.Count);
-            foreach (ResAssetEntry entry in s_resNameHashMapping.Values)
+            stream.WriteInt32(s_resNameMapping.Count);
+            foreach (ResAssetEntry entry in s_resNameMapping.Values)
             {
                 stream.WriteNullTerminatedString(entry.Name);
 
