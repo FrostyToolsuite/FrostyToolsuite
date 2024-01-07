@@ -3,7 +3,7 @@ using System.IO;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Utils;
 
-namespace Frosty.Sdk.Managers.Infos.FileInfos;
+namespace Frosty.Sdk.Managers.Infos.FileInfos.ResourceInfo;
 
 public class CasResourceInfo
 {

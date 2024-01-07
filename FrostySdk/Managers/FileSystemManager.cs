@@ -67,23 +67,23 @@ public static class FileSystemManager
             ? typeof(SignatureDeobfuscator)
             : typeof(LegacyDeobfuscator);
 
-        if (!Directory.Exists($"{BasePath}/Patch"))
-        {
-            Sources.RemoveAt(0);
-        }
-
         if (Directory.Exists($"{BasePath}/Update"))
         {
             foreach (string dlc in Directory.EnumerateDirectories($"{BasePath}/Update"))
             {
+                if (!File.Exists(Path.Combine(dlc, "package.mft")))
+                {
+                    continue;
+                }
+
                 string subPath = Path.GetFileName(dlc);
                 if (subPath == "Patch")
                 {
-                    Sources.Insert(0, FileSystemSource.Patch);
+                    // do nothing
                 }
                 else
                 {
-                    Sources.Insert(0, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));
+                    Sources.Insert(1, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));
                 }
             }
         }
@@ -147,12 +147,12 @@ public static class FileSystemManager
         InstallChunkInfo installChunkInfo = s_installChunks[s_persistentIndexMapping[casFileIdentifier.InstallChunkIndex]];
         if (casFileIdentifier.IsPatch)
         {
-            return FileSystemSource.Patch.ResolvePath(
-                $"{installChunkInfo.InstallBundle}/cas_{casFileIdentifier.CasIndex:D2}.cas");
+            return FileSystemSource.Patch.ResolvePath(Path.Combine(installChunkInfo.InstallBundle,
+                $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
         }
 
-        return FileSystemSource.Base.ResolvePath(
-            $"{installChunkInfo.InstallBundle}/cas_{casFileIdentifier.CasIndex:D2}.cas");
+        return FileSystemSource.Base.ResolvePath(Path.Combine(installChunkInfo.InstallBundle,
+            $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
     }
 
     public static string GetFilePath(int casIndex)
@@ -403,6 +403,7 @@ public static class FileSystemManager
             }
 
             s_installChunks.Add(ic);
+            s_persistentIndexMapping.Add(0, 0);
         }
         else
         {
