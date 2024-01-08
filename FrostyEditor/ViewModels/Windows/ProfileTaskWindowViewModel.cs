@@ -1,11 +1,10 @@
-using System;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Frosty.Sdk;
 using Frosty.Sdk.Interfaces;
-using Frosty.Sdk.Managers;
 using FrostyEditor.Views;
 
 namespace FrostyEditor.ViewModels.Windows;
@@ -20,7 +19,7 @@ public partial class ProfileTaskWindowViewModel : ObservableObject, ILogger
 
     public async Task Setup(string inKey, string inPath)
     {
-        AssetManager.Logger = this;
+        FrostyLogger.Logger = this;
         if (await MainWindowViewModel.SetupFrostySdk(inKey, inPath))
         {
             ShowMainWindow();

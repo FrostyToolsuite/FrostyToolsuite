@@ -86,10 +86,13 @@ public static class ProfilesLibrary
                 SharedBundles.Add(Utils.Utils.HashString(bundle, true), bundle);
             }
 
+            FrostyLogger.Logger?.LogInfo($"Loading profile {s_effectiveProfile.DisplayName}");
+
             IsInitialized = true;
             return true;
         }
 
+        FrostyLogger.Logger?.LogError($"No profile found in directory {Path.GetFullPath("Profiles")} for key {profileKey}");
         return false;
     }
 

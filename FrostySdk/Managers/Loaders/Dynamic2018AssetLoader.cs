@@ -36,7 +36,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     // InstallBundle does not exist, so skip it
                     Debug.Assert(sbIc.InstallChunk.OptionalDlc);
 
-                    AssetManager.Logger?.LogWarning($"Skipping SuperBundle \"{sbIc.Name}\", InstallBundle \"{sbIc.InstallChunk.InstallBundle}\" does not exist");
+                    FrostyLogger.Logger?.LogWarning($"Skipping SuperBundle \"{sbIc.Name}\", InstallBundle \"{sbIc.InstallChunk.InstallBundle}\" does not exist");
 
                     continue;
                 }
@@ -61,7 +61,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
                 if (!found)
                 {
-                    AssetManager.Logger?.LogWarning($"Couldn't find SuperBundle \"{sbIc.Name}\"");
+                    FrostyLogger.Logger?.LogWarning($"Couldn't find SuperBundle \"{sbIc.Name}\"");
                 }
             }
         }
@@ -686,7 +686,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         DbObjectDict? bundleObj = DbObject.Deserialize(stream)?.AsDict();
         if (bundleObj is null)
         {
-            AssetManager.Logger?.LogError($"Invalid bundle {bundle.Name} in SuperBundle {bundle.Parent.Name}");
+            FrostyLogger.Logger?.LogError($"Invalid bundle {bundle.Name} in SuperBundle {bundle.Parent.Name}");
             return;
         }
 

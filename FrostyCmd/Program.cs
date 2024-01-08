@@ -32,6 +32,9 @@ internal static class Program
     
     private static void Main()
     {
+        // set logger
+        FrostyLogger.Logger = new Logger();
+
         // init profile
         if (!ProfilesLibrary.Initialize(c_profileKey))
         {

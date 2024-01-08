@@ -52,11 +52,13 @@ public static class FileSystemManager
 
         if (!ProfilesLibrary.IsInitialized)
         {
+            FrostyLogger.Logger?.LogError("Call ProfilesLibrary.Initialize before FileSystemManager.Initialize");
             return false;
         }
 
         if (!Directory.Exists(basePath))
         {
+            FrostyLogger.Logger?.LogError($"No directory \"{basePath}\" exists");
             return false;
         }
 

@@ -43,12 +43,8 @@ public static class ResourceManager
 
         if (!FileSystemManager.IsInitialized)
         {
+            FrostyLogger.Logger?.LogError("Call FileSystemManager.Initialize before ResourceManager.Initialize");
             return false;
-        }
-
-        if (FileSystemManager.HasFileInMemoryFs("Dictionaries/ebx.dict"))
-        {
-            // load dictionary from memoryFs (used for decompressing ebx)
         }
 
         if (FileSystemManager.HasFileInMemoryFs("Scripts/CasEncrypt.yaml"))
