@@ -18,7 +18,10 @@ internal class ParameterInfo
         m_name = reader.ReadNullTerminatedString();
         p_typeInfo = reader.ReadLong();
         m_type = reader.ReadByte();
-        p_defaultValue = reader.ReadLong();
+        if (TypeInfo.Version > 3)
+        {
+            p_defaultValue = reader.ReadLong();
+        }
     }
 
     public void ProcessDefaultValue()

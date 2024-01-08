@@ -29,8 +29,11 @@ internal class FunctionInfoData : TypeInfoData
         reader.ReadLong();
         reader.ReadLong();
         reader.ReadLong();
-        reader.ReadLong();
-        reader.ReadLong();
+        if (TypeInfo.Version > 3)
+        {
+            reader.ReadLong();
+            reader.ReadLong();
+        }
 
         long pParameterInfos = reader.ReadLong();
         m_modifier = (Modifier)reader.ReadInt();

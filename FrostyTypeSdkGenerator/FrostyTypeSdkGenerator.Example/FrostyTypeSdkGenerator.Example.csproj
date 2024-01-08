@@ -13,12 +13,20 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\FrostySdk\FrostySdk.csproj" />
-        <ProjectReference Include="..\FrostyTypeSdkGenerator\FrostyTypeSdkGenerator.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" SetTargetFramework="TargetFramework=netstandard2.0" />
+        <ProjectReference Include="..\FrostyTypeSdkGenerator\FrostyTypeSdkGenerator.csproj"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false"
+                          OutputItemType="Analyzer"
+                          SetTargetFramework="TargetFramework=netstandard2.0" />
     </ItemGroup>
 
     <ItemGroup>
+      <AdditionalFiles Include="Meta\PropertyConnection.cs">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </AdditionalFiles>
       <Compile Remove="Meta\Asset.cs" />
       <AdditionalFiles Include="Meta\Asset.cs" />
+      <Compile Remove="Meta\PropertyConnection.cs" />
     </ItemGroup>
 
 </Project>

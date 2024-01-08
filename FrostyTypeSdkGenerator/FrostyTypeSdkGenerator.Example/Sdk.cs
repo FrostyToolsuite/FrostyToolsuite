@@ -4,17 +4,19 @@ using Frosty.Sdk.Sdk;
 namespace Frosty.Sdk.Ebx;
 
 [EbxTypeMeta(TypeFlags.TypeEnum.Class)]
-public partial class DataContainer
+public partial struct PropertyConnection
 {
+    private string _Test;
+
+    private uint _Flags;
 }
 
-public partial class Asset : DataContainer
+public enum PropertyConnectionTargetType
 {
-    [Attributes.EbxFieldMeta(Frosty.Sdk.Sdk.TypeFlags.TypeEnum.CString, 0u)]
-    private CString _Name;
+
 }
 
-public partial class DataContainerAsset : DataContainer
+public enum InputPropertyType
 {
-    private CString _Name;
+
 }

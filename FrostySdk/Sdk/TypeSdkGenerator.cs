@@ -1,12 +1,14 @@
 ﻿using System;
+using System.Buffers.Binary;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Basic.Reference.Assemblies;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
@@ -21,6 +23,7 @@ public class TypeSdkGenerator
 {
     private long FindTypeInfoOffset(Process process)
     {
+        // TODO: remove this once all games have their correct pattern
         // string[] patterns =
         // {
         //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
@@ -30,23 +33,18 @@ public class TypeSdkGenerator
         //     "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10", // new games
         // };
 
-        long startAddress = process.MainModule?.BaseAddress.ToInt64() ?? 0;
+        MemoryReader reader = new(process);
+        nint offset = reader.ScanPatter(ProfilesLibrary.TypeInfoSignature);
 
-        using (MemoryReader reader = new(process, startAddress))
+        if (offset == nint.Zero)
         {
-            reader.Position = startAddress;
-            IList<long> offsets = reader.Scan(ProfilesLibrary.TypeInfoSignature);
-
-            if (offsets.Count == 0)
-            {
-                return -1;
-            }
-
-            reader.Position = offsets[0] + 3;
-            int newValue = reader.ReadInt(false);
-            reader.Position = offsets[0] + 3 + newValue + 4;
-            return reader.ReadLong(false);
+            return -1;
         }
+
+        reader.Position = offset + 3;
+        int newValue = reader.ReadInt(false);
+        reader.Position = offset + 3 + newValue + 4;
+        return reader.ReadLong(false);
     }
 
     public bool DumpTypes(Process process)
@@ -56,16 +54,93 @@ public class TypeSdkGenerator
         {
             return false;
         }
-        using (MemoryReader reader = new(process, typeInfoOffset))
+
+        string stringsPath = $"Sdk/Strings/{ProfilesLibrary.InternalName}.json";
+        if (ProfilesLibrary.HasStrippedTypeNames && File.Exists(stringsPath))
         {
+            // load strings file
+            Dictionary<uint, string>? mapping = JsonSerializer.Deserialize<Dictionary<uint, string>>(File.ReadAllText(stringsPath));
+            if (mapping is null)
+            {
+                return false;
+            }
+
+            Strings.Mapping = mapping;
+            Strings.HasStrings = true;
+        }
+
+        MemoryReader reader = new(process) { Position = typeInfoOffset };
+        TypeInfo.TypeInfoMapping.Clear();
+
+        TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
+
+        do
+        {
+            ti = ti.GetNextTypeInfo(reader);
+        } while (ti is not null);
+
+        Directory.CreateDirectory("Sdk/Strings");
+
+        if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
+        {
+            // try to resolve hashes from other games
+            foreach (string file in Directory.EnumerateFiles("Sdk/Strings/*.json"))
+            {
+                Dictionary<uint, string>? mapping = JsonSerializer.Deserialize<Dictionary<uint, string>>(File.ReadAllText(file));
+                if (mapping is null)
+                {
+                    continue;
+                }
+
+                foreach (string name in mapping.Values)
+                {
+                    uint hash = HashTypeName(name);
+                    if (!Strings.Mapping.TryGetValue(hash, out string? currentName))
+                    {
+                        Strings.Mapping[hash] = name;
+                    }
+                    else
+                    {
+                        // They changed some capitalization stuff like Uint32 and UInt32, but shouldn't really matter that much
+                        Debug.Assert(currentName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+            }
+
+            Strings.HasStrings = true;
+
+            HashSet<uint> toRemove = new();
+            foreach (KeyValuePair<uint, string> kv in Strings.Mapping)
+            {
+                if (string.IsNullOrEmpty(kv.Value))
+                {
+                    toRemove.Add(kv.Key);
+                }
+            }
+
+            foreach (uint key in toRemove)
+            {
+                // remove entry from dict
+                Strings.Mapping.Remove(key);
+            }
+
+            // save file and reload TypeInfo
+            File.WriteAllText(stringsPath, JsonSerializer.Serialize(Strings.Mapping));
+
+            // reparse the typeinfo with now hopefully more typenames
             TypeInfo.TypeInfoMapping.Clear();
 
-            TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
+            ti = TypeInfo.ReadTypeInfo(reader);
 
             do
             {
                 ti = ti.GetNextTypeInfo(reader);
-            } while (ti != null);
+            } while (ti is not null);
+        }
+        else
+        {
+            // write all names to a file so we can resolve most hashes for games that have names stripped
+            File.WriteAllText(stringsPath, JsonSerializer.Serialize(Strings.Mapping));
         }
 
         return TypeInfo.TypeInfoMapping.Count != 0;
@@ -189,5 +264,14 @@ public class TypeSdkGenerator
         }
 
         return true;
+    }
+
+
+    private static uint HashTypeName(string inName)
+    {
+        Span<byte> hash = stackalloc byte[32];
+        ReadOnlySpan<byte> str = Encoding.ASCII.GetBytes(inName.ToLower() + ProfilesLibrary.TypeHashSeed);
+        SHA256.HashData(str, hash);
+        return BinaryPrimitives.ReadUInt32BigEndian(hash[28..]);
     }
 }
