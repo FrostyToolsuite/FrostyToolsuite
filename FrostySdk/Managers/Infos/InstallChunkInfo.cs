@@ -9,6 +9,7 @@ public class InstallChunkInfo
     public string Name = string.Empty;
     public string InstallBundle = string.Empty;
     public bool AlwaysInstalled;
+    public bool OptionalDlc;
     public readonly HashSet<Guid> RequiredCatalogs = new();
     public readonly HashSet<string> SuperBundles = new();
     public readonly HashSet<string> SplitSuperBundles = new();
@@ -19,7 +20,7 @@ public class InstallChunkInfo
         {
             return false;
         }
-        
+
         if (RequiredCatalogs.Contains(b.Id))
         {
             return true;

@@ -67,34 +67,34 @@ public static class AssetManager
 
             if (FileSystemManager.BundleFormat == BundleFormat.Dynamic2018 || FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
             {
-                Logger?.Report("Sdk", "Loading FileInfos from catalogs");
+                Logger?.LogInfo("Loading FileInfos from catalogs");
 
                 timer.Start();
                 ResourceManager.LoadInstallChunks();
                 timer.Stop();
 
-                Logger?.Report("Sdk", $"Loaded FileInfos from catalogs in {timer.Elapsed.TotalSeconds} seconds");
+                Logger?.LogInfo($"Loaded FileInfos from catalogs in {timer.Elapsed.TotalSeconds} seconds");
             }
 
             IAssetLoader assetLoader = GetAssetLoader();
 
-            Logger?.Report("Sdk", "Loading Assets from SuperBundles");
+            Logger?.LogInfo("Loading Assets from SuperBundles");
 
             timer.Restart();
             assetLoader.Load();
             timer.Stop();
 
-            Logger?.Report("Sdk", $"Loaded Assets from SuperBundles in {timer.Elapsed.TotalSeconds} seconds");
+            Logger?.LogInfo($"Loaded Assets from SuperBundles in {timer.Elapsed.TotalSeconds} seconds");
 
             ResourceManager.CLearInstallChunks();
 
-            Logger?.Report("Sdk", "Indexing Ebx");
+            Logger?.LogInfo("Indexing Ebx");
 
             timer.Restart();
             DoEbxIndexing();
             timer.Stop();
 
-            Logger?.Report("Sdk", $"Indexed ebx in {timer.Elapsed}");
+            Logger?.LogInfo($"Indexed ebx in {timer.Elapsed.TotalSeconds} seconds");
 
             WriteCache();
 
@@ -184,7 +184,7 @@ public static class AssetManager
             }
         }
 
-        Logger?.Report("Sdk", "Finished initializing");
+        Logger?.LogInfo("Finished initializing");
 
         IsInitialized = true;
         return true;
@@ -497,6 +497,13 @@ public static class AssetManager
 
         foreach (EbxAssetEntry entry in s_ebxNameMapping.Values)
         {
+            if (entry.FileInfo is null)
+            {
+                s_ebxNameMapping.Remove(entry.Name);
+                Logger?.LogWarning($"Skipping ebx \"{entry.Name}\", bc it has no FileInfo!");
+                continue;
+            }
+
             using (BlockStream stream = new(GetAsset(entry)))
             {
                 BaseEbxReader reader = BaseEbxReader.CreateReader(stream);
@@ -526,6 +533,24 @@ public static class AssetManager
                 {
                     UpdateBundle(name, bundle);
                 }
+            }
+        }
+
+        foreach (ResAssetEntry entry in s_resNameMapping.Values)
+        {
+            if (entry.FileInfo is null)
+            {
+                s_resNameMapping.Remove(entry.Name);
+                Logger?.LogWarning($"Skipping res \"{entry.Name}\", bc it has no FileInfo!");
+            }
+        }
+
+        foreach (ChunkAssetEntry entry in s_chunkGuidMapping.Values)
+        {
+            if (entry.FileInfo is null)
+            {
+                s_chunkGuidMapping.Remove(entry.Id);
+                Logger?.LogWarning($"Skipping chunk {entry.Id}, bc it has no FileInfo!");
             }
         }
     }
@@ -581,11 +606,11 @@ public static class AssetManager
                 }
             }
 
-            Logger?.Report("Sdk", "Loading ebx from cache");
+            Logger?.LogInfo("Loading ebx from cache");
             int ebxCount = stream.ReadInt32();
             for (int i = 0; i < ebxCount; i++)
             {
-                Logger?.Report(i / (double)ebxCount);
+                Logger?.LogProgress(i / (double)ebxCount);
                 string name = stream.ReadNullTerminatedString();
 
                 EbxAssetEntry entry = new(name, stream.ReadSha1(), stream.ReadInt64())
@@ -613,11 +638,11 @@ public static class AssetManager
                 }
             }
 
-            Logger?.Report("Sdk", "Loading res from cache");
+            Logger?.LogInfo("Loading res from cache");
             int resCount = stream.ReadInt32();
             for (int i = 0; i < resCount; i++)
             {
-                Logger?.Report(i / (double)resCount);
+                Logger?.LogProgress(i / (double)resCount);
                 string name = stream.ReadNullTerminatedString();
 
                 ResAssetEntry entry = new(name, stream.ReadSha1(), stream.ReadInt64(),
@@ -645,11 +670,11 @@ public static class AssetManager
                 }
             }
 
-            Logger?.Report("Sdk", "Loading chunks from cache");
+            Logger?.LogInfo("Loading chunks from cache");
             int chunkCount = stream.ReadInt32();
             for (int i = 0; i < chunkCount; i++)
             {
-                Logger?.Report(i / (double)chunkCount);
+                Logger?.LogProgress(i / (double)chunkCount);
                 ChunkAssetEntry entry = new(stream.ReadGuid(), stream.ReadSha1(),
                     stream.ReadUInt32(), stream.ReadUInt32());
 

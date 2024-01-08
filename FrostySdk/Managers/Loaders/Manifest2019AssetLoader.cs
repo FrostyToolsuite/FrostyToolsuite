@@ -60,7 +60,7 @@ public class Manifest2019AssetLoader : IAssetLoader
 
                 if (!found)
                 {
-                    AssetManager.Logger?.Report("Sdk", $"Couldn't find SuperBundle {sbIc.Name}");
+                    AssetManager.Logger?.LogWarning($"Couldn't find SuperBundle \"{sbIc.Name}\"");
                 }
             }
         }
