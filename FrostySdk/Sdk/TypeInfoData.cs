@@ -204,5 +204,21 @@ internal class TypeInfoData
         p_arrayInfo = inArrayInfoPtr;
     }
 
-    public string GetFullName() => $"Frostbite.{m_nameSpace}.{CleanUpName()}";
+    public string GetFullName()
+    {
+        string name = m_name;
+        if (name == "char")
+        {
+            name = "Char";
+        }
+
+        if (name.Contains("::"))
+        {
+            name = name.Replace("::", ".");
+        }
+
+        name = name.Replace(':', '_').Replace("<", "_").Replace(">", "_");
+
+        return $"Frostbite.{m_nameSpace}.{name}";
+    }
 }
