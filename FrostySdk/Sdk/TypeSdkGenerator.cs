@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers.Binary;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -143,7 +142,15 @@ public class TypeSdkGenerator
             File.WriteAllText(stringsPath, JsonSerializer.Serialize(Strings.Mapping));
         }
 
-        return TypeInfo.TypeInfoMapping.Count != 0;
+        if (TypeInfo.TypeInfoMapping.Count > 0)
+        {
+            FrostyLogger.Logger?.LogInfo($"Found {TypeInfo.TypeInfoMapping.Count} types in the games memory");
+            return true;
+        }
+
+        FrostyLogger.Logger?.LogError("No types found in the games memory, maybe the pattern is wrong");
+
+        return false;
     }
 
     public bool CreateSdk(string filePath)
@@ -216,7 +223,7 @@ public class TypeSdkGenerator
         CSharpCompilation compilation = CSharpCompilation.Create("EbxTypes", new[] { syntaxTree }, references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true, optimizationLevel: level));
 
-        List<AdditionalText> meta = new List<AdditionalText>();
+        List<AdditionalText> meta = new();
 
         if (Directory.Exists("Meta"))
         {
@@ -257,15 +264,18 @@ public class TypeSdkGenerator
             {
 #if EBX_TYPE_SDK_DEBUG
                 File.WriteAllLines("Errors.txt", result.Diagnostics.Select(static d => d.ToString()));
+                FrostyLogger.Logger?.LogError($"Could not compile sdk, errors written to Errors.txt");
+#else
+                FrostyLogger.Logger?.LogError($"Could not compile sdk");
 #endif
                 return false;
             }
             File.WriteAllBytes(filePath, stream.ToArray());
+            FrostyLogger.Logger?.LogInfo("Successfully compiled sdk");
         }
 
         return true;
     }
-
 
     private static uint HashTypeName(string inName)
     {

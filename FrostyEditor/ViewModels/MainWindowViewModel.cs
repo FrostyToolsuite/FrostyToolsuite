@@ -19,7 +19,7 @@ public partial class MainWindowViewModel : ObservableObject, IDropTarget
     private readonly IFactory m_factory = new DockFactory();
 
     private readonly FileViewModel m_defaultPage = new DefaultPageViewModel { Title = "Home" };
-    
+
     [ObservableProperty]
     private IRootDock? m_layout;
 
@@ -54,7 +54,7 @@ public partial class MainWindowViewModel : ObservableObject, IDropTarget
                         {
                             return false;
                         }
-                        
+
                         byte[] initFsKey = new byte[0x10];
                         stream.ReadExactly(initFsKey);
                         KeyManager.AddKey("InitFsKey", initFsKey);
@@ -66,7 +66,7 @@ public partial class MainWindowViewModel : ObservableObject, IDropTarget
                     }
                 }
             }
-                
+
             // init filesystem manager, this parses the layout.toc file
             if (!FileSystemManager.Initialize(inProfilePath))
             {
@@ -74,27 +74,27 @@ public partial class MainWindowViewModel : ObservableObject, IDropTarget
             }
 
             // generate sdk if needed
-            string sdkPath = $"Sdk/{ProfilesLibrary.SdkFilename}.dll";
+            string sdkPath = ProfilesLibrary.SdkPath;
             // if (!File.Exists(sdkPath))
             // {
             //     TypeSdkGenerator typeSdkGenerator = new();
-            //     
+            //
             //     Process.Start($"{FileSystemManager.BasePath}{ProfilesLibrary.ProfileName}");
-            //     
+            //
             //     // sleep 10 seconds to give ea time to launch the game
             //     Thread.Sleep(10 * 100);
-            //     
+            //
             //     Process? game = null;
             //     while (game is null)
             //     {
             //         game = Process.GetProcessesByName(ProfilesLibrary.ProfileName).FirstOrDefault();
             //     }
-            //     
+            //
             //     if (!typeSdkGenerator.DumpTypes(game))
             //     {
             //         return false;
             //     }
-            //     
+            //
             //     if (!typeSdkGenerator.CreateSdk(sdkPath))
             //     {
             //         return false;
@@ -106,13 +106,13 @@ public partial class MainWindowViewModel : ObservableObject, IDropTarget
             // {
             //     return false;
             // }
-            
+
             // init resource manager, this parses the cas.cat files if they exist for easy asset lookup
             if (!ResourceManager.Initialize())
             {
                 return false;
             }
-            
+
             // init asset manager, this parses the SuperBundles and loads all the assets
             if (!AssetManager.Initialize())
             {
@@ -157,7 +157,7 @@ public partial class MainWindowViewModel : ObservableObject, IDropTarget
     {
         if (!e.Data.Contains(DataFormats.Files))
         {
-            e.DragEffects = DragDropEffects.None; 
+            e.DragEffects = DragDropEffects.None;
             e.Handled = true;
         }
     }

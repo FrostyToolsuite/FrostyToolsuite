@@ -54,7 +54,7 @@ public class KelvinAssetLoader : IAssetLoader
 
                 if (!found)
                 {
-                    AssetManager.Logger?.Report("Sdk", $"Couldn't find SuperBundle {sbIc.Name}");
+                    FrostyLogger.Logger?.LogWarning($"Couldn't find SuperBundle \"{sbIc.Name}\"");
                 }
             }
         }
