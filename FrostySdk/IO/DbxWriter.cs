@@ -27,6 +27,11 @@ public sealed class DbxWriter : IDisposable
         m_xmlWriter = XmlWriter.Create(m_filePath, m_settings);
     }
 
+    ~DbxWriter()
+    {
+        Dispose();
+    }
+
     public void Write(EbxAsset inAsset)
     {
         if (!inAsset.IsValid)
@@ -351,7 +356,7 @@ public sealed class DbxWriter : IDisposable
             EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(value.External.FileGuid);
             if (entry is not null)
             {
-                m_xmlWriter.WriteAttributeString("ref", $"{entry!.Name}\\{value.External.ClassGuid}");
+                m_xmlWriter.WriteAttributeString("ref", $"{entry.Name}\\{value.External.ClassGuid}");
                 m_xmlWriter.WriteAttributeString("partitionGuid", entry.Guid.ToString());
             }
             else
@@ -364,14 +369,6 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter.WriteAttributeString("ref", "null");
         }
-        WriteFieldEnd();
-    }
-
-    private void WriteFieldWithValue(string fieldName, TypeRef value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
-    {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
-        m_xmlWriter.WriteAttributeString("typeName", value.Name);
-        m_xmlWriter.WriteAttributeString("typeGuid", value.Guid.ToString("D"));
         WriteFieldEnd();
     }
 

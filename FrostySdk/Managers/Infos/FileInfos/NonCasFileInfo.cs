@@ -8,30 +8,30 @@ namespace Frosty.Sdk.Managers.Infos.FileInfos;
 
 public class NonCasFileInfo : IFileInfo
 {
-    private readonly string m_superBundleName;
-    private readonly bool m_isPatch;
+    private readonly string m_superBundlePath;
     private readonly uint m_offset;
     private readonly uint m_size;
     private readonly uint m_logicalOffset;
 
     private readonly bool m_isDelta;
+    private readonly string? m_superBundleBasePath;
     private readonly uint m_baseOffset;
     private readonly uint m_baseSize;
     private readonly int m_midInstructionSize;
 
-    public NonCasFileInfo(string inSuperBundleName, bool inIsPatch, uint inOffset, uint inSize, uint inLogicalOffset = 0)
+    public NonCasFileInfo(string inSuperBundlePath, uint inOffset, uint inSize, uint inLogicalOffset = 0)
     {
-        m_superBundleName = inSuperBundleName;
-        m_isPatch = inIsPatch;
+        m_superBundlePath = inSuperBundlePath;
         m_offset = inOffset;
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
     }
 
-    public NonCasFileInfo(string inSuperBundleName, uint inDeltaOffset, uint inDeltaSize, uint inBaseOffset, uint inBaseSize, int inMidInstructionSize, uint inLogicalOffset = 0)
+    public NonCasFileInfo(string inSuperBundlePath, string? inSuperBundleBasePath, uint inDeltaOffset, uint inDeltaSize, uint inBaseOffset, uint inBaseSize, int inMidInstructionSize, uint inLogicalOffset = 0)
     {
         m_isDelta = true;
-        m_superBundleName = inSuperBundleName;
+        m_superBundlePath = inSuperBundlePath;
+        m_superBundleBasePath = inSuperBundleBasePath;
         m_offset = inDeltaOffset;
         m_size = inDeltaSize;
         m_baseOffset = inBaseOffset;
@@ -54,7 +54,7 @@ public class NonCasFileInfo : IFileInfo
             throw new NotImplementedException();
         }
 
-        using (FileStream stream = new(FileSystemManager.ResolvePath(m_isPatch, $"{m_superBundleName}.sb"), FileMode.Open, FileAccess.Read))
+        using (FileStream stream = new(m_superBundlePath, FileMode.Open, FileAccess.Read))
         {
             stream.Position = m_offset;
 
@@ -72,19 +72,18 @@ public class NonCasFileInfo : IFileInfo
             BlockStream? baseStream = null;
             if (m_baseSize > 0)
             {
-                baseStream = BlockStream.FromFile(FileSystemSource.Base.ResolvePath($"{m_superBundleName}.sb"),
-                    m_baseOffset, (int)m_baseSize);
+                baseStream = BlockStream.FromFile(m_superBundleBasePath!, m_baseOffset, (int)m_baseSize);
             }
 
-            using (BlockStream deltaStream = BlockStream.FromFile(FileSystemManager.ResolvePath(true, $"{m_superBundleName}.sb"), m_offset, (int)m_size))
+            using (BlockStream deltaStream = BlockStream.FromFile(m_superBundlePath, m_offset, (int)m_size))
             {
-                var retVal = Cas.DecompressData(deltaStream, baseStream, inOriginalSize, m_midInstructionSize);
+                Block<byte> retVal = Cas.DecompressData(deltaStream, baseStream, inOriginalSize, m_midInstructionSize);
                 baseStream?.Dispose();
                 return retVal;
             }
         }
 
-        using (BlockStream stream = BlockStream.FromFile(FileSystemManager.ResolvePath(m_isPatch, $"{m_superBundleName}.sb"), m_offset, (int)m_size))
+        using (BlockStream stream = BlockStream.FromFile(m_superBundlePath, m_offset, (int)m_size))
         {
             return Cas.DecompressData(stream, inOriginalSize);
         }
@@ -93,11 +92,11 @@ public class NonCasFileInfo : IFileInfo
     public void SerializeInternal(DataStream stream)
     {
         stream.WriteBoolean(m_isDelta);
-        stream.WriteNullTerminatedString(m_superBundleName);
+        stream.WriteNullTerminatedString(m_superBundlePath);
 
-        if (!m_isDelta)
+        if (m_isDelta)
         {
-            stream.WriteBoolean(m_isPatch);
+            stream.WriteNullTerminatedString(m_superBundleBasePath ?? string.Empty);
         }
 
         stream.WriteUInt32(m_offset);
@@ -118,10 +117,11 @@ public class NonCasFileInfo : IFileInfo
         bool isDelta = stream.ReadBoolean();
         if (isDelta)
         {
-            return new NonCasFileInfo(stream.ReadNullTerminatedString(), stream.ReadUInt32(), stream.ReadUInt32(),
-                stream.ReadUInt32(), stream.ReadUInt32(), stream.ReadInt32(), stream.ReadUInt32());
+            return new NonCasFileInfo(stream.ReadNullTerminatedString(), stream.ReadNullTerminatedString(),
+                stream.ReadUInt32(), stream.ReadUInt32(), stream.ReadUInt32(), stream.ReadUInt32(), stream.ReadInt32(),
+                stream.ReadUInt32());
         }
-        return new NonCasFileInfo(stream.ReadNullTerminatedString(), stream.ReadBoolean(), stream.ReadUInt32(), stream.ReadUInt32(),
+        return new NonCasFileInfo(stream.ReadNullTerminatedString(), stream.ReadUInt32(), stream.ReadUInt32(),
             stream.ReadUInt32());
     }
 }

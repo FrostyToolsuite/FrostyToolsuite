@@ -22,29 +22,29 @@ public readonly struct CString
     {
         return m_strValue.GetHashCode();
     }
-    
+
     public override bool Equals(object? obj)
     {
         if (obj is CString cStr)
         {
-            return m_strValue.Equals(cStr.m_strValue);
+            return m_strValue == cStr.m_strValue;
         }
-        
+
         if (obj is string str)
         {
-            return m_strValue.Equals(str);
+            return m_strValue == str;
         }
         return false;
     }
 
     public bool Equals(CString cStr, StringComparison comparison)
     {
-        return m_strValue.Equals(cStr.m_strValue, comparison);
+        return m_strValue?.Equals(cStr.m_strValue, comparison) ?? false;
     }
-    
+
     public bool Equals(string str, StringComparison comparison)
     {
-        return m_strValue.Equals(str, comparison);
+        return m_strValue?.Equals(str, comparison) ?? false;
     }
 
     public static bool operator ==(CString a, object b) => a.Equals(b);

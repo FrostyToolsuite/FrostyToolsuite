@@ -52,38 +52,41 @@ public static class FileSystemManager
 
         if (!ProfilesLibrary.IsInitialized)
         {
+            FrostyLogger.Logger?.LogError("ProfilesLibrary not initialized yet");
             return false;
         }
 
         if (!Directory.Exists(basePath))
         {
+            FrostyLogger.Logger?.LogError($"No directory \"{basePath}\" exists");
             return false;
         }
 
         BasePath = Path.GetFullPath(basePath);
 
-        CacheName = $"Caches/{ProfilesLibrary.InternalName}";
+        CacheName = Path.Combine(Utils.Utils.BaseDirectory, "Caches", $"{ProfilesLibrary.InternalName}");
         s_deobfuscator = ProfilesLibrary.FrostbiteVersion > "2014.4.11"
             ? typeof(SignatureDeobfuscator)
             : typeof(LegacyDeobfuscator);
-
-        if (!Directory.Exists($"{BasePath}/Patch"))
-        {
-            Sources.RemoveAt(0);
-        }
 
         if (Directory.Exists($"{BasePath}/Update"))
         {
             foreach (string dlc in Directory.EnumerateDirectories($"{BasePath}/Update"))
             {
+                if (!File.Exists(Path.Combine(dlc, "package.mft")))
+                {
+                    continue;
+                }
+
                 string subPath = Path.GetFileName(dlc);
                 if (subPath == "Patch")
                 {
-                    Sources.Insert(0, FileSystemSource.Patch);
+                    // do nothing
                 }
                 else
                 {
-                    Sources.Insert(0, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));
+                    // load order is patch -> dlc -> data
+                    Sources.Insert(1, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));
                 }
             }
         }
@@ -124,22 +127,78 @@ public static class FileSystemManager
         return string.Empty;
     }
 
+    public static bool TryResolvePath(string filename, [NotNullWhen(true)] out string? resolvedPath)
+    {
+        if (filename.StartsWith("native_data/"))
+        {
+            return FileSystemSource.Base.TryResolvePath(filename[12..], out resolvedPath);
+        }
+
+        string s = filename.StartsWith("native_patch/") ? filename[13..] : filename;
+        foreach (FileSystemSource source in Sources)
+        {
+            if (source.TryResolvePath(s, out resolvedPath))
+            {
+
+                return true;
+            }
+        }
+
+        resolvedPath = null;
+        return false;
+    }
+
     public static string ResolvePath(bool isPatch, string filename)
     {
-        if (!isPatch)
+        if (isPatch)
         {
-            return FileSystemSource.Base.ResolvePath(filename);
+            return FileSystemSource.Patch.ResolvePath(filename);
         }
 
         foreach (FileSystemSource source in Sources)
         {
+            if (source.Path == FileSystemSource.Patch.Path)
+            {
+                continue;
+            }
+
             if (source.TryResolvePath(filename, out string? path))
             {
+                if (source.IsDLC())
+                {
+
+                }
+
                 return path;
             }
         }
 
         return string.Empty;
+    }
+
+    public static bool TryResolvePath(bool isPatch, string filename, [NotNullWhen(true)] out string? resolvedPath)
+    {
+        if (isPatch)
+        {
+            return FileSystemSource.Patch.TryResolvePath(filename, out resolvedPath);
+        }
+
+        foreach (FileSystemSource source in Sources)
+        {
+            if (source.Path == FileSystemSource.Patch.Path)
+            {
+                continue;
+            }
+
+            if (source.TryResolvePath(filename, out resolvedPath))
+            {
+                return true;
+            }
+        }
+
+        resolvedPath = null;
+
+        return false;
     }
 
     public static string GetFilePath(CasFileIdentifier casFileIdentifier)
@@ -151,7 +210,7 @@ public static class FileSystemManager
                 $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
         }
 
-        return FileSystemSource.Base.ResolvePath(Path.Combine(installChunkInfo.InstallBundle,
+        return ResolvePath(false, Path.Combine(installChunkInfo.InstallBundle,
             $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
     }
 
@@ -426,7 +485,8 @@ public static class FileSystemManager
                     Id = installChunk.AsDict().AsGuid("id"),
                     Name = installChunk.AsDict().AsString("name"),
                     InstallBundle = installChunk.AsDict().AsString("installBundle"),
-                    AlwaysInstalled = installChunk.AsDict().AsBoolean("alwaysInstalled")
+                    AlwaysInstalled = installChunk.AsDict().AsBoolean("alwaysInstalled"),
+                    OptionalDlc = installChunk.AsDict().AsBoolean("optionalDLC")
                 };
 
                 if (!string.IsNullOrEmpty(ic.InstallBundle))

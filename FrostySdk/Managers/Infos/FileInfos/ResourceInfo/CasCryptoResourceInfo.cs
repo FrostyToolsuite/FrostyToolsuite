@@ -23,15 +23,15 @@ public class CasCryptoResourceInfo : CasResourceInfo
 
     public override Block<byte> GetRawData()
     {
-        using (FileStream stream = new(GetPath(), FileMode.Open, FileAccess.Read))
+        // we need to align the size to 16
+        int size = (int)GetSize();
+        size = size + 15 & ~15;
+
+        using (BlockStream stream = BlockStream.FromFile(GetPath(), GetOffset(), size))
         {
-            stream.Position = GetOffset();
+            stream.Decrypt(KeyManager.GetKey(m_keyId), PaddingMode.None);
 
-            // we need to align the size to 16
-            int size = (int)GetSize();
-            size += size & 15;
-            Block<byte> retVal = new(size);
-
+            Block<byte> retVal = new((int)GetSize());
             stream.ReadExactly(retVal);
             return retVal;
         }
@@ -41,10 +41,11 @@ public class CasCryptoResourceInfo : CasResourceInfo
     {
         // we need to align the size to 16
         int size = (int)GetSize();
-        size += size & 15;
+        size = size + 15 & ~15;
         using (BlockStream stream = BlockStream.FromFile(GetPath(), GetOffset(), size))
         {
-            stream.Decrypt(KeyManager.GetKey(m_keyId), PaddingMode.PKCS7);
+            stream.Decrypt(KeyManager.GetKey(m_keyId), PaddingMode.None);
+            stream.SetLength((int)GetSize());
             return Cas.DecompressData(stream, inOriginalSize);
         }
     }

@@ -75,8 +75,8 @@ public static class Cas
                         if (toPatch.Size > 0)
                         {
                             toPatch.CopyTo(outBuffer, toPatch.Size);
-                            toPatch.Shift(toPatch.Size);
                             outBuffer.Shift(toPatch.Size);
+                            toPatch.Shift(toPatch.Size);
                         }
                     }
 
@@ -254,8 +254,8 @@ public static class Cas
                         if (toPatch.Size > 0)
                         {
                             toPatch.CopyTo(outBuffer, toPatch.Size);
-                            toPatch.Shift(toPatch.Size);
                             outBuffer.Shift(toPatch.Size);
+                            toPatch.Shift(toPatch.Size);
                         }
                     }
 
