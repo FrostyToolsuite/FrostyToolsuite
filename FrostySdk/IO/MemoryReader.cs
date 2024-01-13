@@ -63,14 +63,9 @@ public sealed unsafe partial class MemoryReader
 
     #endregion
 
-    public long Position
-    {
-        get => m_position;
-        set => m_position = value;
-    }
+    public long Position { get; set; }
 
     private Process m_process;
-    private long m_position;
 
     public MemoryReader(Process inProcess)
     {
@@ -186,12 +181,14 @@ public sealed unsafe partial class MemoryReader
         return sb.ToString();
     }
 
-    public nint ReadExactly(Span<byte> buffer)
+    public void ReadExactly(Span<byte> buffer)
     {
         ReadMemory((nint)Position, buffer, out nint bytesRead);
-        Debug.Assert(bytesRead == buffer.Length);
+        if (bytesRead != buffer.Length)
+        {
+            throw new EndOfStreamException();
+        }
         Position += bytesRead;
-        return bytesRead;
     }
 
     public nint ScanPatter(string pattern)
@@ -222,12 +219,14 @@ public sealed unsafe partial class MemoryReader
 
     private int SearchPattern(Block<byte> buffer, int initIndex, Block<byte> currentAob, string mask)
     {
-        for (var i = initIndex; i < buffer.Size; ++i)
+        for (int i = initIndex; i < buffer.Size; ++i)
         {
-            for (var x = 0; x < currentAob.Size; x++)
+            for (int x = 0; x < currentAob.Size; x++)
             {
                 if (currentAob[x] != buffer[i + x] && mask[x] != '?')
+                {
                     goto end;
+                }
             }
             return i;
             end:;
@@ -237,23 +236,22 @@ public sealed unsafe partial class MemoryReader
 
     private void ConvertPatternToAob(string inPatternString, out string mask, out Block<byte> currentAob)
     {
-        var tratedStr = inPatternString.Replace("  ", "");
-        tratedStr = (tratedStr[0] == ' ') ? tratedStr.Substring(1, tratedStr.Length - 1) : tratedStr;
-        tratedStr = (tratedStr.Substring(tratedStr.Length - 1, 1) == " ") ? tratedStr[..^1] : tratedStr;
-
+        string trimmed = inPatternString.Trim();
 
         mask = "";
-        var partHex = inPatternString.Split(' ');
+        string[] partHex = trimmed.Split(' ');
         currentAob = new Block<byte>(partHex.Length);
-        for (var i = 0; i < partHex.Length; ++i)
+        for (int i = 0; i < partHex.Length; ++i)
         {
-            if (partHex[i].Contains("?"))
+            if (partHex[i].Contains('?'))
             {
                 currentAob[i] = 0xCC;
-                mask += "?";
-            } else {
+                mask += '?';
+            }
+            else
+            {
                 currentAob[i] = Convert.ToByte(partHex[i], 16);
-                mask += "x";
+                mask += 'x';
             }
         }
     }
@@ -295,7 +293,7 @@ public sealed unsafe partial class MemoryReader
                 nint end = nint.Parse(arr[0][(index + 1)..], NumberStyles.HexNumber);
 
                 string perm = arr[1];
-                if (perm[0] == '-'|| perm[2] != 'x')
+                if (perm[0] == '-' || perm[2] != 'x')
                 {
                     continue;
                 }
