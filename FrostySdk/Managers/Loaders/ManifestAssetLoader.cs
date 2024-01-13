@@ -98,33 +98,21 @@ public class ManifestAssetLoader : IAssetLoader
                 // we use the file infos from the catalogs, since its easier even if they are not used by the game
                 foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
                 {
-                    IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(ebx.Sha1);
-                    if (fileInfos is not null)
-                    {
-                        ebx.FileInfos.UnionWith(fileInfos);
-                    }
+                    ebx.AddFileInfo(ResourceManager.GetFileInfo(ebx.Sha1));
 
                     AssetManager.AddEbx(ebx, bundle.Id);
                 }
 
                 foreach (ResAssetEntry res in bundleMeta.ResList)
                 {
-                    IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(res.Sha1);
-                    if (fileInfos is not null)
-                    {
-                        res.FileInfos.UnionWith(fileInfos);
-                    }
+                    res.AddFileInfo(ResourceManager.GetFileInfo(res.Sha1));
 
                     AssetManager.AddRes(res, bundle.Id);
                 }
 
                 foreach (ChunkAssetEntry chunk in bundleMeta.ChunkList)
                 {
-                    IEnumerable<IFileInfo>? fileInfos = ResourceManager.GetFileInfos(chunk.Sha1);
-                    if (fileInfos is not null)
-                    {
-                        chunk.FileInfos.UnionWith(fileInfos);
-                    }
+                    chunk.AddFileInfo(ResourceManager.GetFileInfo(chunk.Sha1));
 
                     AssetManager.AddChunk(chunk, bundle.Id);
                 }
@@ -136,12 +124,18 @@ public class ManifestAssetLoader : IAssetLoader
                 Guid chunkId = stream.ReadGuid();
                 (CasFileIdentifier, uint, long) resourceInfo = files[stream.ReadInt32()];
 
-                //ChunkAssetEntry entry = new(chunkId, Sha1.Zero, resourceInfo.Item3, 0, 0, 0);
+                InstallChunkInfo ic = FileSystemManager.GetInstallChunkInfo(resourceInfo.Item1.InstallChunkIndex);
+                string superbundle = ic.SuperBundles.FirstOrDefault() ?? string.Empty;
+                Debug.Assert(!string.IsNullOrEmpty(superbundle), "no super bundle found for install chunk");
+                // hack we just assume there are no splitSuperBundles
+                SuperBundleInstallChunk sbIc = FileSystemManager.GetSuperBundleInstallChunk(superbundle);
 
-                //entry.FileInfos.Add(
-                    //new CasFileInfo(resourceInfo.Item1, resourceInfo.Item2, (uint)resourceInfo.Item3, 0));
+                ChunkAssetEntry entry = new(chunkId, Sha1.Zero, 0, (uint)resourceInfo.Item3, Utils.Utils.HashString(sbIc.Name, true));
 
-                //AssetManager.AddSuperBundleChunk(entry);
+                entry.AddFileInfo(
+                    new CasFileInfo(resourceInfo.Item1, resourceInfo.Item2, (uint)resourceInfo.Item3, 0));
+
+                AssetManager.AddSuperBundleChunk(entry);
             }
         }
     }

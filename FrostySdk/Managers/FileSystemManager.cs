@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -30,11 +32,13 @@ public static class FileSystemManager
 
     public static readonly List<FileSystemSource> Sources = new(2) { FileSystemSource.Patch, FileSystemSource.Base };
 
-    private static readonly Dictionary<string, SuperBundleInfo> s_superBundleMapping = new();
+    public static InstallChunkInfo? DefaultInstallChunk;
+
+    private static readonly Dictionary<string, SuperBundleInfo> s_superBundleMapping = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<int, int> s_persistentIndexMapping = new();
     private static readonly List<InstallChunkInfo> s_installChunks = new();
     private static readonly Dictionary<int, SuperBundleInstallChunk> s_sbIcMapping = new();
-    private static readonly List<string> s_casFiles = new();
+    private static readonly Dictionary<int, string> s_casFiles = new();
 
     private static Type? s_deobfuscator;
     private static readonly Dictionary<string, Block<byte>> s_memoryFs = new();
@@ -48,38 +52,41 @@ public static class FileSystemManager
 
         if (!ProfilesLibrary.IsInitialized)
         {
+            FrostyLogger.Logger?.LogError("ProfilesLibrary not initialized yet");
             return false;
         }
 
         if (!Directory.Exists(basePath))
         {
+            FrostyLogger.Logger?.LogError($"No directory \"{basePath}\" exists");
             return false;
         }
 
         BasePath = Path.GetFullPath(basePath);
 
-        CacheName = $"Caches/{ProfilesLibrary.InternalName}";
+        CacheName = Path.Combine(Utils.Utils.BaseDirectory, "Caches", $"{ProfilesLibrary.InternalName}");
         s_deobfuscator = ProfilesLibrary.FrostbiteVersion > "2014.4.11"
             ? typeof(SignatureDeobfuscator)
             : typeof(LegacyDeobfuscator);
-
-        if (!Directory.Exists($"{BasePath}/Patch"))
-        {
-            Sources.RemoveAt(0);
-        }
 
         if (Directory.Exists($"{BasePath}/Update"))
         {
             foreach (string dlc in Directory.EnumerateDirectories($"{BasePath}/Update"))
             {
+                if (!File.Exists(Path.Combine(dlc, "package.mft")))
+                {
+                    continue;
+                }
+
                 string subPath = Path.GetFileName(dlc);
                 if (subPath == "Patch")
                 {
-                    Sources.Insert(0, FileSystemSource.Patch);
+                    // do nothing
                 }
                 else
                 {
-                    Sources.Insert(0, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));
+                    // load order is patch -> dlc -> data
+                    Sources.Insert(1, new FileSystemSource($"Update/{subPath}/Data", FileSystemSource.Type.DLC));
                 }
             }
         }
@@ -120,17 +127,48 @@ public static class FileSystemManager
         return string.Empty;
     }
 
+    public static bool TryResolvePath(string filename, [NotNullWhen(true)] out string? resolvedPath)
+    {
+        if (filename.StartsWith("native_data/"))
+        {
+            return FileSystemSource.Base.TryResolvePath(filename[12..], out resolvedPath);
+        }
+
+        string s = filename.StartsWith("native_patch/") ? filename[13..] : filename;
+        foreach (FileSystemSource source in Sources)
+        {
+            if (source.TryResolvePath(s, out resolvedPath))
+            {
+
+                return true;
+            }
+        }
+
+        resolvedPath = null;
+        return false;
+    }
+
     public static string ResolvePath(bool isPatch, string filename)
     {
-        if (!isPatch)
+        if (isPatch)
         {
-            return FileSystemSource.Base.ResolvePath(filename);
+            return FileSystemSource.Patch.ResolvePath(filename);
         }
 
         foreach (FileSystemSource source in Sources)
         {
+            if (source.Path == FileSystemSource.Patch.Path)
+            {
+                continue;
+            }
+
             if (source.TryResolvePath(filename, out string? path))
             {
+                if (source.IsDLC())
+                {
+
+                }
+
                 return path;
             }
         }
@@ -138,17 +176,42 @@ public static class FileSystemManager
         return string.Empty;
     }
 
+    public static bool TryResolvePath(bool isPatch, string filename, [NotNullWhen(true)] out string? resolvedPath)
+    {
+        if (isPatch)
+        {
+            return FileSystemSource.Patch.TryResolvePath(filename, out resolvedPath);
+        }
+
+        foreach (FileSystemSource source in Sources)
+        {
+            if (source.Path == FileSystemSource.Patch.Path)
+            {
+                continue;
+            }
+
+            if (source.TryResolvePath(filename, out resolvedPath))
+            {
+                return true;
+            }
+        }
+
+        resolvedPath = null;
+
+        return false;
+    }
+
     public static string GetFilePath(CasFileIdentifier casFileIdentifier)
     {
         InstallChunkInfo installChunkInfo = s_installChunks[s_persistentIndexMapping[casFileIdentifier.InstallChunkIndex]];
         if (casFileIdentifier.IsPatch)
         {
-            return FileSystemSource.Patch.ResolvePath(
-                $"{installChunkInfo.InstallBundle}/cas_{casFileIdentifier.CasIndex:D2}.cas");
+            return FileSystemSource.Patch.ResolvePath(Path.Combine(installChunkInfo.InstallBundle,
+                $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
         }
 
-        return FileSystemSource.Base.ResolvePath(
-            $"{installChunkInfo.InstallBundle}/cas_{casFileIdentifier.CasIndex:D2}.cas");
+        return ResolvePath(false, Path.Combine(installChunkInfo.InstallBundle,
+            $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
     }
 
     public static string GetFilePath(int casIndex)
@@ -200,25 +263,29 @@ public static class FileSystemManager
         return s_sbIcMapping[hash];
     }
 
+    public static SuperBundleInfo GetSuperBundle(string inName)
+    {
+        return s_superBundleMapping[inName];
+    }
+
+    public static bool TryGetSuperBundle(string inName, [NotNullWhen(true)] out SuperBundleInfo? superBundleInfo)
+    {
+        return s_superBundleMapping.TryGetValue(inName, out superBundleInfo);
+    }
+
     public static bool HasFileInMemoryFs(string name) => s_memoryFs.ContainsKey(name);
     public static Block<byte> GetFileFromMemoryFs(string name) => s_memoryFs[name];
 
-    private static bool LoadInitFs(string name, bool isBase = false)
+    private static bool LoadInitFs(string name, bool loadBase = false)
     {
         ParseGamePlatform(name.Remove(0, 7));
 
-        string path;
-        if (isBase)
+        if (loadBase || !FileSystemSource.Patch.TryResolvePath(name, out string? path))
         {
-            path = ResolvePath(false, name);
-        }
-        else
-        {
-            path = ResolvePath(name);
-        }
-        if (string.IsNullOrEmpty(path))
-        {
-            return false;
+            if (!FileSystemSource.Base.TryResolvePath(name, out path))
+            {
+                return false;
+            }
         }
 
         DbObject? initFs = DbObject.Deserialize(path);
@@ -305,93 +372,76 @@ public static class FileSystemManager
 
     private static bool ProcessLayouts()
     {
-        string baseLayoutPath = ResolvePath(false, "layout.toc");
-        string patchLayoutPath = ResolvePath(true, "layout.toc");
-
-        if (string.IsNullOrEmpty(baseLayoutPath))
+        int index = 0;
+        bool processed = false;
+        foreach (FileSystemSource source in Sources)
         {
-            return false;
-        }
-
-        // Process base layout.toc
-        DbObjectDict? baseLayout = DbObject.Deserialize(baseLayoutPath)?.AsDict();
-
-        if (baseLayout is null)
-        {
-            return false;
-        }
-
-        string kelvinPath = ResolvePath("kelvin.toc");
-        if (!string.IsNullOrEmpty(kelvinPath))
-        {
-            BundleFormat = BundleFormat.Kelvin;
-        }
-
-        foreach (DbObject superBundle in baseLayout.AsDict().AsList("superBundles"))
-        {
-            string name = superBundle.AsDict().AsString("name");
-            s_superBundleMapping.Add(name, new SuperBundleInfo(name));
-        }
-
-        if (!string.IsNullOrEmpty(patchLayoutPath))
-        {
-            // Process patch layout.toc
-            DbObjectDict? patchLayout = DbObject.Deserialize(patchLayoutPath)?.AsDict();
-
-            if (patchLayout is null)
+            if (source.IsDLC())
             {
-                return false;
+                continue;
             }
 
-            foreach (DbObject superBundle in patchLayout.AsList("superBundles"))
+            if (source.TryResolvePath("layout.toc", out string? path))
             {
-                // Merge super bundles
+                if (!ProcessLayout(path, index++))
+                {
+                    return false;
+                }
+
+                processed = true;
+            }
+        }
+
+        return processed;
+    }
+
+    private static bool ProcessLayout(string inPath, int inIndex)
+    {
+        // Process patch layout.toc
+        DbObjectDict? layout = DbObject.Deserialize(inPath)?.AsDict();
+
+        if (layout is null)
+        {
+            return false;
+        }
+        uint @base = layout.AsUInt("base");
+        uint head = layout.AsUInt("head");
+
+        if (inIndex == 0)
+        {
+            foreach (DbObject superBundle in layout.AsList("superBundles"))
+            {
+                // load superbundles
                 string name = superBundle.AsDict().AsString("name");
                 s_superBundleMapping.TryAdd(name, new SuperBundleInfo(name));
                 s_superBundleMapping[name].SetLegacyFlags(superBundle.AsDict().AsBoolean("base"), superBundle.AsDict().AsBoolean("same"), superBundle.AsDict().AsBoolean("delta"));
             }
 
-            Base = patchLayout.AsUInt("base");
-            Head = patchLayout.AsUInt("head");
+            Head = head;
+            Base = @base;
 
-            if (!ProcessInstallChunks(patchLayout.AsDict("installManifest", null)))
+            if (!ProcessInstallChunks(layout.AsDict("installManifest", null)))
             {
                 return false;
             }
 
-            SuperBundleManifest = patchLayout.AsDict("manifest", null);
+            SuperBundleManifest = layout.AsDict("manifest", null);
             if (SuperBundleManifest is not null)
             {
                 BundleFormat = BundleFormat.SuperBundleManifest;
             }
 
-            if (!LoadInitFs(patchLayout.AsList("fs")[0].AsString()))
+            if (!LoadInitFs(layout.AsList("fs")[0].AsString()))
             {
                 return false;
             }
         }
         else
         {
-            Base = baseLayout.AsUInt("base");
-            Head = baseLayout.AsUInt("head");
-
-            if (!ProcessInstallChunks(baseLayout.AsDict("installManifest", null)))
-            {
-                return false;
-            }
-
-
-            SuperBundleManifest = baseLayout.AsDict("manifest", null);
-            if (SuperBundleManifest is not null)
-            {
-                BundleFormat = BundleFormat.SuperBundleManifest;
-            }
-
-            if (!LoadInitFs(baseLayout.AsList("fs")[0].AsString()))
-            {
-                return false;
-            }
+            // for newer games the base of the patch layout is the head of the base one
+            // Debug.Assert(Base == head);
         }
+
         return true;
     }
 
@@ -412,6 +462,7 @@ public static class FileSystemManager
             }
 
             s_installChunks.Add(ic);
+            s_persistentIndexMapping.Add(0, 0);
         }
         else
         {
@@ -434,8 +485,14 @@ public static class FileSystemManager
                     Id = installChunk.AsDict().AsGuid("id"),
                     Name = installChunk.AsDict().AsString("name"),
                     InstallBundle = installChunk.AsDict().AsString("installBundle"),
-                    AlwaysInstalled = installChunk.AsDict().AsBoolean("alwaysInstalled")
+                    AlwaysInstalled = installChunk.AsDict().AsBoolean("alwaysInstalled"),
+                    OptionalDlc = installChunk.AsDict().AsBoolean("optionalDLC")
                 };
+
+                if (!string.IsNullOrEmpty(ic.InstallBundle))
+                {
+                    DefaultInstallChunk ??= ic;
+                }
 
                 int index = installChunk.AsDict().AsInt("persistentIndex", s_installChunks.Count);
                 s_persistentIndexMapping.Add(index, s_installChunks.Count);
@@ -462,16 +519,12 @@ public static class FileSystemManager
                     foreach (DbObject fileObj in installChunk.AsDict().AsList("files"))
                     {
                         int casId = fileObj.AsDict().AsInt("id");
-                        while (s_casFiles.Count <= casId)
-                        {
-                            s_casFiles.Add(string.Empty);
-                        }
 
                         string casPath = fileObj.AsDict().AsString("path").Trim('/');
                         casPath = casPath.Replace("native_data/Data", "native_data");
                         casPath = casPath.Replace("native_data/Patch", "native_patch");
 
-                        s_casFiles[casId] = casPath;
+                        s_casFiles.Add(casId, casPath);
                     }
                 }
 
@@ -511,14 +564,31 @@ public static class FileSystemManager
 
             foreach (SuperBundleInfo sb in s_superBundleMapping.Values)
             {
-                if (sb.InstallChunks.Count == 0)
+                if (sb.InstallChunks.Count > 0)
                 {
-                    SuperBundleInstallChunk sbIc = new(sb, s_installChunks[0], InstallChunkType.Default);
+                    continue;
+                }
+
+                if (sb.Name.Contains("loc/", StringComparison.OrdinalIgnoreCase))
+                {
+                    // TODO: assign correct languageInstallChunk, for now just use DefaultInstallChunk
+                    Debug.Assert(DefaultInstallChunk is not null);
+
+                    SuperBundleInstallChunk sbIc = new(sb, DefaultInstallChunk, InstallChunkType.Default);
+                    DefaultInstallChunk.SuperBundles.Add(sb.Name);
+                    s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                    sb.InstallChunks.Add(sbIc);
+                }
+                else if (!sb.Name.Contains("debug", StringComparison.OrdinalIgnoreCase))
+                {
+                    Debug.Assert(DefaultInstallChunk is not null);
+
+                    SuperBundleInstallChunk sbIc = new(sb, DefaultInstallChunk, InstallChunkType.Default);
+                    DefaultInstallChunk.SuperBundles.Add(sb.Name);
                     s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
                     sb.InstallChunks.Add(sbIc);
                 }
             }
-
         }
 
         return true;

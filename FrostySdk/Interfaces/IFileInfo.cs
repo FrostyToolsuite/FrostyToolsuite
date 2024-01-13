@@ -8,6 +8,8 @@ namespace Frosty.Sdk.Interfaces;
 
 public interface IFileInfo
 {
+    public bool IsDelta();
+
     public bool IsComplete();
 
     public Block<byte> GetRawData();

@@ -17,7 +17,7 @@ public class BinaryBundle
         Kelvin = 0xC3889333,
         Encrypted = 0xC3E5D5C3
     }
- 
+
     public EbxAssetEntry[] EbxList { get; }
     public ResAssetEntry[] ResList { get; }
     public ChunkAssetEntry[] ChunkList { get; }
@@ -26,11 +26,11 @@ public class BinaryBundle
     {
         // we use big endian for default
         Endian endian = Endian.Big;
-        
+
         uint size = stream.ReadUInt32(Endian.Big);
 
         long startPos = stream.Position;
-        
+
         Magic magic = (Magic)(stream.ReadUInt32(endian) ^ GetSalt());
 
         // check what endian its written in
@@ -73,10 +73,10 @@ public class BinaryBundle
             {
                 throw new MissingEncryptionKeyException("bundles");
             }
-            
+
             blockStream.Decrypt(KeyManager.GetKey("BundleEncryptionKey"), (int)(size - 0x20), PaddingMode.None);
         }
-        
+
         // read sha1s
         for (int i = 0; i < totalCount; i++)
         {
@@ -93,7 +93,7 @@ public class BinaryBundle
             stream.Position = stringsOffset + nameOffset;
             string name = stream.ReadNullTerminatedString();
 
-            EbxList[i] = new EbxAssetEntry(name, Utils.Utils.HashString(name), sha1[j], originalSize);
+            EbxList[i] = new EbxAssetEntry(name, sha1[j], originalSize);
 
             stream.Position = currentPos;
         }
@@ -112,14 +112,14 @@ public class BinaryBundle
 
             stream.Position = resTypeOffset + i * sizeof(uint);
             uint resType = stream.ReadUInt32();
-            
+
             stream.Position = resMetaOffset + i * 0x10;
             byte[] resMeta = stream.ReadBytes(0x10);
-            
+
             stream.Position = resRidOffset + i * sizeof(ulong);
             ulong resRid = stream.ReadUInt64();
 
-            ResList[i] = new ResAssetEntry(name, Utils.Utils.HashString(name), sha1[j], originalSize, resRid, resType, resMeta);
+            ResList[i] = new ResAssetEntry(name, sha1[j], originalSize, resRid, resType, resMeta);
 
             stream.Position = currentPos;
         }
@@ -134,7 +134,7 @@ public class BinaryBundle
         // we need to set the correct position, since the string table comes after the meta
         stream.Position = startPos + size;
     }
-    
+
     /// <summary>
     /// Dependent on the FB version, games use different salts.
     /// If the game uses a version newer than 2017 it uses "pecn", else it uses "pecm".
@@ -177,7 +177,7 @@ public class BinaryBundle
 
     private static bool IsValidMagic(Magic magic) =>
         magic == Magic.Standard || magic == Magic.Kelvin || magic == Magic.Encrypted;
-    
+
     /// <summary>
     /// Deserialize a binary stored bundle as <see cref="DbObject"/>.
     /// </summary>
