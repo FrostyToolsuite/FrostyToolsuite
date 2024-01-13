@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyCmd", "FrostyCmd\FrostyCmd.csproj", "{990663D6-619A-46C3-ADFA-68208FF24465}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyCli", "FrostyCli\FrostyCli.csproj", "{990663D6-619A-46C3-ADFA-68208FF24465}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostySdk", "FrostySdk\FrostySdk.csproj", "{8A2EBD94-9430-4F02-9FEA-7EC0B182A10F}"
 EndProject

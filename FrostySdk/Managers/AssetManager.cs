@@ -53,8 +53,15 @@ public static class AssetManager
             return true;
         }
 
-        if (!FileSystemManager.IsInitialized || !ResourceManager.IsInitialized)
+        if (!FileSystemManager.IsInitialized)
         {
+            FrostyLogger.Logger?.LogError("FileSystemManager not initialized yet");
+            return false;
+        }
+
+        if (!ResourceManager.IsInitialized)
+        {
+            FrostyLogger.Logger?.LogError("ResourceManager not initialized yet");
             return false;
         }
 

@@ -22,7 +22,7 @@ public static class TypeLibrary
             return true;
         }
 
-        FileInfo fileInfo = new($"Sdk/{ProfilesLibrary.SdkFilename}.dll");
+        FileInfo fileInfo = new(ProfilesLibrary.SdkPath);
         if (!fileInfo.Exists)
         {
             return false;

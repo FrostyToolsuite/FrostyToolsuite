@@ -52,7 +52,7 @@ public static class FileSystemManager
 
         if (!ProfilesLibrary.IsInitialized)
         {
-            FrostyLogger.Logger?.LogError("Call ProfilesLibrary.Initialize before FileSystemManager.Initialize");
+            FrostyLogger.Logger?.LogError("ProfilesLibrary not initialized yet");
             return false;
         }
 
@@ -64,7 +64,7 @@ public static class FileSystemManager
 
         BasePath = Path.GetFullPath(basePath);
 
-        CacheName = $"Caches/{ProfilesLibrary.InternalName}";
+        CacheName = Path.Combine(Utils.Utils.BaseDirectory, "Caches", $"{ProfilesLibrary.InternalName}");
         s_deobfuscator = ProfilesLibrary.FrostbiteVersion > "2014.4.11"
             ? typeof(SignatureDeobfuscator)
             : typeof(LegacyDeobfuscator);

@@ -43,7 +43,7 @@ public static class ResourceManager
 
         if (!FileSystemManager.IsInitialized)
         {
-            FrostyLogger.Logger?.LogError("Call FileSystemManager.Initialize before ResourceManager.Initialize");
+            FrostyLogger.Logger?.LogError("FileSystemManager not initialized yet");
             return false;
         }
 
@@ -78,18 +78,19 @@ public static class ResourceManager
 
         foreach (string libOodle in Directory.EnumerateFiles(FileSystemManager.BasePath, "oo2core_*"))
         {
-            Directory.CreateDirectory("ThirdParty");
+            string thirdPartyPath = Path.Combine(Utils.Utils.BaseDirectory, "ThirdParty");
+            Directory.CreateDirectory(thirdPartyPath);
 
             string ext = Path.GetExtension(libOodle);
-            string path = $"ThirdParty/oo2core{ext}";
+            string path = Path.Combine(thirdPartyPath, $"oo2core{ext}");
             File.Delete(path);
             File.CreateSymbolicLink(path, libOodle);
 
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && ext == ".dll")
             {
-                const string oodleHack = "ThirdParty/oo2core.so";
+                string oodleHack = Path.Combine(thirdPartyPath, "oo2core.so");
                 File.Delete(oodleHack);
-                File.CreateSymbolicLink(oodleHack, "ThirdParty/liblinoodle.so");
+                File.CreateSymbolicLink(oodleHack, Path.Combine(thirdPartyPath, "liblinoodle.so"));
             }
 
             break;

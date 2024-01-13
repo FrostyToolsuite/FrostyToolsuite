@@ -19,7 +19,7 @@ public static class ProfilesLibrary
     public static bool HasStrippedTypeNames => s_effectiveProfile?.HasStrippedTypeNames ?? false;
     public static int DataVersion => s_effectiveProfile?.DataVersion ?? -1;
     public static FrostbiteVersion FrostbiteVersion => s_effectiveProfile?.FrostbiteVersion ?? "0.0.0";
-    public static string SdkFilename => s_effectiveProfile is null ? string.Empty : $"{s_effectiveProfile.InternalName}SDK";
+    public static string SdkPath => s_effectiveProfile is null ? string.Empty : Path.Combine(Utils.Utils.BaseDirectory, "Sdk", $"{s_effectiveProfile.InternalName}.dll");
 
     public static int EbxVersion => s_effectiveProfile?.EbxVersion ?? -1;
     public static bool RequiresKey => s_effectiveProfile?.RequiresKey ?? false;
@@ -49,9 +49,10 @@ public static class ProfilesLibrary
 
     public static void Initialize()
     {
-        if (Directory.Exists("Profiles"))
+        string profilesPath = Path.Combine(Utils.Utils.BaseDirectory, "Profiles");
+        if (Directory.Exists(profilesPath))
         {
-            foreach (string file in Directory.EnumerateFiles("Profiles"))
+            foreach (string file in Directory.EnumerateFiles(profilesPath))
             {
                 Profile? profile;
                 using (FileStream stream = new(file, FileMode.Open, FileAccess.Read))
@@ -92,7 +93,7 @@ public static class ProfilesLibrary
             return true;
         }
 
-        FrostyLogger.Logger?.LogError($"No profile found in directory {Path.GetFullPath("Profiles")} for key {profileKey}");
+        FrostyLogger.Logger?.LogError($"No profile found in directory {Path.Combine(Utils.Utils.BaseDirectory, "Profiles")} for key {profileKey}");
         return false;
     }
 

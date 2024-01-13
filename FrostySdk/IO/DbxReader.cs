@@ -29,13 +29,11 @@ public sealed class DbxReader
     // used to keep track of number of refs pointing to an instance
     private readonly Dictionary<Guid, int> m_guidToRefCount = new();
 
-    private EbxAsset? m_ebx = null;
+    private EbxAsset? m_ebx;
     private Guid m_primaryInstGuid;
     // incremented when an internal id is requested
     private int m_internalId = -1;
     private string m_filepath = string.Empty;
-
-    public DbxReader() { }
 
     public EbxAsset Read(string filepath)
     {
@@ -48,10 +46,10 @@ public sealed class DbxReader
         return ReadDbx();
     }
 
-    private static void SetProperty(object obj, Type objType, string propName, object propValue)
+    private static void SetProperty(object obj, Type objType, string propName, object? propValue)
     {
         PropertyInfo? property = objType.GetProperty(propName, s_propertyBindingFlags);
-        if (property != null && property.CanWrite)
+        if (property is not null && property.CanWrite)
         {
             if (propValue is null)
             {
@@ -67,17 +65,17 @@ public sealed class DbxReader
         PropertyInfo? property = objType.GetProperty(propName, s_propertyBindingFlags);
         if (property != null && property.CanWrite)
         {
-            object value = GetValueFromString(property.PropertyType, propValue, property.GetCustomAttribute<EbxFieldMetaAttribute>()?.Flags.GetTypeEnum());
+            object? value = GetValueFromString(property.PropertyType, propValue, property.GetCustomAttribute<EbxFieldMetaAttribute>()?.Flags.GetTypeEnum());
             if (value is null)
             {
                 Console.WriteLine($"Null value {propName}");
                 return;
             }
-            property.SetValue(obj, value!);
+            property.SetValue(obj, value);
         }
     }
 
-    private static dynamic GetValueFromString(Type propType, string propValue, TypeEnum? frostbiteType = null)
+    private static object? GetValueFromString(Type propType, string propValue, TypeEnum? frostbiteType = null)
     {
         if (propType.IsPrimitive)
         {
@@ -303,7 +301,7 @@ public sealed class DbxReader
                 }
                 else
                 {
-                    SetPropertyFromStringValue(obj, objType, GetAttributeValue(node, "name")!, node.InnerText!);
+                    SetPropertyFromStringValue(obj, objType, GetAttributeValue(node, "name")!, node.InnerText);
                 }
                 break;
             }
@@ -315,7 +313,7 @@ public sealed class DbxReader
                 }
                 else
                 {
-                    ((dynamic)obj).Add(GetValueFromString(arrayElementType!, node.InnerText!, arrayElementTypeEnum));
+                    ((dynamic)obj).Add(GetValueFromString(arrayElementType!, node.InnerText, arrayElementTypeEnum));
                 }
                 break;
             }
@@ -328,7 +326,7 @@ public sealed class DbxReader
             }
             case "complex":
             {
-                string? structFieldName = GetAttributeValue(node, "name")!;
+                string structFieldName = GetAttributeValue(node, "name")!;
                 dynamic structObj = ReadStruct(arrayElementType, node);
                 if (isArray)
                 {
@@ -336,7 +334,7 @@ public sealed class DbxReader
                 }
                 else
                 {
-                    SetProperty(obj, objType, structFieldName!, structObj);
+                    SetProperty(obj, objType, structFieldName, structObj);
                 }
                 break;
             }
@@ -355,8 +353,8 @@ public sealed class DbxReader
 
                 EbxTypeMetaAttribute? typeMeta = valueType.GetCustomAttribute<EbxTypeMetaAttribute>();
 
-                object value = GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
-                BoxedValueRef boxed = new(value, typeMeta!.Flags.GetTypeEnum());
+                object? value = GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
+                BoxedValueRef boxed = new(value, typeMeta.Flags.GetTypeEnum());
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(boxed, s_boxedValueRefType!));
                 break;
             }
@@ -382,20 +380,20 @@ public sealed class DbxReader
         string arrayTypeStr = GetAttributeValue(node, "type")!;
         bool isRef = arrayTypeStr.StartsWith("ref(");
 
-        Type? arrayElementType = (isRef ? s_pointerType : TypeLibrary.GetType(arrayTypeStr))
-            ?? throw new ArgumentException($"array element type doesn't exist? {arrayTypeStr}");
+        Type arrayElementType = (isRef ? s_pointerType : TypeLibrary.GetType(arrayTypeStr))
+                                ?? throw new ArgumentException($"array element type doesn't exist? {arrayTypeStr}");
 
         EbxTypeMetaAttribute? arrayTypeMeta = arrayElementType.GetCustomAttribute<EbxTypeMetaAttribute>();
         Type arrayType = s_collectionType.MakeGenericType(arrayElementType);
 
-        object? array = Activator.CreateInstance(arrayType)
-            ?? throw new ArgumentException($"failed to create array with element type {arrayElementType.Name}");
+        object array = Activator.CreateInstance(arrayType)
+                       ?? throw new ArgumentException($"failed to create array with element type {arrayElementType.Name}");
 
         if (node.ChildNodes.Count > 0)
         {
             foreach(XmlNode child in node.ChildNodes)
             {
-                ReadField(ref array, child, arrayType, true, isRef, arrayElementType!, arrayTypeMeta?.Flags.GetTypeEnum());
+                ReadField(ref array, child, arrayType, true, isRef, arrayElementType, arrayTypeMeta?.Flags.GetTypeEnum());
             }
         }
 
@@ -404,11 +402,11 @@ public sealed class DbxReader
 
     private dynamic ReadStruct(Type? structType, XmlNode node)
     {
-        Type? type = (structType ?? TypeLibrary.GetType(GetAttributeValue(node, "type")!))
-            ?? throw new ArgumentException($"struct type doesn't exist?");
+        Type type = (structType ?? TypeLibrary.GetType(GetAttributeValue(node, "type")!))
+                    ?? throw new ArgumentException($"struct type doesn't exist?");
 
-        dynamic? obj = Activator.CreateInstance(type)
-            ?? throw new ArgumentException($"failed to create struct of type {type.Name}");
+        dynamic obj = Activator.CreateInstance(type)
+                      ?? throw new ArgumentException($"failed to create struct of type {type.Name}");
 
         if (node.ChildNodes.Count > 0)
         {
