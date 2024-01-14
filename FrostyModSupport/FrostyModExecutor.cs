@@ -34,9 +34,9 @@ public partial class FrostyModExecutor
 
     private readonly Dictionary<Guid, InstallChunkWriter> m_installChunkWriters = new();
 
-    private string m_patchPath;
-    private string m_modDataPath;
-    private string m_gamePatchPath;
+    private string m_patchPath = string.Empty;
+    private string m_modDataPath = string.Empty;
+    private string m_gamePatchPath = string.Empty;
 
     /// <summary>
     /// Generates a directory containing the modded games data.
@@ -177,7 +177,7 @@ public partial class FrostyModExecutor
 
     private void LoadHandlers()
     {
-        foreach (string handler in Directory.EnumerateFiles("Handlers"))
+        foreach (string handler in Directory.EnumerateFiles(Path.Combine(Utils.BaseDirectory, "Handlers")))
         {
             Assembly assembly = Assembly.Load(handler);
             foreach (Type type in assembly.ExportedTypes)
@@ -207,7 +207,7 @@ public partial class FrostyModExecutor
                     SuperBundleModInfo sb = GetSuperBundleModInfo(bundle.SuperBundleHash);
 
                     int bundleHash = Utils.HashString(bundle.Name + FileSystemManager.GetSuperBundleInstallChunk(bundle.SuperBundleHash).Name, true);
-                    sb.Added.Bundles.TryAdd(bundleHash, new BundleModInfo());
+                    sb.Added.Bundles.TryAdd(bundle.BundleHash, new BundleModInfo());
                     m_bundleToSuperBundleMapping.TryAdd(bundleHash, bundle.SuperBundleHash);
                     break;
                 }
