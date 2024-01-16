@@ -22,8 +22,6 @@ public static class AssetManager
 {
     public static bool IsInitialized { get; private set; }
 
-    public static ILogger? Logger { get; set; }
-
     private static readonly Dictionary<int, BundleInfo> s_bundleMapping = new();
 
     private static readonly Dictionary<string, EbxAssetEntry> s_ebxNameMapping = new();
@@ -55,8 +53,15 @@ public static class AssetManager
             return true;
         }
 
-        if (!FileSystemManager.IsInitialized || !ResourceManager.IsInitialized)
+        if (!FileSystemManager.IsInitialized)
         {
+            FrostyLogger.Logger?.LogError("FileSystemManager not initialized yet");
+            return false;
+        }
+
+        if (!ResourceManager.IsInitialized)
+        {
+            FrostyLogger.Logger?.LogError("ResourceManager not initialized yet");
             return false;
         }
 
@@ -67,34 +72,34 @@ public static class AssetManager
 
             if (FileSystemManager.BundleFormat == BundleFormat.Dynamic2018 || FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
             {
-                Logger?.Report("Sdk", "Loading FileInfos from catalogs");
+                FrostyLogger.Logger?.LogInfo("Loading FileInfos from catalogs");
 
                 timer.Start();
                 ResourceManager.LoadInstallChunks();
                 timer.Stop();
 
-                Logger?.Report("Sdk", $"Loaded FileInfos from catalogs in {timer.Elapsed.TotalSeconds} seconds");
+                FrostyLogger.Logger?.LogInfo($"Loaded FileInfos from catalogs in {timer.Elapsed.TotalSeconds} seconds");
             }
 
             IAssetLoader assetLoader = GetAssetLoader();
 
-            Logger?.Report("Sdk", "Loading Assets from SuperBundles");
+            FrostyLogger.Logger?.LogInfo("Loading Assets from SuperBundles");
 
             timer.Restart();
             assetLoader.Load();
             timer.Stop();
 
-            Logger?.Report("Sdk", $"Loaded Assets from SuperBundles in {timer.Elapsed.TotalSeconds} seconds");
+            FrostyLogger.Logger?.LogInfo($"Loaded Assets from SuperBundles in {timer.Elapsed.TotalSeconds} seconds");
 
             ResourceManager.CLearInstallChunks();
 
-            Logger?.Report("Sdk", "Indexing Ebx");
+            FrostyLogger.Logger?.LogInfo("Indexing Ebx");
 
             timer.Restart();
             DoEbxIndexing();
             timer.Stop();
 
-            Logger?.Report("Sdk", $"Indexed ebx in {timer.Elapsed}");
+            FrostyLogger.Logger?.LogInfo($"Indexed ebx in {timer.Elapsed.TotalSeconds} seconds");
 
             WriteCache();
 
@@ -184,7 +189,7 @@ public static class AssetManager
             }
         }
 
-        Logger?.Report("Sdk", "Finished initializing");
+        FrostyLogger.Logger?.LogInfo("Finished initializing");
 
         IsInitialized = true;
         return true;
@@ -276,7 +281,7 @@ public static class AssetManager
 
     #region -- GetAsset --
 
-    public static EbxAsset GetEbx(EbxAssetEntry entry)
+    public static EbxAsset GetEbxAsset(EbxAssetEntry entry)
     {
         using (BlockStream stream = new(GetAsset(entry)))
         {
@@ -378,8 +383,11 @@ public static class AssetManager
     {
         if (s_ebxNameMapping.TryGetValue(entry.Name, out EbxAssetEntry? existing))
         {
-            if (entry.FileInfo is not null)
+            if (entry.Sha1 == existing.Sha1)
             {
+                // assets coming from dlc in dai are always non cas, sometimes they are also in patch, then the sha1 doesnt match up anymore and the basesha1 is the one of the dlc
+                // so my guess would be that it patches the asset from the dlc, hopefully no issues arise from using the asset from patch here
+
                 existing.AddFileInfo(entry.FileInfo);
             }
 
@@ -396,8 +404,11 @@ public static class AssetManager
     {
         if (s_resNameMapping.TryGetValue(entry.Name, out ResAssetEntry? existing))
         {
-            if (entry.FileInfo is not null)
+            if (entry.Sha1 == existing.Sha1)
             {
+                // assets coming from dlc in dai are always non cas, sometimes they are also in patch, then the sha1 doesnt match up anymore and the basesha1 is the one of the dlc
+                // so my guess would be that it patches the asset from the dlc, hopefully no issues arise from using the asset from patch here
+
                 existing.AddFileInfo(entry.FileInfo);
             }
 
@@ -418,13 +429,6 @@ public static class AssetManager
     {
         if (s_chunkGuidMapping.TryGetValue(entry.Id, out ChunkAssetEntry? existing))
         {
-            if (entry.FileInfo is not null)
-            {
-                existing.AddFileInfo(entry.FileInfo);
-            }
-
-            existing.Bundles.Add(bundleId);
-
             if (existing.LogicalSize == 0)
             {
                 // this chunk was first added as a superbundle chunk, so add logical offset/size and sha1
@@ -433,6 +437,16 @@ public static class AssetManager
                 existing.LogicalSize = existing.LogicalSize;
                 existing.OriginalSize = entry.OriginalSize;
             }
+
+            if (entry.Sha1 == existing.Sha1)
+            {
+                // assets coming from dlc in dai are always non cas, sometimes they are also in patch, then the sha1 doesnt match up anymore and the basesha1 is the one of the dlc
+                // so my guess would be that it patches the asset from the dlc, hopefully no issues arise from using the asset from patch here
+
+                existing.AddFileInfo(entry.FileInfo);
+            }
+
+            existing.Bundles.Add(bundleId);
         }
         else
         {
@@ -488,6 +502,13 @@ public static class AssetManager
 
         foreach (EbxAssetEntry entry in s_ebxNameMapping.Values)
         {
+            if (entry.FileInfo is null)
+            {
+                s_ebxNameMapping.Remove(entry.Name);
+                FrostyLogger.Logger?.LogWarning($"Skipping ebx \"{entry.Name}\", bc it has no FileInfo!");
+                continue;
+            }
+
             using (BlockStream stream = new(GetAsset(entry)))
             {
                 BaseEbxReader reader = BaseEbxReader.CreateReader(stream);
@@ -517,6 +538,24 @@ public static class AssetManager
                 {
                     UpdateBundle(name, bundle);
                 }
+            }
+        }
+
+        foreach (ResAssetEntry entry in s_resNameMapping.Values)
+        {
+            if (entry.FileInfo is null)
+            {
+                s_resNameMapping.Remove(entry.Name);
+                FrostyLogger.Logger?.LogWarning($"Skipping res \"{entry.Name}\", bc it has no FileInfo!");
+            }
+        }
+
+        foreach (ChunkAssetEntry entry in s_chunkGuidMapping.Values)
+        {
+            if (entry.FileInfo is null)
+            {
+                s_chunkGuidMapping.Remove(entry.Id);
+                FrostyLogger.Logger?.LogWarning($"Skipping chunk {entry.Id}, bc it has no FileInfo!");
             }
         }
     }
@@ -572,11 +611,11 @@ public static class AssetManager
                 }
             }
 
-            Logger?.Report("Sdk", "Loading ebx from cache");
+            FrostyLogger.Logger?.LogInfo("Loading ebx from cache");
             int ebxCount = stream.ReadInt32();
             for (int i = 0; i < ebxCount; i++)
             {
-                Logger?.Report(i / (double)ebxCount);
+                FrostyLogger.Logger?.LogProgress(i / (double)ebxCount);
                 string name = stream.ReadNullTerminatedString();
 
                 EbxAssetEntry entry = new(name, stream.ReadSha1(), stream.ReadInt64())
@@ -604,11 +643,11 @@ public static class AssetManager
                 }
             }
 
-            Logger?.Report("Sdk", "Loading res from cache");
+            FrostyLogger.Logger?.LogInfo("Loading res from cache");
             int resCount = stream.ReadInt32();
             for (int i = 0; i < resCount; i++)
             {
-                Logger?.Report(i / (double)resCount);
+                FrostyLogger.Logger?.LogProgress(i / (double)resCount);
                 string name = stream.ReadNullTerminatedString();
 
                 ResAssetEntry entry = new(name, stream.ReadSha1(), stream.ReadInt64(),
@@ -636,11 +675,11 @@ public static class AssetManager
                 }
             }
 
-            Logger?.Report("Sdk", "Loading chunks from cache");
+            FrostyLogger.Logger?.LogInfo("Loading chunks from cache");
             int chunkCount = stream.ReadInt32();
             for (int i = 0; i < chunkCount; i++)
             {
-                Logger?.Report(i / (double)chunkCount);
+                FrostyLogger.Logger?.LogProgress(i / (double)chunkCount);
                 ChunkAssetEntry entry = new(stream.ReadGuid(), stream.ReadSha1(),
                     stream.ReadUInt32(), stream.ReadUInt32());
 

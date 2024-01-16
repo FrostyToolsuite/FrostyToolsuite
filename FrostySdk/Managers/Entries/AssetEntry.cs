@@ -84,8 +84,13 @@ public abstract class AssetEntry
     /// </summary>
     public IEnumerable<int> EnumerateBundles() => Bundles;
 
-    internal void AddFileInfo(IFileInfo inFileInfo)
+    internal void AddFileInfo(IFileInfo? inFileInfo)
     {
+        if (inFileInfo is null)
+        {
+            return;
+        }
+
         if (m_fileInfo is null)
         {
             m_fileInfo = inFileInfo;

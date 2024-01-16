@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.CatResources;
 using Frosty.Sdk.Managers.Infos;
@@ -15,7 +14,7 @@ public static class ResourceManager
 {
     public static bool IsInitialized { get; private set; }
 
-    private static readonly Dictionary<Sha1, (CasFileInfo, bool)> s_resourceEntries = new();
+    private static readonly Dictionary<Sha1, CasFileInfo> s_resourceEntries = new();
 
     private static readonly List<CatPatchEntry> s_patchEntries = new();
 
@@ -44,12 +43,8 @@ public static class ResourceManager
 
         if (!FileSystemManager.IsInitialized)
         {
+            FrostyLogger.Logger?.LogError("FileSystemManager not initialized yet");
             return false;
-        }
-
-        if (FileSystemManager.HasFileInMemoryFs("Dictionaries/ebx.dict"))
-        {
-            // load dictionary from memoryFs (used for decompressing ebx)
         }
 
         if (FileSystemManager.HasFileInMemoryFs("Scripts/CasEncrypt.yaml"))
@@ -83,18 +78,19 @@ public static class ResourceManager
 
         foreach (string libOodle in Directory.EnumerateFiles(FileSystemManager.BasePath, "oo2core_*"))
         {
-            Directory.CreateDirectory("ThirdParty");
+            string thirdPartyPath = Path.Combine(Utils.Utils.BaseDirectory, "ThirdParty");
+            Directory.CreateDirectory(thirdPartyPath);
 
             string ext = Path.GetExtension(libOodle);
-            string path = $"ThirdParty/oo2core{ext}";
+            string path = Path.Combine(thirdPartyPath, $"oo2core{ext}");
             File.Delete(path);
             File.CreateSymbolicLink(path, libOodle);
 
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && ext == ".dll")
             {
-                const string oodleHack = "ThirdParty/oo2core.so";
+                string oodleHack = Path.Combine(thirdPartyPath, "oo2core.so");
                 File.Delete(oodleHack);
-                File.CreateSymbolicLink(oodleHack, "ThirdParty/liblinoodle.so");
+                File.CreateSymbolicLink(oodleHack, Path.Combine(thirdPartyPath, "liblinoodle.so"));
             }
 
             break;
@@ -111,81 +107,58 @@ public static class ResourceManager
 
     public static CasFileInfo? GetPatchFileInfo(Sha1 sha1, Sha1 deltaSha1, Sha1 baseSha1)
     {
-        if (s_resourceEntries.TryGetValue(sha1, out (CasFileInfo, bool) fileInfos) && fileInfos.Item2)
+        if (s_resourceEntries.TryGetValue(sha1, out CasFileInfo? fileInfo))
+        {
+            return fileInfo;
+        }
+
+        CasFileInfo? baseInfo = s_resourceEntries.GetValueOrDefault(baseSha1);
+        CasFileInfo? deltaInfo = s_resourceEntries.GetValueOrDefault(deltaSha1);
+
+        if (baseInfo is null || deltaInfo is null)
         {
             return null;
         }
 
-        CasFileInfo baseInfo = s_resourceEntries[baseSha1].Item1;
-        CasFileInfo deltaInfo = s_resourceEntries[deltaSha1].Item1;
+        fileInfo = new CasFileInfo(baseInfo.GetBase(), deltaInfo.GetBase());
 
-        CasFileInfo fileInfo = new(baseInfo.GetBase(), deltaInfo.GetBase());
-
-        s_resourceEntries.TryAdd(sha1, (fileInfo, true));
+        s_resourceEntries.TryAdd(sha1, fileInfo);
 
         return fileInfo;
     }
 
     public static CasFileInfo? GetFileInfo(Sha1 sha1)
     {
-        if (!s_resourceEntries.TryGetValue(sha1, out (CasFileInfo, bool) fileInfos))
-        {
-            return null;
-        }
-
-        if (fileInfos.Item2)
-        {
-            return null;
-        }
-
-        fileInfos.Item2 = true;
-        return fileInfos.Item1;
+        return s_resourceEntries.GetValueOrDefault(sha1);
     }
 
     private static void LoadInstallChunk(InstallChunkInfo info)
     {
-        Dictionary<Sha1, List<CasFileInfo>>? deltaInfos = LoadEntries(info, FileSystemSource.Patch);
-        Dictionary<Sha1, List<CasFileInfo>>? baseInfos = LoadEntries(info, FileSystemSource.Base);
-
-        if (deltaInfos is null)
+        Dictionary<Sha1, CasFileInfo> infos = new();
+        foreach (FileSystemSource source in FileSystemManager.Sources)
         {
-            return;
+            LoadEntries(info, source, infos);
         }
 
-        List<CasFileInfo>? baseFileInfos = null;
         foreach (CatPatchEntry entry in s_patchEntries)
         {
-            bool containsBase = baseInfos?.TryGetValue(entry.BaseSha1, out baseFileInfos) == true;
+            infos.TryGetValue(entry.BaseSha1, out CasFileInfo? baseFileInfo);
 
-            if (!deltaInfos.TryGetValue(entry.DeltaSha1, out List<CasFileInfo>? deltaFileInfos))
-            {
-                throw new Exception();
-            }
+            Debug.Assert(infos.TryGetValue(entry.DeltaSha1, out CasFileInfo? deltaFileInfo), "No delta entry!");
 
-            Debug.Assert(deltaFileInfos.Count == 1, "More than one Delta entry.");
-
-            CasFileInfo? baseInfo = null;
-            if (containsBase)
-            {
-                // no idea why there are sometimes more than one base entry
-                Debug.Assert(baseFileInfos!.Count >= 1);
-                baseInfo = baseFileInfos[0];
-            }
-
-            CasFileInfo fileInfo = new(baseInfo?.GetBase(), deltaFileInfos[0].GetBase());
-            s_resourceEntries.TryAdd(entry.Sha1, (fileInfo, false));
+            CasFileInfo fileInfo = new(baseFileInfo?.GetBase(), deltaFileInfo.GetBase());
+            s_resourceEntries.TryAdd(entry.Sha1, fileInfo);
         }
         s_patchEntries.Clear();
     }
 
-    private static Dictionary<Sha1, List<CasFileInfo>>? LoadEntries(InstallChunkInfo info, FileSystemSource inSource)
+    private static void LoadEntries(InstallChunkInfo info, FileSystemSource inSource,
+        Dictionary<Sha1, CasFileInfo> retVal)
     {
         if (!inSource.TryResolvePath(Path.Combine(info.InstallBundle, "cas.cat"), out string? filePath))
         {
-            return null;
+            return;
         }
-
-        Dictionary<Sha1, List<CasFileInfo>> retVal = new();
 
         int installChunkIndex = FileSystemManager.GetInstallChunkIndex(info);
         bool patch = inSource.Path == FileSystemSource.Patch.Path;
@@ -199,9 +172,9 @@ public static class ResourceManager
 
                 CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset);
 
-                if (!s_resourceEntries.TryAdd(entry.Sha1, (fileInfo, false)) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].Item1.IsComplete())
+                if (!s_resourceEntries.TryAdd(entry.Sha1, fileInfo) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].IsComplete())
                 {
-                    s_resourceEntries[entry.Sha1] = (fileInfo, false);
+                    s_resourceEntries[entry.Sha1] = fileInfo;
                 }
 
                 if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))
@@ -209,8 +182,7 @@ public static class ResourceManager
                     s_sizeMap[entry.Sha1] = Math.Max(s_sizeMap[entry.Sha1], entry.Size);
                 }
 
-                retVal.TryAdd(entry.Sha1, new List<CasFileInfo>());
-                retVal[entry.Sha1].Add(fileInfo);
+                retVal.TryAdd(entry.Sha1, fileInfo);
             }
 
             for (int i = 0; i < stream.EncryptedCount; i++)
@@ -221,9 +193,9 @@ public static class ResourceManager
                 CasFileInfo fileInfo = new(casFileIdentifier, entry.Offset, entry.Size, entry.LogicalOffset,
                     entry.KeyId);
 
-                if (!s_resourceEntries.TryAdd(entry.Sha1, (fileInfo, false)) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].Item1.IsComplete())
+                if (!s_resourceEntries.TryAdd(entry.Sha1, fileInfo) && fileInfo.IsComplete() && !s_resourceEntries[entry.Sha1].IsComplete())
                 {
-                    s_resourceEntries[entry.Sha1] = (fileInfo, false);
+                    s_resourceEntries[entry.Sha1] = fileInfo;
                 }
 
                 if (!s_sizeMap.TryAdd(entry.Sha1, entry.Size))
@@ -231,8 +203,7 @@ public static class ResourceManager
                     s_sizeMap[entry.Sha1] = Math.Max(s_sizeMap[entry.Sha1], entry.Size);
                 }
 
-                retVal.TryAdd(entry.Sha1, new List<CasFileInfo>());
-                retVal[entry.Sha1].Add(fileInfo);
+                retVal.TryAdd(entry.Sha1, fileInfo);
             }
 
             for (int i = 0; i < stream.PatchCount; i++)
@@ -241,7 +212,5 @@ public static class ResourceManager
                 s_patchEntries.Add(entry);
             }
         }
-
-        return retVal;
     }
 }

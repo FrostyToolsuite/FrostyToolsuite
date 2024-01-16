@@ -41,8 +41,10 @@ public partial class CompressionZStd : ICompressionFormat
         {
             if (s_DDict == nuint.Zero)
             {
-                Block<byte> ebxDict = FileSystemManager.GetFileFromMemoryFs("Dictionaries/ebx.dict");
-                s_DDict = ZSTD_createDDict((nuint)ebxDict.Ptr, (nuint)ebxDict.Size);
+                using (Block<byte> ebxDict = FileSystemManager.GetFileFromMemoryFs("Dictionaries/ebx.dict"))
+                {
+                    s_DDict = ZSTD_createDDict((nuint)ebxDict.Ptr, (nuint)ebxDict.Size);
+                }
             }
 
             nuint dctx = ZSTD_createDCtx();

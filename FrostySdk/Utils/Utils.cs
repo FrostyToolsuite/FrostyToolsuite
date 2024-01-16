@@ -9,11 +9,13 @@ namespace Frosty.Sdk.Utils;
 
 public static class Utils
 {
+    public static string BaseDirectory { get; set; } = string.Empty;
+
     public static int HashString(string value, bool toLower = false)
     {
         const uint kOffset = 5381;
         const uint kPrime = 33;
-        
+
         uint hash = kOffset;
         for (int i = 0; i < value.Length; i++)
         {
@@ -22,7 +24,7 @@ public static class Utils
 
         return (int)hash;
     }
-    
+
     public static Guid GenerateDeterministicGuid(IEnumerable<object> objects, string type, Guid fileGuid)
     {
         return GenerateDeterministicGuid(objects, TypeLibrary.GetType(type)!, fileGuid);
@@ -40,7 +42,7 @@ public static class Utils
             existingGuids.Add(objGuid.ExportedGuid);
             createCount++;
         }
-        
+
         Block<byte> buffer = new(stackalloc byte[20]);
 
         Span<byte> result = stackalloc byte[16];
@@ -61,7 +63,7 @@ public static class Utils
                 break;
             }
         }
-        
+
         buffer.Dispose();
 
         return outGuid;
