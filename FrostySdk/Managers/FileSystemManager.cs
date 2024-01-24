@@ -96,6 +96,11 @@ public static class FileSystemManager
             return false;
         }
 
+        if (FileSystemSource.Base.TryResolvePath("kelvin.toc", out _))
+        {
+            BundleFormat = BundleFormat.Kelvin;
+        }
+
         IsInitialized = true;
         return true;
     }
