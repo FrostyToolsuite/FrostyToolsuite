@@ -221,7 +221,7 @@ public sealed unsafe partial class MemoryReader
     {
         for (int i = initIndex; i < buffer.Size; ++i)
         {
-            for (int x = 0; x < currentAob.Size; x++)
+            for (int x = 0; x < currentAob.Size && x + i < buffer.Size; x++)
             {
                 if (currentAob[x] != buffer[i + x] && mask[x] != '?')
                 {

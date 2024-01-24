@@ -39,7 +39,8 @@ internal class TypeInfoData
 
             if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
             {
-                Strings.Mapping.TryAdd(nameHash, string.Empty);
+                Strings.TypeHashes.Add(nameHash);
+                Strings.TypeMapping.Add(nameHash, string.Empty);
             }
         }
         else
@@ -49,10 +50,7 @@ internal class TypeInfoData
 
         if (!ProfilesLibrary.HasStrippedTypeNames)
         {
-            if (!Strings.Mapping.TryAdd(nameHash, name))
-            {
-                Debug.Assert(Strings.Mapping[nameHash] == name);
-            }
+            Strings.TypeNames.Add(name);
         }
 
         TypeFlags flags = reader.ReadUShort();
@@ -101,11 +99,11 @@ internal class TypeInfoData
 
             default:
                 retVal = new TypeInfoData();
-                Console.WriteLine($"Not implemented type: {flags.GetTypeEnum()}");
+                FrostyLogger.Logger?.LogWarning($"Not implemented type: {flags.GetTypeEnum()}");
                 break;
         }
 
-        if (ProfilesLibrary.HasStrippedTypeNames && Strings.Mapping.TryGetValue(nameHash, out string? resolvedName))
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings && Strings.TypeMapping.TryGetValue(nameHash, out string? resolvedName))
         {
             name = resolvedName;
         }

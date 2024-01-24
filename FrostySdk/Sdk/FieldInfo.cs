@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using Frosty.Sdk.Attributes;
@@ -19,7 +20,7 @@ internal class FieldInfo : IComparable
     private ushort m_offset;
     private long p_typeInfo;
 
-    public void Read(MemoryReader reader, uint classHash)
+    public void Read(MemoryReader reader, uint inTypeHash, string inTypeName)
     {
         if (!ProfilesLibrary.HasStrippedTypeNames)
         {
@@ -32,7 +33,11 @@ internal class FieldInfo : IComparable
 
             if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
             {
-                Strings.Mapping.TryAdd(m_nameHash, string.Empty);
+                Strings.FieldHashes.TryAdd(inTypeHash, new HashSet<uint>());
+                Strings.FieldHashes[inTypeHash].Add(m_nameHash);
+
+                Strings.FieldMapping.TryAdd(inTypeHash, new Dictionary<uint, string>());
+                Strings.FieldMapping[inTypeHash].Add(m_nameHash, string.Empty);
             }
         }
         else
@@ -42,10 +47,8 @@ internal class FieldInfo : IComparable
 
         if (!ProfilesLibrary.HasStrippedTypeNames)
         {
-            if (!Strings.Mapping.TryAdd(m_nameHash, m_name))
-            {
-                Debug.Assert(Strings.Mapping[m_nameHash] == m_name);
-            }
+            Strings.FieldNames.TryAdd(inTypeName, new HashSet<string>());
+            Strings.FieldNames[inTypeName].Add(m_name);
         }
 
         m_flags = reader.ReadUShort();
@@ -53,9 +56,18 @@ internal class FieldInfo : IComparable
 
         p_typeInfo = reader.ReadLong();
 
-        if (ProfilesLibrary.HasStrippedTypeNames)
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings)
         {
-            m_name = Strings.Mapping.TryGetValue(m_nameHash, out string? resolvedName) ? resolvedName : $"Field_{m_nameHash:x8}";
+            if (Strings.FieldMapping.TryGetValue(inTypeHash, out Dictionary<uint, string>? dict) &&
+                dict.TryGetValue(m_nameHash, out string? resolvedName))
+            {
+                Debug.Assert(!string.IsNullOrEmpty(resolvedName));
+                m_name = resolvedName;
+            }
+            else
+            {
+                m_name = $"Field_{m_nameHash:x8}";
+            }
         }
     }
 
