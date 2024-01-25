@@ -41,11 +41,11 @@ internal class DelegateInfoData : TypeInfoData
         {
             TypeInfo type = parameterInfo.GetTypeInfo();
 
-            string typeName = type.GetName();
+            string typeName = type.GetFullName();
 
             if (type is ArrayInfo array)
             {
-                typeName = $"List<{array.GetTypeInfo().GetName()}>";
+                typeName = $"List<{array.GetTypeInfo().GetFullName()}>";
             }
 
             switch (parameterInfo.GetParameterType())
@@ -86,6 +86,16 @@ internal class DelegateInfoData : TypeInfoData
             inputParams.Remove(inputParams.Length - 2, 2);
         }
 
-        sb.AppendLine($"public unsafe delegate {returnType} {CleanUpName()} ({inputParams});");
+        string name = CleanUpName();
+        int index = name.IndexOf('(');
+
+        if (index != -1)
+        {
+            name = name[..index];
+        }
+
+        name = name.Replace("delegate ", string.Empty);
+
+        sb.AppendLine($"public unsafe delegate {returnType} {name} ({inputParams});");
     }
 }

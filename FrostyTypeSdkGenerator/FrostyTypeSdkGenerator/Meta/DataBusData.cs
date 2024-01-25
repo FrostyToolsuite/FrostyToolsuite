@@ -2,6 +2,7 @@ namespace Frosty.Sdk.Ebx;
 
 public partial class DataBusData
 {
+    [OverrideAttribute]
     [IsHiddenAttribute()]
     public ushort Flags { get; set; }
 

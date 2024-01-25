@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Basic.Reference.Assemblies;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
@@ -21,6 +22,7 @@ public class TypeSdkGenerator
 {
     private long FindTypeInfoOffset(Process process)
     {
+        // TODO: remove this once all games have their correct pattern
         // string[] patterns =
         // {
         //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
@@ -30,23 +32,18 @@ public class TypeSdkGenerator
         //     "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10", // new games
         // };
 
-        long startAddress = process.MainModule?.BaseAddress.ToInt64() ?? 0;
+        MemoryReader reader = new(process);
+        nint offset = reader.ScanPatter(ProfilesLibrary.TypeInfoSignature);
 
-        using (MemoryReader reader = new(process, startAddress))
+        if (offset == nint.Zero)
         {
-            reader.Position = startAddress;
-            IList<long> offsets = reader.Scan(ProfilesLibrary.TypeInfoSignature);
-
-            if (offsets.Count == 0)
-            {
-                return -1;
-            }
-
-            reader.Position = offsets[0] + 3;
-            int newValue = reader.ReadInt(false);
-            reader.Position = offsets[0] + 3 + newValue + 4;
-            return reader.ReadLong(false);
+            return -1;
         }
+
+        reader.Position = offset + 3;
+        int newValue = reader.ReadInt(false);
+        reader.Position = offset + 3 + newValue + 4;
+        return reader.ReadLong(false);
     }
 
     public bool DumpTypes(Process process)
@@ -54,18 +51,189 @@ public class TypeSdkGenerator
         long typeInfoOffset = FindTypeInfoOffset(process);
         if (typeInfoOffset == -1)
         {
+            FrostyLogger.Logger?.LogError("No offset found for TypeInfo, maybe try a different TypeInfoSignature");
             return false;
         }
-        using (MemoryReader reader = new(process, typeInfoOffset))
+
+        FrostyLogger.Logger?.LogInfo($"Dumping types at offset {typeInfoOffset:X8}");
+
+        string stringsDir = Path.Combine(Utils.Utils.BaseDirectory, "Sdk", "Strings");
+        string typeNamesPath = Path.Combine(stringsDir, $"{ProfilesLibrary.InternalName}_types.json");
+        string fieldNamesPath = Path.Combine(stringsDir, $"{ProfilesLibrary.InternalName}_fields.json");
+        if (ProfilesLibrary.HasStrippedTypeNames && File.Exists(typeNamesPath))
         {
+            // load strings files
+            HashSet<string>? typeNames = JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(typeNamesPath));
+            if (typeNames is null)
+            {
+                return false;
+            }
+            Strings.TypeNames = typeNames;
+
+            Dictionary<string, HashSet<string>>? fieldNames =
+                JsonSerializer.Deserialize<Dictionary<string, HashSet<string>>>(File.ReadAllText(fieldNamesPath));
+            if (fieldNames is null)
+            {
+                return false;
+            }
+            Strings.FieldNames = fieldNames;
+
+            Strings.HasStrings = true;
+        }
+
+        MemoryReader reader = new(process) { Position = typeInfoOffset };
+        TypeInfo.TypeInfoMapping.Clear();
+
+        TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
+
+        do
+        {
+            ti = ti.GetNextTypeInfo(reader);
+        } while (ti is not null);
+
+        Directory.CreateDirectory(stringsDir);
+
+        if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
+        {
+            // try to resolve hashes from other games
+            foreach (string file in Directory.EnumerateFiles(stringsDir, "*_types.json"))
+            {
+                HashSet<string>? types = JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(file));
+                if (types is null)
+                {
+                    continue;
+                }
+
+                foreach (string name in types)
+                {
+                    uint hash = HashTypeName(name);
+
+                    if (!Strings.TypeHashes.Contains(hash))
+                    {
+                        continue;
+                    }
+
+                    if (!Strings.TypeMapping.TryGetValue(hash, out string? currentName) || string.IsNullOrEmpty(currentName))
+                    {
+                        Strings.TypeMapping[hash] = name;
+                    }
+                    else
+                    {
+                        Debug.Assert(currentName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+            }
+
+            foreach (string file in Directory.EnumerateFiles(stringsDir, "*_fields.json"))
+            {
+                Dictionary<string, HashSet<string>>? mapping = JsonSerializer.Deserialize<Dictionary<string, HashSet<string>>>(File.ReadAllText(file));
+                if (mapping is null)
+                {
+                    continue;
+                }
+
+                foreach (KeyValuePair<string, HashSet<string>> type in mapping)
+                {
+                    uint typeHash = HashTypeName(type.Key);
+
+                    if (!Strings.FieldHashes.TryGetValue(typeHash, out HashSet<uint>? fields))
+                    {
+                        continue;
+                    }
+
+                    if (!Strings.FieldMapping.TryGetValue(typeHash, out Dictionary<uint, string>? dict))
+                    {
+                        continue;
+                    }
+
+                    foreach (string field in type.Value)
+                    {
+                        uint fieldHash = HashTypeName(field);
+
+                        if (!fields.Contains(fieldHash))
+                        {
+                            continue;
+                        }
+
+                        if (!dict.TryGetValue(fieldHash, out string? name) || string.IsNullOrEmpty(name))
+                        {
+                            dict[fieldHash] = field;
+                        }
+                        else
+                        {
+                            Debug.Assert(name.Equals(field, StringComparison.OrdinalIgnoreCase));
+                        }
+                    }
+                }
+            }
+
+            Strings.HasStrings = true;
+
+            HashSet<uint> toRemove = new();
+            foreach (KeyValuePair<uint, string> kv in Strings.TypeMapping)
+            {
+                if (string.IsNullOrEmpty(kv.Value))
+                {
+                    toRemove.Add(kv.Key);
+                }
+            }
+
+            FrostyLogger.Logger?.LogInfo($"Resolved {Strings.TypeMapping.Count - toRemove.Count} type names");
+            FrostyLogger.Logger?.LogInfo($"{toRemove.Count} unresolved type names left");
+
+            foreach (uint key in toRemove)
+            {
+                // remove entry from dict
+                Strings.TypeMapping.Remove(key);
+            }
+
+            int totalFieldNames = 0;
+            int unresolvedFieldNames = 0;
+
+            foreach (Dictionary<uint,string> mapping in Strings.FieldMapping.Values)
+            {
+                toRemove.Clear();
+
+                foreach (KeyValuePair<uint, string> kv in mapping)
+                {
+                    totalFieldNames++;
+                    if (string.IsNullOrEmpty(kv.Value))
+                    {
+                        unresolvedFieldNames++;
+                        toRemove.Add(kv.Key);
+                    }
+                }
+
+                foreach (uint key in toRemove)
+                {
+                    // remove entry from dict
+                    mapping.Remove(key);
+                }
+            }
+
+            FrostyLogger.Logger?.LogInfo($"Resolved {totalFieldNames - unresolvedFieldNames} field names");
+            FrostyLogger.Logger?.LogInfo($"{unresolvedFieldNames} unresolved field names left");
+
+            // save file and reload TypeInfo
+            File.WriteAllText(typeNamesPath, JsonSerializer.Serialize(Strings.TypeNames));
+            File.WriteAllText(fieldNamesPath, JsonSerializer.Serialize(Strings.FieldNames));
+
+            // reparse the typeinfo with now hopefully more typenames
             TypeInfo.TypeInfoMapping.Clear();
 
-            TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
+            reader.Position = typeInfoOffset;
+            ti = TypeInfo.ReadTypeInfo(reader);
 
             do
             {
                 ti = ti.GetNextTypeInfo(reader);
             } while (ti is not null);
+        }
+        else
+        {
+            // write all names to a file so we can resolve most hashes for games that have names stripped
+            File.WriteAllText(typeNamesPath, JsonSerializer.Serialize(Strings.TypeNames));
+            File.WriteAllText(fieldNamesPath, JsonSerializer.Serialize(Strings.FieldNames));
         }
 
         if (TypeInfo.TypeInfoMapping.Count > 0)
@@ -81,6 +249,8 @@ public class TypeSdkGenerator
 
     public bool CreateSdk(string filePath)
     {
+        FrostyLogger.Logger?.LogInfo("Creating sdk");
+
         StringBuilder sb = new();
 
         sb.AppendLine("using System;");
@@ -201,5 +371,13 @@ public class TypeSdkGenerator
         }
 
         return true;
+    }
+
+    private static uint HashTypeName(string inName)
+    {
+        Span<byte> hash = stackalloc byte[32];
+        ReadOnlySpan<byte> str = Encoding.ASCII.GetBytes(inName.ToLower() + ProfilesLibrary.TypeHashSeed);
+        SHA256.HashData(str, hash);
+        return BinaryPrimitives.ReadUInt32BigEndian(hash[28..]);
     }
 }

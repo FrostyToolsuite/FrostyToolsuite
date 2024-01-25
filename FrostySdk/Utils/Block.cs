@@ -118,7 +118,10 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             int size = inArray.Length * sizeof(T);
             BasePtr = (T*)Marshal.AllocHGlobal(size);
-            GC.AddMemoryPressure(inArray.Length * sizeof(T));
+            if (size > 0)
+            {
+                GC.AddMemoryPressure(size);
+            }
             Ptr = BasePtr;
             BaseSize = inArray.Length;
             Buffer.MemoryCopy(ptr, BasePtr, size, size);
