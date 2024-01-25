@@ -17,6 +17,7 @@ public static class ProfilesLibrary
     public static string InternalName => s_effectiveProfile?.InternalName?? string.Empty;
     public static string TypeInfoSignature => s_effectiveProfile?.TypeInfoSignature ?? string.Empty;
     public static bool HasStrippedTypeNames => s_effectiveProfile?.HasStrippedTypeNames ?? false;
+    public static string TypeHashSeed => s_effectiveProfile?.TypeHashSeed ?? string.Empty;
     public static int DataVersion => s_effectiveProfile?.DataVersion ?? -1;
     public static FrostbiteVersion FrostbiteVersion => s_effectiveProfile?.FrostbiteVersion ?? "0.0.0";
     public static string SdkPath => s_effectiveProfile is null ? string.Empty : Path.Combine(Utils.Utils.BaseDirectory, "Sdk", $"{s_effectiveProfile.InternalName}.dll");

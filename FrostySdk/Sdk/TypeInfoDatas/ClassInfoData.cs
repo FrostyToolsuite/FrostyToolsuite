@@ -38,7 +38,7 @@ internal class ClassInfoData : TypeInfoData
             for (int i = 0; i < m_fieldCount; i++)
             {
                 m_fieldInfos.Add(new FieldInfo());
-                m_fieldInfos[i].Read(reader, m_nameHash);
+                m_fieldInfos[i].Read(reader, m_nameHash, m_name);
             }
         }
         if (TypeInfo.Version > 5)
