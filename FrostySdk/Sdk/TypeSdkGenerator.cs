@@ -68,7 +68,11 @@ public class TypeSdkGenerator
             {
                 return false;
             }
-            Strings.TypeNames = typeNames;
+
+            foreach (string name in typeNames)
+            {
+                Strings.TypeMapping.Add(HashTypeName(name), name);
+            }
 
             Dictionary<string, HashSet<string>>? fieldNames =
                 JsonSerializer.Deserialize<Dictionary<string, HashSet<string>>>(File.ReadAllText(fieldNamesPath));
@@ -76,7 +80,17 @@ public class TypeSdkGenerator
             {
                 return false;
             }
-            Strings.FieldNames = fieldNames;
+
+            foreach (KeyValuePair<string, HashSet<string>> kv in fieldNames)
+            {
+                Dictionary<uint, string> dict = new();
+                foreach (string name in kv.Value)
+                {
+                    dict.Add(HashTypeName(name), name);
+                }
+
+                Strings.FieldMapping.Add(HashTypeName(kv.Key), dict);
+            }
 
             Strings.HasStrings = true;
         }

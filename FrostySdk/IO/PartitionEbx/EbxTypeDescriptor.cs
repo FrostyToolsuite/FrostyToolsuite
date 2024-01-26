@@ -14,6 +14,8 @@ public struct EbxTypeDescriptor
     public ushort Size;
     public ushort SecondSize;
 
+    public int Index = -1;
+
     public EbxTypeDescriptor(Guid inKey)
     {
         Name = string.Empty;
