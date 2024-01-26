@@ -95,7 +95,7 @@ public class ModUpdater
             block.Dispose();
         }
 
-        FrostyLogger.Logger?.LogError("Successfully updated mod to newest format version");
+        FrostyLogger.Logger?.LogInfo("Successfully updated mod to newest format version");
         return true;
     }
 
