@@ -2,6 +2,7 @@ namespace Frosty.Sdk.Ebx;
 
 public partial class DataBusPeer
 {
+    [OverrideAttribute]
     [IsHiddenAttribute()]
     public uint Flags { get; set; }
 

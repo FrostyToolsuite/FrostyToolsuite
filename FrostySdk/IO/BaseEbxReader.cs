@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Frosty.Sdk.Ebx;
-using Frosty.Sdk.IO.PartitionEbx;
 
 namespace Frosty.Sdk.IO;
 

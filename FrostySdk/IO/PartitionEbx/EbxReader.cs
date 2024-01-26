@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -14,8 +14,8 @@ namespace Frosty.Sdk.IO.PartitionEbx;
 
 public class EbxReader : BaseEbxReader
 {
-    private EbxHeader m_header;
-    private EbxTypeResolver m_typeResolver;
+    private readonly EbxHeader m_header;
+    private readonly EbxTypeResolver m_typeResolver;
 
     internal EbxReader(DataStream inStream)
         : base(inStream)
@@ -107,6 +107,12 @@ public class EbxReader : BaseEbxReader
                     {
                         try
                         {
+                            if (value is null)
+                            {
+                                Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
+                                return;
+                            }
+
                             if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType.GenericTypeArguments[0]))
                             {
                                 IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType.GenericTypeArguments[0])!;
@@ -126,6 +132,12 @@ public class EbxReader : BaseEbxReader
                     {
                         try
                         {
+                            if (value is null)
+                            {
+                                Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
+                                return;
+                            }
+
                             if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType))
                             {
                                 IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType)!;
@@ -146,7 +158,7 @@ public class EbxReader : BaseEbxReader
         m_stream.Pad(inTypeDescriptor.GetAlignment());
     }
 
-    private void ReadField(EbxTypeDescriptor? inParentTypeDescriptor, TypeFlags.TypeEnum inType, ushort inTypeDescriptorRef, Action<object> inAddFunc)
+    private void ReadField(EbxTypeDescriptor? inParentTypeDescriptor, TypeFlags.TypeEnum inType, ushort inTypeDescriptorRef, Action<object?> inAddFunc)
     {
         switch (inType)
         {
@@ -211,7 +223,7 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.Struct:
                 EbxTypeDescriptor structType = inParentTypeDescriptor.HasValue ? m_typeResolver.ResolveType(inParentTypeDescriptor.Value, inTypeDescriptorRef) : m_typeResolver.ResolveType(inTypeDescriptorRef);
                 m_stream.Pad(structType.GetAlignment());
-                object obj = TypeLibrary.CreateObject(structType.NameHash) ?? throw new Exception();
+                object? obj = TypeLibrary.CreateObject(structType.NameHash);
                 ReadType(structType, obj, m_stream.Position);
                 inAddFunc(obj);
                 break;
@@ -231,7 +243,7 @@ public class EbxReader : BaseEbxReader
         }
     }
 
-    private void ReadArray(EbxTypeDescriptor? inParentTypeDescriptor, ushort inTypeDescriptorRef, Action<object> inAddFunc)
+    private void ReadArray(EbxTypeDescriptor? inParentTypeDescriptor, ushort inTypeDescriptorRef, Action<object?> inAddFunc)
     {
         EbxTypeDescriptor arrayTypeDescriptor = inParentTypeDescriptor.HasValue ? m_typeResolver.ResolveType(inParentTypeDescriptor.Value, inTypeDescriptorRef) : m_typeResolver.ResolveType(inTypeDescriptorRef);
 
@@ -343,6 +355,11 @@ public class EbxReader : BaseEbxReader
                 value = Activator.CreateInstance(fieldType)!;
                 ReadField(null, type, boxedValue.TypeDescriptorRef, obj =>
                 {
+                    if (obj is null)
+                    {
+                        return;
+                    }
+
                     if (typeof(IPrimitive).IsAssignableFrom(fieldType.GenericTypeArguments[0]))
                     {
                         IPrimitive primitive = (IPrimitive)Activator.CreateInstance(fieldType.GenericTypeArguments[0])!;
@@ -355,12 +372,17 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.Enum:
                 ReadField(null, type, boxedValue.TypeDescriptorRef, obj =>
                 {
-                    value = Enum.Parse(fieldType, obj.ToString()!);
+                    value = Enum.Parse(fieldType, obj!.ToString()!);
                 });
                 break;
             default:
                 ReadField(null, type, boxedValue.TypeDescriptorRef, obj =>
                 {
+                    if (obj is null)
+                    {
+                        return;
+                    }
+
                     if (typeof(IPrimitive).IsAssignableFrom(fieldType))
                     {
                         IPrimitive primitive = (IPrimitive)Activator.CreateInstance(fieldType)!;

@@ -515,14 +515,21 @@ public static class AssetManager
                 entry.Type = reader.GetRootType();
                 entry.Guid = reader.GetPartitionGuid();
 
-                foreach (Guid dependency in reader.GetDependencies())
+                entry.DependentAssets.UnionWith(reader.GetDependencies());
+
+                if (s_ebxGuidMapping.TryGetValue(entry.Guid, out EbxAssetEntry? other))
                 {
-                    entry.DependentAssets.Add(dependency);
+                    // happens when they changed the name when patching it
+
+                    // since we load patch superbundles first the first one should be correct, hopefully not too many issues arise bc of this
+                    FrostyLogger.Logger?.LogWarning($"Removing ebx \"{entry.Name}\" with same guid as \"{other.Name}\"");
+
+                    s_ebxNameMapping.Remove(entry.Name);
                 }
-
-                Debug.Assert(!s_ebxGuidMapping.ContainsKey(entry.Guid));
-
-                s_ebxGuidMapping.Add(entry.Guid, entry);
+                else
+                {
+                    s_ebxGuidMapping.Add(entry.Guid, entry);
+                }
             }
 
             // Manifest AssetLoader has stripped the bundle names, so we need to figure out the ui bundles, since the ebx are not in the bundle with the same name

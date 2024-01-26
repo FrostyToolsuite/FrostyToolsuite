@@ -485,7 +485,7 @@ public static class Cas
         inStream.ReadExactly(compressedBuffer);
         if (outBuffer is not null)
         {
-            Decompress(compressedBuffer, compressionType, flags, bufferSize, outBuffer);
+            Decompress(compressedBuffer, compressionType, flags, decompressedSize, outBuffer);
         }
 
         compressedBuffer.Dispose();
@@ -520,7 +520,7 @@ public static class Cas
         }
 
         inStream.ReadExactly(compressedBuffer);
-        Decompress(compressedBuffer, compressionType, flags, bufferSize, outBuffer);
+        Decompress(compressedBuffer, compressionType, flags, decompressedSize, outBuffer);
 
         // dispose compressed buffer, unless there wasn't a compressed buffer
         if ((compressionType & ~CompressionType.Obfuscated) != CompressionType.None)
@@ -531,8 +531,8 @@ public static class Cas
         return outBuffer;
     }
 
-    private static void Decompress(Block<byte> inCompressedBuffer, CompressionType inCompressionType, byte inFlags,
-        int inBufferSize, Block<byte> outBuffer)
+    private static unsafe void Decompress(Block<byte> inCompressedBuffer, CompressionType inCompressionType, byte inFlags,
+        int inDecompressedSize, Block<byte> outBuffer)
     {
         if (inCompressionType.HasFlag(CompressionType.Obfuscated))
         {
@@ -545,7 +545,7 @@ public static class Cas
             }
 
             byte[] key = KeyManager.GetKey("CasObfuscationKey");
-            for (int i = 0; i < inBufferSize; i++)
+            for (int i = 0; i < inCompressedBuffer.Size; i++)
             {
                 inCompressedBuffer[i] ^= key[i & 0x3FFF];
             }
@@ -571,19 +571,31 @@ public static class Cas
             case CompressionType.OodleKraken:
             {
                 CompressionOodle oodle = new();
-                oodle.Decompress(inCompressedBuffer, ref outBuffer, CompressionFlags.OodleKraken);
+                // oodle being annoying, it throws an error when the buffer is bigger than the original size
+                Block<byte> actualSizedOutBuffer = new(outBuffer.Ptr, inDecompressedSize);
+                actualSizedOutBuffer.MarkMemoryAsFragile();
+                oodle.Decompress(inCompressedBuffer, ref actualSizedOutBuffer, CompressionFlags.OodleKraken);
+                actualSizedOutBuffer.Dispose();
                 break;
             }
             case CompressionType.OodleSelkie:
             {
                 CompressionOodle oodle = new();
-                oodle.Decompress(inCompressedBuffer, ref outBuffer, CompressionFlags.OodleSelkie);
+                // oodle being annoying, it throws an error when the buffer is bigger than the original size
+                Block<byte> actualSizedOutBuffer = new(outBuffer.Ptr, inDecompressedSize);
+                actualSizedOutBuffer.MarkMemoryAsFragile();
+                oodle.Decompress(inCompressedBuffer, ref actualSizedOutBuffer, CompressionFlags.OodleSelkie);
+                actualSizedOutBuffer.Dispose();
                 break;
             }
             case CompressionType.OodleLeviathan:
             {
                 CompressionOodle oodle = new();
-                oodle.Decompress(inCompressedBuffer, ref outBuffer, CompressionFlags.OodleLeviathan);
+                // oodle being annoying, it throws an error when the buffer is bigger than the original size
+                Block<byte> actualSizedOutBuffer = new(outBuffer.Ptr, inDecompressedSize);
+                actualSizedOutBuffer.MarkMemoryAsFragile();
+                oodle.Decompress(inCompressedBuffer, ref actualSizedOutBuffer, CompressionFlags.OodleLeviathan);
+                actualSizedOutBuffer.Dispose();
                 break;
             }
             default:
