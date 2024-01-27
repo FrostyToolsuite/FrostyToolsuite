@@ -4,8 +4,17 @@ namespace Frosty.Sdk.Sdk;
 
 internal static class Strings
 {
-    public static readonly Dictionary<uint, string> StringHashes = new();
-    public static readonly Dictionary<uint, string> ClassHashes = new();
-    public static readonly Dictionary<uint, Dictionary<uint, string>> FieldHashes = new();
-    
+    public static bool HasStrings;
+
+    public static HashSet<string> TypeNames = new();
+
+    public static Dictionary<string, HashSet<string>> FieldNames = new();
+
+    public static HashSet<uint> TypeHashes = new();
+
+    public static Dictionary<uint, HashSet<uint>> FieldHashes = new();
+
+    public static Dictionary<uint, string> TypeMapping = new();
+
+    public static Dictionary<uint, Dictionary<uint, string>> FieldMapping = new();
 }

@@ -1,68 +1,90 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using Frosty.Sdk.Utils;
+using Microsoft.Win32.SafeHandles;
 
 namespace Frosty.Sdk.IO;
 
-struct PatternType
+public sealed unsafe partial class MemoryReader
 {
-    public bool IsWildcard;
-    public byte Value;
-}
+    #region -- Windows --
 
-public class MemoryReader : IDisposable
-{
-    private const int PROCESS_WM_READ = 0x0010;
-
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
-
-    [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ReadProcessMemory(IntPtr hProcess, long lpBaseAddress, byte[] lpBuffer, int dwSize, ref int lpNumberOfBytesRead);
-
-    [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool VirtualProtectEx(IntPtr hProcess, long lpAddress, UIntPtr dwSize, uint flNewProtect, ref uint lpflOldProtect);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool CloseHandle(IntPtr hObject);
-
-    public virtual long Position
+    private enum SystemErrorCode
     {
-        get => m_position;
-        set => m_position = value;
+        InvalidParameter = 0x57,
+        PartialCopy = 0x12B
     }
 
-    private IntPtr m_handle;
-    protected readonly byte[] m_buffer = new byte[20];
-    protected long m_position;
-
-    public MemoryReader(Process process, long initialAddr)
+    [Flags]
+    private enum AllocationType
     {
-        m_handle = OpenProcess(PROCESS_WM_READ, false, process.Id);
-        m_position = initialAddr;
+        Commit = 0x1000
     }
 
-    public virtual void Dispose()
+    [Flags]
+    private enum ProtectionType
     {
-        CloseHandle(m_handle);
+        NoAccess = 0x1,
+        Guard = 0x100
+    }
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool ReadProcessMemory(SafeProcessHandle processHandle, nint address, nint bytes, nint size, out nint bytesReadCount);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial nint VirtualQueryEx(SafeProcessHandle processHandle, nint address, out MemoryBasicInformation64 memoryInformation, nint size);
+
+    [StructLayout(LayoutKind.Explicit, Size = 48)]
+    private readonly record struct MemoryBasicInformation64([field: FieldOffset(0x0)] long BaseAddress, [field: FieldOffset(0x18)] nint RegionSize, [field: FieldOffset(0x20)] AllocationType State, [field: FieldOffset(0x24)] ProtectionType Protect);
+
+    #endregion
+
+    #region -- Linux --
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct iovec
+    {
+        public void* iov_base;
+        public nuint iov_len;
+    }
+
+    [LibraryImport("libc")]
+    private static unsafe partial nint process_vm_readv(int pid, iovec* local_iov, nuint liovcnt, iovec* remote_iov,
+        nuint riovcnt, nuint flags);
+
+    #endregion
+
+    public long Position { get; set; }
+
+    private Process m_process;
+
+    public MemoryReader(Process inProcess)
+    {
+        m_process = inProcess;
     }
 
     public void Pad(int alignment)
     {
-        while (Position % alignment != 0)
+        if (Position % alignment != 0)
         {
-            Position++;
+            Position += alignment - Position % alignment;
         }
     }
 
     public byte ReadByte()
     {
-        FillBuffer(1);
-        return m_buffer[0];
+        Span<byte> buffer = stackalloc byte[sizeof(byte)];
+        ReadExactly(buffer);
+        return buffer[0];
     }
 
     public short ReadShort(bool pad = true)
@@ -72,19 +94,15 @@ public class MemoryReader : IDisposable
             Pad(sizeof(short));
         }
 
-        FillBuffer(2);
-        return (short)(m_buffer[0] | m_buffer[1] << 8);
+        Span<byte> buffer = stackalloc byte[sizeof(short)];
+        ReadExactly(buffer);
+
+        return BinaryPrimitives.ReadInt16LittleEndian(buffer);
     }
 
     public ushort ReadUShort(bool pad = true)
     {
-        if (pad)
-        {
-            Pad(sizeof(ushort));
-        }
-
-        FillBuffer(2);
-        return (ushort)(m_buffer[0] | m_buffer[1] << 8);
+        return (ushort)ReadShort(pad);
     }
 
     public int ReadInt(bool pad = true)
@@ -94,19 +112,15 @@ public class MemoryReader : IDisposable
             Pad(sizeof(int));
         }
 
-        FillBuffer(4);
-        return m_buffer[0] | m_buffer[1] << 8 | m_buffer[2] << 16 | m_buffer[3] << 24;
+        Span<byte> buffer = stackalloc byte[sizeof(int)];
+        ReadExactly(buffer);
+
+        return BinaryPrimitives.ReadInt32LittleEndian(buffer);
     }
 
     public uint ReadUInt(bool pad = true)
     {
-        if (pad)
-        {
-            Pad(sizeof(uint));
-        }
-
-        FillBuffer(4);
-        return (uint)(m_buffer[0] | m_buffer[1] << 8 | m_buffer[2] << 16 | m_buffer[3] << 24);
+        return (uint)ReadInt(pad);
     }
 
     public long ReadLong(bool pad = true)
@@ -116,21 +130,15 @@ public class MemoryReader : IDisposable
             Pad(sizeof(long));
         }
 
-        FillBuffer(8);
-        return (long)(uint)(m_buffer[4] | m_buffer[5] << 8 | m_buffer[6] << 16 | m_buffer[7] << 24) << 32 |
-               (long)(uint)(m_buffer[0] | m_buffer[1] << 8 | m_buffer[2] << 16 | m_buffer[3] << 24);
+        Span<byte> buffer = stackalloc byte[sizeof(long)];
+        ReadExactly(buffer);
+
+        return BinaryPrimitives.ReadInt64LittleEndian(buffer);
     }
 
     public ulong ReadULong(bool pad = true)
     {
-        if (pad)
-        {
-            Pad(sizeof(ulong));
-        }
-
-        FillBuffer(8);
-        return (ulong)(uint)(m_buffer[4] | m_buffer[5] << 8 | m_buffer[6] << 16 | m_buffer[7] << 24) << 32 |
-               (ulong)(uint)(m_buffer[0] | m_buffer[1] << 8 | m_buffer[2] << 16 | m_buffer[3] << 24);
+        return (ulong)ReadLong(pad);
     }
 
     public Guid ReadGuid(bool pad = true)
@@ -140,11 +148,10 @@ public class MemoryReader : IDisposable
             Pad(4);
         }
 
-        FillBuffer(16);
-        return new Guid(new byte[] {
-                    m_buffer[0], m_buffer[1], m_buffer[2], m_buffer[3], m_buffer[4], m_buffer[5], m_buffer[6], m_buffer[7],
-                    m_buffer[8], m_buffer[9], m_buffer[10], m_buffer[11], m_buffer[12], m_buffer[13], m_buffer[14], m_buffer[15]
-                });
+        Span<byte> span = stackalloc byte[sizeof(Guid)];
+        ReadExactly(span);
+
+        return new Guid(span);
     }
 
     public string ReadNullTerminatedString(bool pad = true)
@@ -174,99 +181,170 @@ public class MemoryReader : IDisposable
         return sb.ToString();
     }
 
-    public byte[]? ReadBytes(int numBytes)
+    public void ReadExactly(Span<byte> buffer)
     {
-        byte[] outBuffer = new byte[numBytes];
-
-        uint oldProtect = 0;
-        int bytesRead = 0;
-
-        VirtualProtectEx(m_handle, m_position, new UIntPtr((uint)numBytes), 0x02, ref oldProtect);
-        if (!ReadProcessMemory(m_handle, m_position, outBuffer, numBytes, ref bytesRead))
+        ReadMemory((nint)Position, buffer, out nint bytesRead);
+        if (bytesRead != buffer.Length)
         {
-            return null;
+            throw new EndOfStreamException();
         }
-
-        VirtualProtectEx(m_handle, m_position, new UIntPtr((uint)numBytes), oldProtect, ref oldProtect);
-
-        m_position += numBytes;
-        return outBuffer;
+        Position += bytesRead;
     }
 
-    public unsafe IList<long> Scan(string pattern)
+    public nint ScanPatter(string pattern)
     {
-        List<long> retList = new List<long>();
-        pattern = pattern.Replace(" ", "");
+        ConvertPatternToAob(pattern, out string mask, out Block<byte> currentAob);
 
-        PatternType[] bytePattern = new PatternType[pattern.Length / 2];
-        for (int i = 0; i < bytePattern.Length; i++)
+        foreach ((nint Address, int Size) region in GetRegions())
         {
-            string str = pattern.Substring(i * 2, 2);
-            bytePattern[i] = new PatternType() { IsWildcard = (str == "??"), Value = (str != "??") ? byte.Parse(pattern.Substring(i * 2, 2), System.Globalization.NumberStyles.HexNumber) : (byte)0x00 };
+            Block<byte> regionBytes = new(region.Size);
+
+            ReadMemory(region.Address, regionBytes, out nint _);
+
+            int address;
+            if ((address = SearchPattern(regionBytes, 0, currentAob, mask)) != 0)
+            {
+                currentAob.Dispose();
+                regionBytes.Dispose();
+                return region.Address + address;
+            }
+
+            regionBytes.Dispose();
         }
 
-        bool bFound = false;
+        currentAob.Dispose();
 
-        long pos = Position;
-        byte[]? buf = ReadBytes(1024 * 1024);
-        byte* startPtr = buf == null ? null : (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(buf, 0);
-        byte* ptr = startPtr;
-        byte* endPtr = ptr + (1024 * 1024);
-        byte* tmpPtr = ptr;
+        return nint.Zero;
+    }
 
-        while (buf != null)
+    private int SearchPattern(Block<byte> buffer, int initIndex, Block<byte> currentAob, string mask)
+    {
+        for (int i = initIndex; i < buffer.Size; ++i)
         {
-            if (*ptr == bytePattern[0].Value)
+            for (int x = 0; x < currentAob.Size && x + i < buffer.Size; x++)
             {
-                tmpPtr = ptr;
-                bFound = true;
-
-                for (int i = 0; i < bytePattern.Length; i++)
+                if (currentAob[x] != buffer[i + x] && mask[x] != '?')
                 {
-                    if (!bytePattern[i].IsWildcard && *tmpPtr != bytePattern[i].Value)
+                    goto end;
+                }
+            }
+            return i;
+            end:;
+        }
+        return 0;
+    }
+
+    private void ConvertPatternToAob(string inPatternString, out string mask, out Block<byte> currentAob)
+    {
+        string trimmed = inPatternString.Trim();
+
+        mask = "";
+        string[] partHex = trimmed.Split(' ');
+        currentAob = new Block<byte>(partHex.Length);
+        for (int i = 0; i < partHex.Length; ++i)
+        {
+            if (partHex[i].Contains('?'))
+            {
+                currentAob[i] = 0xCC;
+                mask += '?';
+            }
+            else
+            {
+                currentAob[i] = Convert.ToByte(partHex[i], 16);
+                mask += 'x';
+            }
+        }
+    }
+
+    private IEnumerable<(nint Address, int Size)> GetRegions()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            nint currentAddress = 0;
+
+            while (true)
+            {
+                if (VirtualQueryEx(m_process.SafeHandle, currentAddress, out MemoryBasicInformation64 region, Unsafe.SizeOf<MemoryBasicInformation64>()) == 0)
+                {
+                    if (Marshal.GetLastPInvokeError() == (int) SystemErrorCode.InvalidParameter)
                     {
-                        bFound = false;
                         break;
                     }
 
-                    tmpPtr++;
+                    throw new Win32Exception();
                 }
 
-                if (bFound)
+                if (region.State.HasFlag(AllocationType.Commit) && region.Protect != ProtectionType.NoAccess && !region.Protect.HasFlag(ProtectionType.Guard))
                 {
-                    retList.Add(tmpPtr - startPtr - bytePattern.Length + pos);
-                    bFound = false;
-                }
-            }
-
-            ptr++;
-            if (ptr == endPtr)
-            {
-                pos = Position;
-                buf = ReadBytes(1024 * 1024);
-                if (buf == null)
-                {
-                    break;
+                    yield return (currentAddress, (int) region.RegionSize);
                 }
 
-                startPtr = (byte*)Marshal.UnsafeAddrOfPinnedArrayElement(buf, 0);
-                ptr = startPtr;
-                endPtr = ptr + (1024 * 1024);
+                currentAddress = (nint) region.BaseAddress + region.RegionSize;
             }
         }
+        else
+        {
+            string path = $"/proc/{m_process.Id}/maps";
+            foreach (string region in File.ReadLines(path))
+            {
+                string[] arr = region.Split(' ');
+                int index = arr[0].IndexOf('-');
+                nint start = nint.Parse(arr[0][..index], NumberStyles.HexNumber);
+                nint end = nint.Parse(arr[0][(index + 1)..], NumberStyles.HexNumber);
 
-        return retList;
+                string perm = arr[1];
+                if (perm[0] == '-' || perm[2] != 'x')
+                {
+                    continue;
+                }
+
+                yield return (start, (int)(end - start));
+            }
+        }
     }
 
-    protected virtual void FillBuffer(int numBytes)
+    private void ReadMemory(nint inAddress, Block<byte> outData, out nint bytesRead)
     {
-        uint oldProtect = 0;
-        int bytesRead = 0;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            if (!ReadProcessMemory(m_process.SafeHandle, inAddress, (nint)outData.Ptr, outData.Size, out bytesRead))
+            {
+                throw new Win32Exception();
+            }
+        }
+        else
+        {
+            iovec localIo = new() { iov_base = outData.Ptr, iov_len = (nuint)outData.Size };
+            iovec remoteIo = new() { iov_base = inAddress.ToPointer(), iov_len = (nuint)outData.Size };
 
-        VirtualProtectEx(m_handle, m_position, new UIntPtr((uint)numBytes), 0x02, ref oldProtect);
-        ReadProcessMemory(m_handle, m_position, m_buffer, numBytes, ref bytesRead);
-        VirtualProtectEx(m_handle, m_position, new UIntPtr((uint)numBytes), oldProtect, ref oldProtect);
+            if ((bytesRead = process_vm_readv(m_process.Id, &localIo, 1, &remoteIo, 1, 0)) == -1)
+            {
+                throw new Exception();
+            }
+        }
+    }
 
-        m_position += numBytes;
+    private void ReadMemory(nint inAddress, Span<byte> outData, out nint bytesRead)
+    {
+        fixed (byte* ptr = outData)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                if (!ReadProcessMemory(m_process.SafeHandle, inAddress, (nint)ptr, outData.Length, out bytesRead))
+                {
+                    throw new Win32Exception();
+                }
+            }
+            else
+            {
+                iovec localIo = new() { iov_base = ptr, iov_len = (nuint)outData.Length };
+                iovec remoteIo = new() { iov_base = inAddress.ToPointer(), iov_len = (nuint)outData.Length };
+
+                if ((bytesRead = process_vm_readv(m_process.Id, &localIo, 1, &remoteIo, 1, 0)) == -1)
+                {
+                    throw new Exception();
+                }
+            }
+        }
     }
 }

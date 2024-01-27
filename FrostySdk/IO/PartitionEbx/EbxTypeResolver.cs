@@ -25,9 +25,9 @@ internal class EbxTypeResolver
 
     public EbxTypeDescriptor ResolveType(EbxTypeDescriptor typeDescriptor, int index)
     {
-        if (typeDescriptor.IsSharedTypeDescriptorKey())
+        if (typeDescriptor.Index != -1)
         {
-            return EbxSharedTypeDescriptors.GetTypeDescriptor(typeDescriptor.ToKey(), (short)index);
+            return EbxSharedTypeDescriptors.GetTypeDescriptor((short)(index + typeDescriptor.Index));
         }
 
         return m_typeDescriptors[index];

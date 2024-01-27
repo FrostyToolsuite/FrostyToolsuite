@@ -11,6 +11,7 @@ public class Profile
 
     public string TypeInfoSignature { get; set; } = string.Empty;
     public bool HasStrippedTypeNames { get; set; }
+    public string TypeHashSeed { get; set; } = "1030";
 
     public int DataVersion { get; set; }
     public string FrostbiteVersion { get; set; } = "0.0.0";

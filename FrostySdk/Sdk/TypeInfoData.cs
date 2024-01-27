@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Text;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
@@ -35,10 +36,21 @@ internal class TypeInfoData
         if (TypeInfo.Version > 4)
         {
             nameHash = reader.ReadUInt();
+
+            if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
+            {
+                Strings.TypeHashes.Add(nameHash);
+                Strings.TypeMapping.Add(nameHash, string.Empty);
+            }
         }
         else
         {
             nameHash = (uint)Utils.Utils.HashString(name);
+        }
+
+        if (!ProfilesLibrary.HasStrippedTypeNames)
+        {
+            Strings.TypeNames.Add(name);
         }
 
         TypeFlags flags = reader.ReadUShort();
@@ -87,20 +99,13 @@ internal class TypeInfoData
 
             default:
                 retVal = new TypeInfoData();
-                Console.WriteLine($"Not implemented type: {flags.GetTypeEnum()}");
+                FrostyLogger.Logger?.LogWarning($"Not implemented type: {flags.GetTypeEnum()}");
                 break;
         }
 
-        if (!ProfilesLibrary.HasStrippedTypeNames)
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings && Strings.TypeMapping.TryGetValue(nameHash, out string? resolvedName))
         {
-            if (Strings.ClassHashes.TryGetValue(nameHash, out string? hash))
-            {
-                name = hash;
-            }
-            else if (Strings.StringHashes.TryGetValue(nameHash, out hash))
-            {
-                name = hash;
-            }
+            name = resolvedName;
         }
 
         retVal.m_name = name;
@@ -197,5 +202,21 @@ internal class TypeInfoData
         p_arrayInfo = inArrayInfoPtr;
     }
 
-    public string GetFullName() => $"Frostbite.{m_nameSpace}.{CleanUpName()}";
+    public string GetFullName()
+    {
+        string name = m_name;
+        if (name == "char")
+        {
+            name = "Char";
+        }
+
+        if (name.Contains("::"))
+        {
+            name = name.Replace("::", ".");
+        }
+
+        name = name.Replace(':', '_').Replace("<", "_").Replace(">", "_");
+
+        return $"Frostbite.{m_nameSpace}.{name}";
+    }
 }

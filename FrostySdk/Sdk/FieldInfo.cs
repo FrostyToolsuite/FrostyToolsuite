@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
@@ -18,34 +20,49 @@ internal class FieldInfo : IComparable
     private ushort m_offset;
     private long p_typeInfo;
 
-    public void Read(MemoryReader reader, uint classHash)
+    public void Read(MemoryReader reader, uint inTypeHash, string inTypeName)
     {
         if (!ProfilesLibrary.HasStrippedTypeNames)
         {
             m_name = reader.ReadNullTerminatedString();
         }
+
         if (TypeInfo.Version > 4)
         {
             m_nameHash = reader.ReadUInt();
+
+            if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
+            {
+                Strings.FieldHashes.TryAdd(inTypeHash, new HashSet<uint>());
+                Strings.FieldHashes[inTypeHash].Add(m_nameHash);
+
+                Strings.FieldMapping.TryAdd(inTypeHash, new Dictionary<uint, string>());
+                Strings.FieldMapping[inTypeHash].Add(m_nameHash, string.Empty);
+            }
         }
         else
         {
             m_nameHash = (uint)Utils.Utils.HashString(m_name);
         }
+
+        if (!ProfilesLibrary.HasStrippedTypeNames)
+        {
+            Strings.FieldNames.TryAdd(inTypeName, new HashSet<string>());
+            Strings.FieldNames[inTypeName].Add(m_name);
+        }
+
         m_flags = reader.ReadUShort();
         m_offset = reader.ReadUShort();
 
         p_typeInfo = reader.ReadLong();
 
-        if (ProfilesLibrary.HasStrippedTypeNames)
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings)
         {
-            if (Strings.FieldHashes.ContainsKey(classHash) && Strings.FieldHashes[classHash].ContainsKey(m_nameHash))
+            if (Strings.FieldMapping.TryGetValue(inTypeHash, out Dictionary<uint, string>? dict) &&
+                dict.TryGetValue(m_nameHash, out string? resolvedName))
             {
-                m_name = Strings.FieldHashes[classHash][m_nameHash];
-            }
-            else if (Strings.StringHashes.TryGetValue(m_nameHash, out string? hash))
-            {
-                m_name = hash;
+                Debug.Assert(!string.IsNullOrEmpty(resolvedName));
+                m_name = resolvedName;
             }
             else
             {

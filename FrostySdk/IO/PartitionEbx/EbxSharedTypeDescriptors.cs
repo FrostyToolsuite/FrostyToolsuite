@@ -40,9 +40,9 @@ public static class EbxSharedTypeDescriptors
         return s_typeDescriptors[s_keyTypeMapping[key]];
     }
 
-    public static EbxTypeDescriptor GetTypeDescriptor(Guid key, short index)
+    public static EbxTypeDescriptor GetTypeDescriptor(short index)
     {
-        return s_typeDescriptors[s_keyTypeMapping[key] + index];
+        return s_typeDescriptors[index];
     }
 
     public static EbxFieldDescriptor GetFieldDescriptor(int index)
@@ -81,7 +81,7 @@ public static class EbxSharedTypeDescriptors
                 {
                     NameHash = stream.ReadUInt32(),
                     Flags = stream.ReadUInt16(),
-                    TypeDescriptorRef = (ushort)(stream.ReadUInt16() + startTypes),
+                    TypeDescriptorRef = stream.ReadUInt16(),
                     DataOffset = stream.ReadUInt32(),
                     SecondOffset = stream.ReadUInt32(),
                 });
@@ -101,8 +101,16 @@ public static class EbxSharedTypeDescriptors
                     Alignment = stream.ReadByte(),
                     Flags = stream.ReadUInt16(),
                     Size = stream.ReadUInt16(),
-                    SecondSize = stream.ReadUInt16()
+                    SecondSize = stream.ReadUInt16(),
+                    Index = s_typeDescriptors.Count
                 };
+
+                if (typeDescriptor.Index == 6459)
+                {
+
+                }
+
+                typeDescriptor.Name = TypeLibrary.GetType(typeDescriptor.NameHash)?.Name ?? string.Empty;
 
                 if (typeDescriptor.IsSharedTypeDescriptorKey())
                 {
@@ -112,7 +120,7 @@ public static class EbxSharedTypeDescriptors
                 else
                 {
                     // its a relative offset to the field, so we have to calculate the index
-                    typeDescriptor.FieldIndex = (int)((offset - typeDescriptor.FieldIndex - 0x08) / 0x10 + startFields);
+                    typeDescriptor.FieldIndex = (int)((offset - (typeDescriptor.FieldIndex - 0x08)) / 0x10 + startFields);
                     s_keyTypeMapping.Remove(key);
                     s_keyTypeMapping.Add(key, s_typeDescriptors.Count);
                     s_typeKeyMapping.Remove(typeDescriptor.NameHash);
