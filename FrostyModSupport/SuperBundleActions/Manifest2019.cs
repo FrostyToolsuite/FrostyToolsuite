@@ -79,7 +79,7 @@ internal class Manifest2019 : IDisposable
 
     public void ModSuperBundle(string inPath, bool inCreateNewPatch, SuperBundleInstallChunk inSbIc, SuperBundleModInfo inModInfo, InstallChunkWriter inInstallChunkWriter)
     {
-        List< (StringHelper.String, uint, long)> bundles = new();
+        List<(StringHelper.String, uint, long)> bundles = new();
         List<(Guid, int, CasFileIdentifier, uint, uint)> chunks = new();
         StringHelper stringHelper;
 
@@ -168,6 +168,12 @@ internal class Manifest2019 : IDisposable
 
                         if (!inModInfo.Modified.Bundles.TryGetValue(id, out BundleModInfo? bundleModInfo))
                         {
+                            if (inCreateNewPatch)
+                            {
+                                // we create a new patch to a base superbundle, so we only need modified bundles
+                                continue;
+                            }
+
                             // load and write unmodified bundle
                             newBundleSize = bundleSize;
                             switch (bundleLoadFlag)
@@ -186,11 +192,6 @@ internal class Manifest2019 : IDisposable
                                 default:
                                     throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
                             }
-                        }
-                        else if (inCreateNewPatch)
-                        {
-                            // we create a new patch to a base superbundle, so we only need modified bundles
-                            continue;
                         }
                         else
                         {
@@ -229,9 +230,139 @@ internal class Manifest2019 : IDisposable
 
                 if (chunksCount != 0)
                 {
-
+                    // TODO
                 }
             }
+
+            if (inModInfo.Modified.Bundles.Count > 0 || inModInfo.Modified.Chunks.Count > 0)
+            {
+                string basePath = FileSystemManager.ResolvePath(false, $"{inSbIc.Name}.toc");
+                using (BlockStream stream = BlockStream.FromFile(basePath, true))
+                {
+                    stream.Position += sizeof(uint); // bundleHashMapOffset
+                    uint bundleDataOffset = stream.ReadUInt32(Endian.Big);
+                    int bundlesCount = stream.ReadInt32(Endian.Big);
+
+                    stream.Position += sizeof(uint); // chunkHashMapOffset
+                    uint chunkGuidOffset = stream.ReadUInt32(Endian.Big);
+                    int chunksCount = stream.ReadInt32(Endian.Big);
+
+                    // not used by any game rn, maybe crypto stuff
+                    stream.Position += sizeof(uint);
+                    stream.Position += sizeof(uint);
+
+                    uint namesOffset = stream.ReadUInt32(Endian.Big);
+
+                    uint chunkDataOffset = stream.ReadUInt32(Endian.Big);
+                    int dataCount = stream.ReadInt32(Endian.Big);
+
+                    Manifest2019AssetLoader.Flags flags = (Manifest2019AssetLoader.Flags)stream.ReadInt32(Endian.Big);
+
+                    uint namesCount = 0;
+                    uint tableCount = 0;
+                    uint tableOffset = uint.MaxValue;
+                    HuffmanDecoder? huffmanDecoder = null;
+
+                    if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
+                    {
+                        huffmanDecoder = new HuffmanDecoder();
+                        namesCount = stream.ReadUInt32(Endian.Big);
+                        tableCount = stream.ReadUInt32(Endian.Big);
+                        tableOffset = stream.ReadUInt32(Endian.Big);
+                    }
+
+                    if (bundlesCount != 0)
+                    {
+                        if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
+                        {
+                            stream.Position = namesOffset;
+                            huffmanDecoder!.ReadEncodedData(stream, namesCount, Endian.Big);
+
+                            stream.Position = tableOffset;
+                            huffmanDecoder.ReadHuffmanTable(stream, tableCount, Endian.Big);
+                        }
+
+                        stream.Position = bundleDataOffset;
+                        BlockStream? sbStream = null;
+                        for (int i = 0; i < bundlesCount; i++)
+                        {
+                            int nameOffset = stream.ReadInt32(Endian.Big);
+                            uint bundleSize = stream.ReadUInt32(Endian.Big);
+                            long bundleOffset = stream.ReadInt64(Endian.Big);
+
+                            // get name either from huffman table or raw string table at the end
+                            string name;
+                            if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
+                            {
+                                name = huffmanDecoder!.ReadHuffmanEncodedString(nameOffset);
+                            }
+                            else
+                            {
+                                long curPos = stream.Position;
+                                stream.Position = namesOffset + nameOffset;
+                                name = stream.ReadNullTerminatedString();
+                                stream.Position = curPos;
+                            }
+
+                            int id = Utils.HashString(name + inSbIc.Name, true);
+                            byte bundleLoadFlag2 = (byte)(bundleSize >> 30);
+                            bundleSize &= 0x3FFFFFFFU;
+
+                            uint newOffset = (uint)modifiedStream.Position;
+                            long newBundleSize;
+
+                            if (inModInfo.Modified.Bundles.TryGetValue(id, out BundleModInfo? bundleModInfo))
+                            {
+                                // load, modify and write bundle
+                                BlockStream bundleStream;
+                                switch (bundleLoadFlag2)
+                                {
+                                    case 0:
+                                        sbStream ??= BlockStream.FromFile(basePath.Replace(".toc", ".sb"), false);
+                                        bundleStream = sbStream;
+                                        break;
+                                    case 1:
+                                        bundleStream = stream;
+                                        break;
+                                    default:
+                                        throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
+                                }
+
+                                (Block<byte> BundleMeta, List<(CasFileIdentifier, uint, uint)> Files, bool IsInline)
+                                    bundle = ModifyBundle(bundleStream, bundleOffset, bundleModInfo,
+                                        inInstallChunkWriter);
+
+                                Block<byte> data = WriteModifiedBundle(bundle, inInstallChunkWriter);
+                                modifiedStream.Write(data);
+                                newBundleSize = data.Size;
+                                data.Dispose();
+
+                                // remove bundle so we can check if the base superbundle needs to be loaded to modify a base bundle
+                                inModInfo.Modified.Bundles.Remove(id);
+                            }
+                            else
+                            {
+                                continue;
+                            }
+
+                            bundles.Add((stringHelper.AddString(name), newOffset, newBundleSize));
+                        }
+                        huffmanDecoder?.Dispose();
+                    }
+
+                    if (chunksCount != 0)
+                    {
+                        // TODO
+                    }
+                }
+            }
+
+            Debug.Assert(inModInfo.Modified.Bundles.Count == 0 && inModInfo.Modified.Chunks.Count == 0);
+        }
+
+        if (bundleLoadFlag == 0)
+        {
+            SbData = modifiedSuperBundle;
         }
 
         stringHelper.Fixup();
@@ -267,11 +398,33 @@ internal class Manifest2019 : IDisposable
                 stream.WriteUInt32(0xdeadbeef); // tableOffset
             }
 
+            // TODO: bundle hashmap
+
+            long bundlesOffset = stream.Position;
             foreach ((StringHelper.String, uint, long) bundle in bundles)
             {
                 stream.WriteUInt32(bundle.Item1.Offset, Endian.Big);
                 stream.WriteUInt32(bundle.Item2 | (uint)(bundleLoadFlag << 30), Endian.Big);
-                stream.WriteInt64(bundle.Item3, Endian.Big);
+                stream.WriteInt64(bundle.Item3, Endian.Big); // TODO: add size of toc if bundleLoadFlag == 1
+            }
+
+            // TODO: chunks
+
+            // TODO: strings
+
+            if (bundleLoadFlag == 1)
+            {
+                stream.Pad(16);
+
+                long sbOffset = stream.Position;
+                stream.Write(modifiedSuperBundle);
+
+                stream.Position = bundlesOffset;
+                foreach ((StringHelper.String, uint, long) bundle in bundles)
+                {
+                    stream.Position += 8;
+                    stream.WriteInt64(bundle.Item3 + sbOffset, Endian.Big);
+                }
             }
         }
     }
@@ -476,6 +629,7 @@ public partial class FrostyModExecutor
                 return;
             }
 
+            createNewPatch = true;
         }
 
         using (Manifest2019 action = new(m_modifiedEbx, m_modifiedRes, m_modifiedChunks))
@@ -505,7 +659,7 @@ public partial class FrostyModExecutor
                 string sbPath = tocPath.Replace(".toc", ".sb");
                 if (File.Exists(sbPath))
                 {
-                    File.CreateSymbolicLink(sbPath, modifiedToc.FullName.Replace(".toc", ".sb"));
+                    File.CreateSymbolicLink(modifiedToc.FullName.Replace(".toc", ".sb"), sbPath);
                 }
             }
         }

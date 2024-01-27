@@ -17,11 +17,11 @@ public static class BinaryBundle
     {
         // we use big endian for default
         Endian endian = Endian.Big;
-        
+
         uint size = inStream.ReadUInt32(Endian.Big);
-        
+
         long startPos = inStream.Position;
-        
+
         Sdk.IO.BinaryBundle.Magic magic = (Sdk.IO.BinaryBundle.Magic)(inStream.ReadUInt32(endian) ^ Sdk.IO.BinaryBundle.GetSalt());
 
         bool containsSha1 = magic == Sdk.IO.BinaryBundle.Magic.Standard;
@@ -33,7 +33,7 @@ public static class BinaryBundle
         long stringsOffset = inStream.ReadUInt32(endian) + startPos;
         long metaOffset = inStream.ReadUInt32(endian) + startPos;
         inStream.Position += sizeof(int); // metaSize
-        
+
         // decrypt the data
         if (magic == Sdk.IO.BinaryBundle.Magic.Encrypted)
         {
@@ -41,7 +41,7 @@ public static class BinaryBundle
             {
                 throw new MissingEncryptionKeyException("bundles");
             }
-            
+
             inStream.Decrypt(KeyManager.GetKey("BundleEncryptionKey"), (int)(size - 0x20), PaddingMode.None);
         }
 
@@ -51,7 +51,7 @@ public static class BinaryBundle
 
         uint offset = 0;
         Dictionary<string, uint> strings = new(ebx.Length + res.Length);
-        
+
         // read sha1s
         Sha1[] sha1 = new Sha1[totalCount + inModInfo.Added.Ebx.Count + inModInfo.Added.Res.Count + inModInfo.Added.Chunks.Count];
         int b = 0;
@@ -67,7 +67,7 @@ public static class BinaryBundle
             }
             sha1[i + b] = containsSha1 ? inStream.ReadSha1() : Sha1.Zero;
         }
-        
+
         int j = 0;
         for (int i = 0; i < ebxCount; i++, j++)
         {
@@ -87,7 +87,7 @@ public static class BinaryBundle
             else
             {
                 ebx[i] = new EbxModEntry(name, sha1[j], originalSize);
-            } 
+            }
 
             inStream.Position = currentPos;
 
@@ -124,10 +124,10 @@ public static class BinaryBundle
 
             inStream.Position = resTypeOffset + i * sizeof(uint);
             uint resType = inStream.ReadUInt32();
-            
+
             inStream.Position = resMetaOffset + i * 0x10;
             byte[] resMeta = inStream.ReadBytes(0x10);
-            
+
             inStream.Position = resRidOffset + i * sizeof(ulong);
             ulong resRid = inStream.ReadUInt64();
 
@@ -141,7 +141,7 @@ public static class BinaryBundle
             {
                 res[i] = new ResModEntry(name, sha1[j], originalSize, resRid, resType, resMeta);
             }
-            
+
             inStream.Position = currentPos;
 
             if (strings.TryAdd(name, offset))
@@ -157,7 +157,7 @@ public static class BinaryBundle
             res[k++] = modEntry;
             Modify(modEntry, j , true);
             sha1[j++] = modEntry.Sha1;
-            
+
             if (strings.TryAdd(name, offset))
             {
                 offset += (uint)name.Length + 1;
@@ -166,8 +166,8 @@ public static class BinaryBundle
 
         // TODO: how to handle the meta stuff
         inStream.Position = metaOffset;
-        DbObjectDict chunkMeta = DbObject.Deserialize(inStream)!.AsDict();
-        
+        DbObjectList chunkMeta = DbObject.Deserialize(inStream)!.AsList();
+
         inStream.Position = resRidOffset + resCount * sizeof(ulong);
         for (int i = 0; i < chunkCount; i++, j++)
         {
@@ -183,7 +183,7 @@ public static class BinaryBundle
                 chunks[i] = new ChunkModEntry(id, sha1[j], inStream.ReadUInt32(endian), inStream.ReadUInt32(endian));
             }
         }
-        
+
         k = chunkCount;
         foreach (Guid id in inModInfo.Added.Chunks)
         {
@@ -191,12 +191,12 @@ public static class BinaryBundle
             chunks[k++] = modEntry;
             Modify(modEntry, j , true);
             sha1[j++] = modEntry.Sha1;
-            
+
             // TODO: add new chunk meta
         }
-        
+
         inStream.Position = startPos + size;
-        
+
         // write new bundle
         stringsOffset = 32 + (containsSha1 ? sha1.Length * 20 : 0) + ebx.Length * 8 + res.Length * 36 +
                         chunks.Length * 24; // TODO: meta first?
@@ -204,14 +204,14 @@ public static class BinaryBundle
         using (BlockStream stream = new(retVal, true))
         {
             stream.WriteUInt32(0xDEADBEEF, Endian.Big);
-            
+
             stream.WriteUInt32((uint)magic ^ Sdk.IO.BinaryBundle.GetSalt(), endian);
 
             stream.WriteInt32(sha1.Length, endian);
             stream.WriteInt32(ebx.Length, endian);
             stream.WriteInt32(res.Length, endian);
             stream.WriteInt32(chunks.Length, endian);
-            
+
             stream.WriteUInt32((uint)stringsOffset, endian);
             stream.WriteUInt32(0xDEADBEEF, endian); // TODO: metaOffset
             stream.WriteUInt32(0xDEADBEEF, endian); // TODO: metaSize
@@ -235,18 +235,20 @@ public static class BinaryBundle
                 ResModEntry entry = res[i];
                 stream.WriteUInt32(strings[entry.Name], endian);
                 stream.WriteUInt32((uint)entry.OriginalSize, endian);
-                
+
                 long currentPos = stream.Position;
                 stream.Position = resTypeOffset + i * sizeof(uint);
                 stream.WriteUInt32(entry.ResType);
-            
+
                 stream.Position = resMetaOffset + i * 0x10;
                 stream.Write(entry.ResMeta);
-            
+
                 stream.Position = resRidOffset + i * sizeof(ulong);
                 stream.WriteUInt64(entry.ResRid);
                 stream.Position = currentPos;
             }
+
+            stream.Position = resRidOffset + res.Length * sizeof(ulong);
 
             foreach (ChunkModEntry entry in chunks)
             {
@@ -254,7 +256,7 @@ public static class BinaryBundle
                 stream.WriteUInt32(entry.LogicalOffset, endian);
                 stream.WriteUInt32(entry.LogicalSize, endian);
             }
-            
+
             // TODO: chunk meta
 
             Debug.Assert(stream.Position == stringsOffset + 4);
@@ -264,7 +266,7 @@ public static class BinaryBundle
                 stream.WriteNullTerminatedString(pair.Key);
             }
         }
-        
+
         return retVal;
     }
 }

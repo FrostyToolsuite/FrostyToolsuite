@@ -84,7 +84,7 @@ public partial class FrostyModExecutor
                 }
                 if (mod.Head != FileSystemManager.Head)
                 {
-                    // TODO: print warning
+                    FrostyLogger.Logger?.LogWarning($"Mod {mod.ModDetails.Title} was made for a different version of the game, it might or might not work");
                 }
                 ProcessModResources(mod);
             }
@@ -100,7 +100,7 @@ public partial class FrostyModExecutor
                 {
                     if (mod.Head != FileSystemManager.Head)
                     {
-                        // TODO: print warning
+                        FrostyLogger.Logger?.LogWarning($"Mod {mod.ModDetails.Title} was made for a different version of the game, it might or might not work");
                     }
                     ProcessModResources(mod);
                 }
@@ -116,7 +116,10 @@ public partial class FrostyModExecutor
         }
 
         // clear old generated mod data
-        Directory.Delete(m_modDataPath, true);
+        if (Directory.Exists(m_modDataPath))
+        {
+            Directory.Delete(m_modDataPath, true);
+        }
         Directory.CreateDirectory(m_modDataPath);
 
         // modify the superbundles and write them to mod data
@@ -159,7 +162,7 @@ public partial class FrostyModExecutor
     {
         if (!m_installChunkWriters.TryGetValue(sbIc.InstallChunk.Id, out InstallChunkWriter? installChunkWriter))
         {
-            m_installChunkWriters.Add(sbIc.InstallChunk.Id, installChunkWriter = new InstallChunkWriter(sbIc.InstallChunk, m_gamePatchPath, m_modDataPath));
+            m_installChunkWriters.Add(sbIc.InstallChunk.Id, installChunkWriter = new InstallChunkWriter(sbIc.InstallChunk, m_gamePatchPath, m_modDataPath, m_patchPath == FileSystemSource.Patch.Path));
         }
 
         foreach (Sha1 sha1 in inModInfo.Data)
@@ -177,7 +180,10 @@ public partial class FrostyModExecutor
 
     private void LoadHandlers()
     {
-        foreach (string handler in Directory.EnumerateFiles(Path.Combine(Utils.BaseDirectory, "Handlers")))
+        string handlersDir = Path.Combine(Utils.BaseDirectory, "Handlers");
+        Directory.CreateDirectory(handlersDir);
+
+        foreach (string handler in Directory.EnumerateFiles(handlersDir))
         {
             Assembly assembly = Assembly.Load(handler);
             foreach (Type type in assembly.ExportedTypes)
@@ -206,9 +212,8 @@ public partial class FrostyModExecutor
                 {
                     SuperBundleModInfo sb = GetSuperBundleModInfo(bundle.SuperBundleHash);
 
-                    int bundleHash = Utils.HashString(bundle.Name + FileSystemManager.GetSuperBundleInstallChunk(bundle.SuperBundleHash).Name, true);
                     sb.Added.Bundles.TryAdd(bundle.BundleHash, new BundleModInfo());
-                    m_bundleToSuperBundleMapping.TryAdd(bundleHash, bundle.SuperBundleHash);
+                    m_bundleToSuperBundleMapping.TryAdd(bundle.BundleHash, bundle.SuperBundleHash);
                     break;
                 }
                 case EbxModResource ebx:
@@ -561,7 +566,7 @@ public partial class FrostyModExecutor
         }
         else
         {
-            superBundle = Utils.HashString(bundle.Parent.Name);
+            superBundle = Utils.HashString(bundle.Parent.Name, true);
         }
 
         return GetSuperBundleModInfo(superBundle);

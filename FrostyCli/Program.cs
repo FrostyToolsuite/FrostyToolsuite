@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using Frosty.ModSupport;
+using Frosty.ModSupport.Mod;
 using Frosty.Sdk;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Sdk;
@@ -179,6 +181,7 @@ internal static class Program
         // load game
         LoadGame(inGameFileInfo, inKeyFileInfo, inPid);
 
-        Logger.LogErrorInternal("Not implemented yet.");
+        FrostyModExecutor executor = new();
+        executor.GenerateMods("TestV2", "converted.fbmod");
     }
 }
