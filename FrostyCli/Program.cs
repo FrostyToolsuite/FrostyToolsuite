@@ -31,8 +31,6 @@ internal static class Program
 
     private static void InteractiveMode()
     {
-        Logger.LogErrorInternal("Interactive mode not implemented yet");
-
         string gamePath = Prompt.Input<string>("Input the path to the games executable");
 
         FileInfo game = new(gamePath);
