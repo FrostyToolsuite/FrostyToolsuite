@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using Frosty.Sdk;
+using Frosty.Sdk.Ebx;
+using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Sdk;
@@ -59,6 +61,9 @@ internal static class Program
                  case ActionType.GetEbx:
                      GetEbx();
                      break;
+                 case ActionType.GetDbx:
+                     GetDbx();
+                     break;
                  case ActionType.GetRes:
                      GetRes();
                      break;
@@ -76,6 +81,7 @@ internal static class Program
         Mod,
         UpdateMod,
         GetEbx,
+        GetDbx,
         GetRes,
         GetChunk,
     }
@@ -182,6 +188,28 @@ internal static class Program
         using (Block<byte> data = AssetManager.GetAsset(entry))
         {
             File.WriteAllBytes(file, data.ToArray());
+        }
+    }
+
+    private static void GetDbx()
+    {
+        string name = Prompt.Input<string>("Input ebx name");
+
+        EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(name);
+
+        if (entry is null)
+        {
+            Logger.LogErrorInternal("Asset does not exist");
+            return;
+        }
+
+        string file = Prompt.Input<string>("Input file path to save ebx to");
+
+        EbxAsset asset = AssetManager.GetEbxAsset(entry);
+
+        using (DbxWriter writer = new(file))
+        {
+            writer.Write(asset);
         }
     }
 
