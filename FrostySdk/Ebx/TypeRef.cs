@@ -1,13 +1,16 @@
 using System;
+using System.Reflection;
+using Frosty.Sdk.Attributes;
 
 namespace Frosty.Sdk.Ebx;
 
-public class TypeRef
+public struct TypeRef
 {
-    public string Name => m_typeName;
+    public string Name => m_typeName ?? string.Empty;
     public Guid Guid => m_typeGuid;
+
     private readonly Guid m_typeGuid;
-    private readonly string m_typeName;
+    private readonly string? m_typeName;
 
     public TypeRef()
     {
@@ -22,12 +25,12 @@ public class TypeRef
     public TypeRef(Guid guid)
     {
         m_typeGuid = guid;
-        m_typeName = TypeLibrary.GetType(guid)?.Name ?? m_typeGuid.ToString();
+        m_typeName = TypeLibrary.GetType(guid)?.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? m_typeGuid.ToString();
     }
 
     public Type GetReferencedType()
     {
-        // should be a primitive type if the GUID is empty
+        // TODO: this is probably easier now
         if (m_typeGuid == Guid.Empty)
         {
             Type? refType = TypeLibrary.GetType(m_typeName);
@@ -51,7 +54,7 @@ public class TypeRef
 
     public static implicit operator string(TypeRef value)
     {
-        return value.m_typeGuid != Guid.Empty ? value.m_typeGuid.ToString().ToUpper() : value.m_typeName;
+        return value.m_typeGuid != Guid.Empty ? value.m_typeGuid.ToString().ToUpper() : value.m_typeName ?? string.Empty;
     }
 
     public static implicit operator TypeRef(string value) => new(value);
@@ -59,6 +62,30 @@ public class TypeRef
     public static implicit operator TypeRef(Guid guid) => new(guid);
 
     public bool IsNull() => string.IsNullOrEmpty(m_typeName);
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is not TypeRef b)
+        {
+            return false;
+        }
+
+        return m_typeName == b.m_typeName && m_typeGuid == b.m_typeGuid;
+    }
+
+    public bool Equals(TypeRef other)
+    {
+        return m_typeGuid == other.m_typeGuid && m_typeName == other.m_typeName;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(m_typeGuid, m_typeName);
+    }
+
+    public static bool operator ==(TypeRef a, object b) => a.Equals(b);
+
+    public static bool operator !=(TypeRef a, object b) => !a.Equals(b);
 
     public override string ToString() => $"TypeRef '{(IsNull() ? "(null)" : m_typeName)}'";
 }

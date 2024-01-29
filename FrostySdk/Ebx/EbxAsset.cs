@@ -5,7 +5,7 @@ using Frosty.Sdk.IO;
 
 namespace Frosty.Sdk.Ebx;
 
-public partial class EbxAsset
+public class EbxAsset
 {
     public Guid PartitionGuid => partitionGuid;
     public Guid RootInstanceGuid
@@ -299,8 +299,8 @@ public partial class EbxAsset
 
             else if (pType == s_boxedValueType)
             {
-                BoxedValueRef boxedValue = (pi.GetValue(obj) as BoxedValueRef)!;
-                if (boxedValue.Value != null)
+                BoxedValueRef boxedValue = (BoxedValueRef)pi.GetValue(obj)!;
+                if (boxedValue.Value is not null)
                 {
                     CountRefs(boxedValue.Value, classObj, ref refProps, ref externalProps);
                 }
