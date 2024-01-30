@@ -10,6 +10,7 @@ using Frosty.Sdk.Managers;
 using Frosty.Sdk.Interfaces;
 using static Frosty.Sdk.Sdk.TypeFlags;
 using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace Frosty.Sdk.IO;
 
@@ -336,14 +337,14 @@ public sealed class DbxWriter : IDisposable
     private void WriteFieldWithValue(string fieldName, float value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
         WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
-        m_xmlWriter!.WriteValue(value);
+        m_xmlWriter!.WriteValue(value.ToString("0.0######", CultureInfo.InvariantCulture));
         WriteFieldEnd();
     }
 
     private void WriteFieldWithValue(string fieldName, double value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
         WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
-        m_xmlWriter!.WriteValue(value);
+        m_xmlWriter!.WriteValue(value.ToString("0.0##############", CultureInfo.InvariantCulture));
         WriteFieldEnd();
     }
 
