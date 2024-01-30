@@ -20,12 +20,13 @@ public sealed class DbxReader
     private static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef");
     private static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef");
 
+    // we only want to write out properties with these flags
     private static readonly BindingFlags s_propertyBindingFlags = BindingFlags.Public | BindingFlags.Instance;
 
     // the loaded dbx file
     private readonly XmlDocument m_xml = new();
     // key - instance guid, value - instance and its xml representation
-    private readonly Dictionary<Guid, Tuple<object, XmlNode>> m_guidToObjAndXmlNode = new();
+    private readonly Dictionary<Guid, (object ebxInstance, XmlNode dbxInstance)> m_guidToObjAndXmlNode = new();
     // used to keep track of number of refs pointing to an instance
     private readonly Dictionary<Guid, int> m_guidToRefCount = new();
 
@@ -210,7 +211,7 @@ public sealed class DbxReader
         // because of pointers, instances must be initialized before being parsed
         foreach(var kvp in m_guidToObjAndXmlNode)
         {
-            ParseInstance(kvp.Value.Item2, kvp.Value.Item1, kvp.Key);
+            ParseInstance(kvp.Value.dbxInstance, kvp.Value.ebxInstance, kvp.Key);
         }
 
         m_ebx!.refCounts = m_guidToRefCount.Values.ToList();
@@ -260,21 +261,22 @@ public sealed class DbxReader
         if (refEbxGuid != null)
         {
             Guid extGuid = Guid.Parse(refGuid.Split('\\')[1]);
-            EbxImportReference import = new() { ClassGuid = extGuid, FileGuid = Guid.Parse(refEbxGuid) };
-            m_ebx!.AddDependency(extGuid);
+            Guid ebxFileGuid = Guid.Parse(refEbxGuid);
+            EbxImportReference import = new() { ClassGuid = extGuid, FileGuid = ebxFileGuid };
+            m_ebx!.AddDependency(ebxFileGuid);
             return new PointerRef(import);
         }
         // internal
         else
         {
             Guid instGuid = Guid.Parse(refGuid);
-            PointerRef internalRef = new PointerRef(m_guidToObjAndXmlNode[instGuid].Item1);
+            PointerRef internalRef = new PointerRef(m_guidToObjAndXmlNode[instGuid].ebxInstance);
             m_guidToRefCount[instGuid]++;
             return internalRef;
         }
     }
 
-    private void ReadInstanceFields(XmlNode node, dynamic obj, Type objType)
+    private void ReadInstanceFields(XmlNode node, object obj, Type objType)
     {
         foreach(XmlNode child in node.ChildNodes)
         {
@@ -309,28 +311,28 @@ public sealed class DbxReader
             {
                 if (isRef)
                 {
-                    ((dynamic)obj).Add(ParseRef(node, GetAttributeValue(node, "ref")!));
+                    objType.GetMethod("Add")?.Invoke(obj, new[] { (object)ParseRef(node, GetAttributeValue(node, "ref")!)});
                 }
                 else
                 {
-                    ((dynamic)obj).Add(GetValueFromString(arrayElementType!, node.InnerText, arrayElementTypeEnum));
+                    objType.GetMethod("Add")?.Invoke(obj, new[] { GetValueFromString(arrayElementType!, node.InnerText, arrayElementTypeEnum) });
                 }
                 break;
             }
             case "array":
             {
                 string arrayFieldName = GetAttributeValue(node, "name")!;
-                dynamic array = ReadArray(node);
+                object array = ReadArray(node);
                 SetProperty(obj, objType, arrayFieldName, array);
                 break;
             }
             case "complex":
             {
                 string structFieldName = GetAttributeValue(node, "name")!;
-                dynamic structObj = ReadStruct(arrayElementType, node);
+                object structObj = ReadStruct(arrayElementType, node);
                 if (isArray)
                 {
-                    ((dynamic)obj).Add(structObj);
+                    objType.GetMethod("Add")?.Invoke(obj, new[] { structObj });
                 }
                 else
                 {
@@ -375,7 +377,7 @@ public sealed class DbxReader
         }
     }
 
-    private dynamic ReadArray(XmlNode node)
+    private object ReadArray(XmlNode node)
     {
         string arrayTypeStr = GetAttributeValue(node, "type")!;
         bool isRef = arrayTypeStr.StartsWith("ref(");
@@ -400,12 +402,12 @@ public sealed class DbxReader
         return array;
     }
 
-    private dynamic ReadStruct(Type? structType, XmlNode node)
+    private object ReadStruct(Type? structType, XmlNode node)
     {
         Type type = (structType ?? TypeLibrary.GetType(GetAttributeValue(node, "type")!))
                     ?? throw new ArgumentException($"struct type doesn't exist?");
 
-        dynamic obj = Activator.CreateInstance(type)
+        object obj = Activator.CreateInstance(type)
                       ?? throw new ArgumentException($"failed to create struct of type {type.Name}");
 
         if (node.ChildNodes.Count > 0)
