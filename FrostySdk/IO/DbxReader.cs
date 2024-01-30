@@ -76,7 +76,7 @@ public sealed class DbxReader
         }
     }
 
-    private static object? GetValueFromString(Type propType, string propValue, TypeEnum? frostbiteType = null)
+    private static object GetValueFromString(Type propType, string propValue, TypeEnum? frostbiteType = null)
     {
         if (propType.IsPrimitive)
         {
@@ -132,8 +132,7 @@ public sealed class DbxReader
                 }
                 case TypeEnum.Enum:
                 {
-                    // @todo: some enum fields have no value? sdk issue?
-                    return string.IsNullOrEmpty(propValue) ? null : Enum.Parse(propType, propValue);
+                    return Enum.Parse(propType, propValue);
                 }
                 case TypeEnum.Guid:
                 {
@@ -355,7 +354,7 @@ public sealed class DbxReader
 
                 EbxTypeMetaAttribute? typeMeta = valueType.GetCustomAttribute<EbxTypeMetaAttribute>();
 
-                object? value = GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
+                object value = GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
                 BoxedValueRef boxed = new(value, typeMeta.Flags.GetTypeEnum());
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(boxed, s_boxedValueRefType!));
                 break;
