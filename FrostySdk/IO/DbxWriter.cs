@@ -337,14 +337,14 @@ public sealed class DbxWriter : IDisposable
     private void WriteFieldWithValue(string fieldName, float value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
         WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
-        m_xmlWriter!.WriteValue(value.ToString("0.0######", CultureInfo.InvariantCulture));
+        m_xmlWriter!.WriteValue(value.ToString("0.0######"));
         WriteFieldEnd();
     }
 
     private void WriteFieldWithValue(string fieldName, double value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
         WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
-        m_xmlWriter!.WriteValue(value.ToString("0.0##############", CultureInfo.InvariantCulture));
+        m_xmlWriter!.WriteValue(value.ToString("0.0##############"));
         WriteFieldEnd();
     }
 
