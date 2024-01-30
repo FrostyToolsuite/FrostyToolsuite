@@ -105,51 +105,37 @@ public class EbxReader : BaseEbxReader
                 case TypeFlags.TypeEnum.Array:
                     ReadField(inTypeDescriptor, type, fieldDescriptor.TypeDescriptorRef, value =>
                     {
-                        try
+                        if (value is null)
                         {
-                            if (value is null)
-                            {
-                                Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
-                                return;
-                            }
+                            Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
+                            return;
+                        }
 
-                            if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType.GenericTypeArguments[0]))
-                            {
-                                IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType.GenericTypeArguments[0])!;
-                                primitive.FromActualType(value);
-                                value = primitive;
-                            }
-                            propertyInfo?.GetValue(obj)?.GetType().GetMethod("Add")?.Invoke(propertyInfo.GetValue(obj), new[] { value });
-                        }
-                        catch (Exception)
+                        if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType.GenericTypeArguments[0]))
                         {
-                            // ignored
+                            IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType.GenericTypeArguments[0])!;
+                            primitive.FromActualType(value);
+                            value = primitive;
                         }
+                        propertyInfo?.GetValue(obj)?.GetType().GetMethod("Add")?.Invoke(propertyInfo.GetValue(obj), new[] { value });
                     });
                     break;
                 default:
                     ReadField(inTypeDescriptor, type, fieldDescriptor.TypeDescriptorRef, value =>
                     {
-                        try
+                        if (value is null)
                         {
-                            if (value is null)
-                            {
-                                Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
-                                return;
-                            }
+                            Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
+                            return;
+                        }
 
-                            if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType))
-                            {
-                                IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType)!;
-                                primitive.FromActualType(value);
-                                value = primitive;
-                            }
-                            propertyInfo?.SetValue(obj, value);
-                        }
-                        catch (Exception)
+                        if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType))
                         {
-                            // ignored
+                            IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType)!;
+                            primitive.FromActualType(value);
+                            value = primitive;
                         }
+                        propertyInfo?.SetValue(obj, value);
                     });
                     break;
             }
@@ -283,9 +269,7 @@ public class EbxReader : BaseEbxReader
 
     private FileRef ReadFileRef()
     {
-        // TODO: look at this
-        uint index = m_stream.ReadUInt32();
-        m_stream.Position += 4;
+        uint index = (uint)m_stream.ReadUInt64();
 
         return new FileRef(ReadString(index));
     }
