@@ -228,6 +228,17 @@ public class TypeSdkGenerator
             FrostyLogger.Logger?.LogInfo($"Resolved {totalFieldNames - unresolvedFieldNames} field names");
             FrostyLogger.Logger?.LogInfo($"{unresolvedFieldNames} unresolved field names left");
 
+            Strings.TypeNames.UnionWith(Strings.TypeMapping.Values);
+            foreach (KeyValuePair<uint,Dictionary<uint,string>> pair in Strings.FieldMapping)
+            {
+                HashSet<string> fields = new();
+                foreach (string name in pair.Value.Values)
+                {
+                    fields.Add(name);
+                }
+                Strings.FieldNames.Add(Strings.TypeMapping[pair.Key], fields);
+            }
+
             // save file and reload TypeInfo
             File.WriteAllText(typeNamesPath, JsonSerializer.Serialize(Strings.TypeNames));
             File.WriteAllText(fieldNamesPath, JsonSerializer.Serialize(Strings.FieldNames));

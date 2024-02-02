@@ -45,7 +45,7 @@ internal class DelegateInfoData : TypeInfoData
 
             if (type is ArrayInfo array)
             {
-                typeName = $"List<{array.GetTypeInfo().GetFullName()}>";
+                typeName = $"ObservableCollection<{array.GetTypeInfo().GetFullName()}>";
             }
 
             switch (parameterInfo.GetParameterType())
