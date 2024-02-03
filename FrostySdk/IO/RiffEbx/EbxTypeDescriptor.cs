@@ -2,7 +2,7 @@ using Frosty.Sdk.Sdk;
 
 namespace Frosty.Sdk.IO.RiffEbx;
 
-public struct EbxTypeDescriptor
+internal struct EbxTypeDescriptor
 {
     public uint NameHash;
     public int FieldIndex;

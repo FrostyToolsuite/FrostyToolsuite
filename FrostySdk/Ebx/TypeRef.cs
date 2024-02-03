@@ -30,10 +30,9 @@ public struct TypeRef
 
     public Type GetReferencedType()
     {
-        // TODO: this is probably easier now
         if (m_typeGuid == Guid.Empty)
         {
-            Type? refType = TypeLibrary.GetType(m_typeName);
+            Type? refType = TypeLibrary.GetType(m_typeName!);
             if (refType == null)
             {
                 throw new Exception($"Could not find the type {m_typeName}");
@@ -52,10 +51,7 @@ public struct TypeRef
         }
     }
 
-    public static implicit operator string(TypeRef value)
-    {
-        return value.m_typeGuid != Guid.Empty ? value.m_typeGuid.ToString().ToUpper() : value.m_typeName ?? string.Empty;
-    }
+    public static implicit operator string(TypeRef value) => value.m_typeName ?? "null";
 
     public static implicit operator TypeRef(string value) => new(value);
 

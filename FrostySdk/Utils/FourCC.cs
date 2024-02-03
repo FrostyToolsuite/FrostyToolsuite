@@ -1,6 +1,6 @@
 using System;
 
-namespace Frosty.Sdk.IO.RiffEbx;
+namespace Frosty.Sdk.Utils;
 
 public struct FourCC
 {

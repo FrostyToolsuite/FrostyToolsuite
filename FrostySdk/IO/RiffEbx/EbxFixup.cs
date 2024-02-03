@@ -4,13 +4,14 @@ using Frosty.Sdk.IO.Ebx;
 
 namespace Frosty.Sdk.IO.RiffEbx;
 
-public struct EbxFixup
+internal struct EbxFixup
 {
     public Guid PartitionGuid;
     public Guid[] TypeGuids;
     public uint[] TypeSignatures;
     public int ExportedInstanceCount;
     public uint[] InstanceOffsets;
+    public Dictionary<uint, int> InstanceMapping;
     public uint[] PointerOffsets;
     public uint[] ResourceRefOffsets;
     public EbxImportReference[] Imports;
@@ -20,7 +21,7 @@ public struct EbxFixup
     public uint ArrayOffset;
     public uint BoxedValueRefOffset;
     public uint StringOffset;
-
+    // content/cinematic/stadiummultiset/prefab/sms_lockerroom_setdressing/sms_lockerroom_postmatchdressing
     public static EbxFixup ReadFixup(DataStream inStream)
     {
         EbxFixup fixup = new() { PartitionGuid = inStream.ReadGuid(), };
@@ -40,9 +41,11 @@ public struct EbxFixup
         fixup.ExportedInstanceCount = inStream.ReadInt32();
 
         fixup.InstanceOffsets = new uint[inStream.ReadInt32()];
+        fixup.InstanceMapping = new Dictionary<uint, int>(fixup.InstanceOffsets.Length);
         for (int i = 0; i < fixup.InstanceOffsets.Length; i++)
         {
             fixup.InstanceOffsets[i] = inStream.ReadUInt32();
+            fixup.InstanceMapping.Add(fixup.InstanceOffsets[i], i);
         }
 
         fixup.PointerOffsets = new uint[inStream.ReadInt32()];

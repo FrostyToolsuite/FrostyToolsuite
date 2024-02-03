@@ -1,13 +1,20 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO.RiffEbx;
 
-public static class EbxSharedTypeDescriptors
+internal static class EbxSharedTypeDescriptors
 {
     private static bool s_isInitialized;
+
+    private static HashSet<Guid> s_guids = new();
+    private static Dictionary<(Guid, uint), int> s_mapping = new();
+    private static List<EbxFieldDescriptor> s_fieldDescriptors = new();
+    private static List<EbxTypeDescriptor> s_typeDescriptors = new();
 
     public static void Initialize()
     {
@@ -29,10 +36,11 @@ public static class EbxSharedTypeDescriptors
         s_isInitialized = true;
     }
 
-    public static EbxTypeDescriptor GetTypeDescriptor(Guid inGuid, uint inSignature)
-    {
-        throw new NotImplementedException();
-    }
+    public static EbxTypeDescriptor GetTypeDescriptor(Guid inGuid, uint inSignature) => s_typeDescriptors[s_mapping[(inGuid, inSignature)]];
+
+    public static EbxTypeDescriptor GetTypeDescriptor(ushort inIndex) => s_typeDescriptors[inIndex];
+
+    public static EbxFieldDescriptor GetFieldDescriptors(int inIndex) => s_fieldDescriptors[inIndex];
 
     private static void Read(Block<byte> inFile)
     {
@@ -48,6 +56,8 @@ public static class EbxSharedTypeDescriptors
 
             // read REFL chunk
             riffStream.ReadNextChunk(ref size, ProcessChunk);
+
+            Debug.Assert(riffStream.Eof);
         }
     }
 
@@ -58,37 +68,41 @@ public static class EbxSharedTypeDescriptors
             return;
         }
 
-        int typeGuidCount = inStream.ReadInt32();
-        for (int i = 0; i < typeGuidCount; i++)
+        int startFields = s_fieldDescriptors.Count;
+        int startTypes = s_typeDescriptors.Count;
+
+        int typeSigCount = inStream.ReadInt32();
+        for (int i = 0; i < typeSigCount; i++)
         {
-            uint signature = inStream.ReadUInt32();
-            Guid guid = inStream.ReadGuid();
+            s_mapping.TryAdd((inStream.ReadGuid(), inStream.ReadUInt32()), i + startTypes);
         }
 
         int typeDescriptorCount = inStream.ReadInt32();
+        s_typeDescriptors.Capacity = typeDescriptorCount + s_typeDescriptors.Count;
         for (int i = 0; i < typeDescriptorCount; i++)
         {
-            EbxTypeDescriptor typeDescriptor = new()
+            s_typeDescriptors.Add(new EbxTypeDescriptor
             {
                 NameHash = inStream.ReadUInt32(),
-                FieldIndex = inStream.ReadInt32(),
+                FieldIndex = inStream.ReadInt32() + startFields,
                 FieldCount = inStream.ReadUInt16(),
                 Flags = inStream.ReadUInt16(),
                 Size = inStream.ReadUInt16(),
                 Alignment = inStream.ReadUInt16(),
-            };
+            });
         }
 
         int fieldDescriptorCount = inStream.ReadInt32();
+        s_fieldDescriptors.Capacity = fieldDescriptorCount + s_fieldDescriptors.Count;
         for (int i = 0; i < fieldDescriptorCount; i++)
         {
-            EbxFieldDescriptor fieldDescriptor = new()
+            s_fieldDescriptors.Add(new EbxFieldDescriptor
             {
                 NameHash = inStream.ReadUInt32(),
                 DataOffset = inStream.ReadUInt32(),
                 Flags = inStream.ReadUInt16(),
-                TypeRef = inStream.ReadUInt16()
-            };
+                TypeDescriptorRef = (ushort)(inStream.ReadUInt16() + startTypes)
+            });
         }
     }
 }

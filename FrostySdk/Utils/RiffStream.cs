@@ -1,7 +1,8 @@
 using System;
 using System.IO;
+using Frosty.Sdk.IO;
 
-namespace Frosty.Sdk.IO.RiffEbx;
+namespace Frosty.Sdk.Utils;
 
 public class RiffStream
 {
