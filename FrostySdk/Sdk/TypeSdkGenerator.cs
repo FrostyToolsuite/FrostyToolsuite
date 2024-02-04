@@ -199,6 +199,7 @@ public class TypeSdkGenerator
             {
                 // remove entry from dict
                 Strings.TypeMapping.Remove(key);
+                Strings.FieldMapping.Remove(key);
             }
 
             int totalFieldNames = 0;
