@@ -37,11 +37,18 @@ jobs:
     - name: Build FrostyCli
       run: |
         cd FrostyCli
-        dotnet build --no-restore -c Release
-    - uses: actions/upload-artifact@v4.3.0
+        dotnet publish --no-restore -c Release --runtime win-x64 /p:DebugType=None /p:DebugSymbols=false
+        dotnet publish --no-restore -c Release --runtime linux-x64 /p:DebugType=None /p:DebugSymbols=false
+    - name: Upload linux
+      uses: actions/upload-artifact@v4.3.0
       with: 
-        name: FrostyCli
-        path: FrostyCli/bin/Release/net7.0
+        name: FrostyCli-linux-x64
+        path: FrostyCli/bin/Release/net7.0/linux-x64/publish
+    - name: Upload windows
+      uses: actions/upload-artifact@v4.3.0
+      with: 
+        name: FrostyCli-win-x64
+        path: FrostyCli/bin/Release/net7.0/win-x64/publish
     - name: Build FrostyEditor
       run: |
         cd FrostyEditor
