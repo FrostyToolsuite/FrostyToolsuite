@@ -25,15 +25,15 @@ jobs:
     - name: Build FrostySdk
       run: |
         cd FrostySdk
-        dotnet build --no-restore -c Release
+        dotnet build --no-restore
     - name: Build FrostySdkTest
       run: |
         cd FrostySdkTest
-        dotnet build --no-restore -c Release
+        dotnet build --no-restore
     - name: Build FrostyModSupport
       run: |
         cd FrostyModSupport
-        dotnet build --no-restore -c Release
+        dotnet build --no-restore
     - name: Build FrostyCli
       run: |
         cd FrostyCli
