@@ -524,7 +524,7 @@ public class EbxReader : BaseEbxReader
         TypeFlags.CategoryEnum category;
         if ((packed & 0x80000000) != 0)
         {
-            var flags = (TypeFlags)(packed & ~0x80000000);
+            TypeFlags flags = (TypeFlags)(packed & ~0x80000000);
             type = flags.GetTypeEnum();
             category = flags.GetCategoryEnum();
         }
