@@ -14,22 +14,18 @@ namespace Frosty.Sdk.IO.RiffEbx;
 
 public class EbxReader : BaseEbxReader
 {
-    private RiffStream m_riffStream;
-    private uint m_size;
-
     private long m_payloadOffset;
     private EbxFixup m_fixup;
     private readonly EbxTypeResolver m_typeResolver;
 
-    private EbxArray[] m_arrays;
-    private Dictionary<uint, EbxBoxedValue> m_boxedValues;
+    private readonly Dictionary<uint, EbxBoxedValue> m_boxedValues = new();
 
 
     public EbxReader(DataStream inStream)
         : base(inStream)
     {
-        m_riffStream = new RiffStream(m_stream);
-        m_riffStream.ReadHeader(out FourCC fourCc, out m_size);
+        RiffStream riffStream = new(m_stream);
+        riffStream.ReadHeader(out FourCC fourCc, out uint size);
 
         if (fourCc != "EBX\x0" && fourCc != "EBXS")
         {
@@ -37,16 +33,16 @@ public class EbxReader : BaseEbxReader
         }
 
         // read EBXD chunk
-        m_riffStream.ReadNextChunk(ref m_size, ProcessChunk);
+        riffStream.ReadNextChunk(ref size, ProcessChunk);
         // read EFIX chunk
-        m_riffStream.ReadNextChunk(ref m_size, ProcessChunk);
+        riffStream.ReadNextChunk(ref size, ProcessChunk);
 
         m_typeResolver = new EbxTypeResolver(m_fixup.TypeGuids, m_fixup.TypeSignatures);
 
         // read EBXX chunk
-        m_riffStream.ReadNextChunk(ref m_size, ProcessChunk);
+        riffStream.ReadNextChunk(ref size, ProcessChunk);
 
-        Debug.Assert(m_riffStream.Eof);
+        Debug.Assert(riffStream.Eof);
     }
 
     public override Guid GetPartitionGuid() => m_fixup.PartitionGuid;
@@ -123,23 +119,13 @@ public class EbxReader : BaseEbxReader
 
     private void ReadXChunk(DataStream inStream)
     {
-        m_arrays = new EbxArray[inStream.ReadInt32()];
-        int count = inStream.ReadInt32();
-        m_boxedValues = new Dictionary<uint, EbxBoxedValue>(count);
+        int arrayCount = inStream.ReadInt32();
+        int boxedValueCount = inStream.ReadInt32();
+        m_boxedValues.EnsureCapacity(boxedValueCount);
 
-        for (int i = 0; i < m_arrays.Length; i++)
-        {
-            m_arrays[i] = new EbxArray
-            {
-                Offset = inStream.ReadUInt32(),
-                Count = inStream.ReadInt32(),
-                Hash = inStream.ReadUInt32(),
-                Flags = inStream.ReadUInt16(),
-                TypeDescriptorRef = inStream.ReadUInt16()
-            };
-        }
+        inStream.Position += arrayCount * (sizeof(uint) + sizeof(int) + sizeof(uint) + sizeof(ushort) + sizeof(ushort));
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < boxedValueCount; i++)
         {
             var b = new EbxBoxedValue
             {
@@ -499,7 +485,6 @@ public class EbxReader : BaseEbxReader
         }
 
         int typeRef = (int)(packed >> 2);
-        int type = (int)(packed & 3);
         return new TypeRef(m_fixup.TypeGuids[typeRef]);
     }
 
