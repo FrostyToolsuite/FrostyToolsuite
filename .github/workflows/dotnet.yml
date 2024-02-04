@@ -38,6 +38,10 @@ jobs:
       run: |
         cd FrostyCli
         dotnet build --no-restore -c Release
+    - uses: actions/upload-artifact@v4.3.0
+      with: 
+        name: FrostyCli
+        path: FrostyCli/bin/Release/.net7.0
     - name: Build FrostyEditor
       run: |
         cd FrostyEditor
