@@ -41,7 +41,7 @@ jobs:
     - uses: actions/upload-artifact@v4.3.0
       with: 
         name: FrostyCli
-        path: FrostyCli/bin/Release/.net7.0
+        path: FrostyCli/bin/Release/net7.0
     - name: Build FrostyEditor
       run: |
         cd FrostyEditor
