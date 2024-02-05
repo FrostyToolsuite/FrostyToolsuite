@@ -3,6 +3,7 @@ using System.CommandLine;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using Frosty.ModSupport.Mod;
 using Frosty.Sdk;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.IO;
@@ -23,6 +24,8 @@ internal static class Program
         AddLoadCommand(rootCommand);
 
         AddModCommand(rootCommand);
+
+        AddUpdateModCommand(rootCommand);
 
         rootCommand.SetHandler(InteractiveMode);
 
@@ -54,7 +57,7 @@ internal static class Program
                      Logger.LogErrorInternal("Not implemented yet.");
                      break;
                  case ActionType.UpdateMod:
-                     Logger.LogErrorInternal("Not implemented yet.");
+                     UpdateMod();
                      break;
                  case ActionType.GetEbx:
                      GetEbx();
@@ -167,6 +170,20 @@ internal static class Program
         if (!AssetManager.Initialize())
         {
         }
+    }
+
+    private static void UpdateMod()
+    {
+        FileInfo modFileInfo = new(Prompt.Input<string>("Pass in the path to the mod that should get updated"));
+        if (!modFileInfo.Exists)
+        {
+            Logger.LogErrorInternal("Mod file does not exist");
+            return;
+        }
+
+        FileInfo outputFileInfo = new(Prompt.Input<string>("Pass in the path where the updated mod should get saved to"));
+
+        ModUpdater.UpdateMod(modFileInfo.FullName, outputFileInfo.FullName);
     }
 
     private static void GetEbx()
@@ -384,7 +401,7 @@ internal static class Program
             name: "--sdk",
             description: "The pid of the game if a sdk should get generated for the game.");
 
-        Command loadCommand = new("mod", "todo")
+        Command modCommand = new("mod", "todo")
         {
             gameArg,
             modsArg,
@@ -392,9 +409,9 @@ internal static class Program
             keyOption,
             sdkOption
         };
-        rootCommand.AddCommand(loadCommand);
+        rootCommand.AddCommand(modCommand);
 
-        loadCommand.SetHandler(ModGame, gameArg, modsArg, modDataOption, keyOption, sdkOption);
+        modCommand.SetHandler(ModGame, gameArg, modsArg, modDataOption, keyOption, sdkOption);
     }
 
     private static void ModGame(FileInfo inGameFileInfo, DirectoryInfo inModsDirInfo, DirectoryInfo? inModDataDirInfo, FileInfo? inKeyFileInfo, int? inPid)
@@ -403,5 +420,54 @@ internal static class Program
         LoadGame(inGameFileInfo, inKeyFileInfo, inPid);
 
         Logger.LogErrorInternal("Not implemented yet.");
+    }
+
+    private static void AddUpdateModCommand(RootCommand rootCommand)
+    {
+        Argument<FileInfo> gameArg = new(
+            name: "game-path",
+            description: "The path to the game.");
+
+        Argument<FileInfo> modArg = new(
+            name: "mod-path",
+            description: "The path to the mod that should get updated.");
+
+        Option<FileInfo?> outputOption = new(
+            name: "--output",
+            description: "The path where the updated mod should be saved to, defaults to the input path.");
+
+        Option<FileInfo?> keyOption = new(
+            name: "--initfs-key",
+            description: "The path to a file containing a key for the initfs if needed.");
+
+        Option<int?> sdkOption = new(
+            name: "--sdk",
+            description: "The pid of the game if a sdk should get generated for the game.");
+
+        Command updateModCommand = new("update-mod", "Updates a fbmod to the newest version.")
+        {
+            gameArg,
+            modArg,
+            outputOption,
+            keyOption,
+            sdkOption
+        };
+        rootCommand.AddCommand(updateModCommand);
+
+        updateModCommand.SetHandler(UpdateMod, gameArg, modArg, outputOption, keyOption, sdkOption);
+    }
+
+    private static void UpdateMod(FileInfo inGameFileInfo, FileInfo inModFileInfo, FileInfo? inOutputFileInfo, FileInfo? inKeyFileInfo, int? inPid)
+    {
+        if (!inModFileInfo.Exists)
+        {
+            Logger.LogErrorInternal("Mod file does not exist");
+            return;
+        }
+
+        // load game
+        LoadGame(inGameFileInfo, inKeyFileInfo, inPid);
+
+        ModUpdater.UpdateMod(inModFileInfo.FullName, inOutputFileInfo?.FullName ?? inModFileInfo.FullName);
     }
 }
