@@ -37,8 +37,8 @@ jobs:
     - name: Build FrostyCli
       run: |
         cd FrostyCli
-        dotnet publish -c Release --runtime win-x64 /p:DebugType=None /p:DebugSymbols=false
-        dotnet publish -c Release --runtime linux-x64 /p:DebugType=None /p:DebugSymbols=false
+        dotnet publish -c Release --runtime win-x64 --no-self-contained /p:DebugType=None /p:DebugSymbols=false
+        dotnet publish -c Release --runtime linux-x64 --no-self-contained /p:DebugType=None /p:DebugSymbols=false
     - name: Upload linux
       uses: actions/upload-artifact@v4.3.0
       with: 
