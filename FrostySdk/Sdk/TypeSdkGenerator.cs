@@ -199,6 +199,7 @@ public class TypeSdkGenerator
             {
                 // remove entry from dict
                 Strings.TypeMapping.Remove(key);
+                Strings.FieldMapping.Remove(key);
             }
 
             int totalFieldNames = 0;
@@ -297,6 +298,7 @@ public class TypeSdkGenerator
                 case TypeFlags.TypeEnum.Class:
                 case TypeFlags.TypeEnum.Enum:
                 case TypeFlags.TypeEnum.Delegate:
+                case TypeFlags.TypeEnum.Interface:
                     typeInfo.CreateType(sb);
                     break;
 
