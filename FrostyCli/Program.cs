@@ -99,7 +99,7 @@ internal static class Program
         FrostyLogger.Logger = new Logger();
 
         // set base directory to the directory containing the executable
-        Utils.BaseDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+        Utils.BaseDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
 
         // init profile
         if (!ProfilesLibrary.Initialize(Path.GetFileNameWithoutExtension(inGameFileInfo.Name)))
@@ -306,7 +306,7 @@ internal static class Program
         FrostyLogger.Logger = new Logger();
 
         // set base directory to the directory containing the executable
-        Utils.BaseDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+        Utils.BaseDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
 
         // init profile
         if (!ProfilesLibrary.Initialize(Path.GetFileNameWithoutExtension(inGameFileInfo.Name)))
