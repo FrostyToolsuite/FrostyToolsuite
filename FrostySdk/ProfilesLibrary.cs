@@ -103,6 +103,11 @@ public static class ProfilesLibrary
         return s_profiles.FindIndex(a => a.Name.Equals(profileKey, StringComparison.OrdinalIgnoreCase)) != -1;
     }
 
+    public static bool IsLoaded(ProfileVersion version)
+    {
+        return version == (ProfileVersion)DataVersion;
+    }
+
     public static bool IsLoaded(params ProfileVersion[] versions)
     {
         return versions.Contains((ProfileVersion)DataVersion);
