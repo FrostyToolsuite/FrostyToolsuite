@@ -2,7 +2,7 @@
 
 namespace Frosty.Sdk.Attributes;
 
-[AttributeUsage(AttributeTargets.All, Inherited = false)]
+[AttributeUsage(FrostyAttributeTargets.Type | FrostyAttributeTargets.Field, Inherited = false)]
 public class NameHashAttribute : Attribute
 {
     public uint Hash { get; }

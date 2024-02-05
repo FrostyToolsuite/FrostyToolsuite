@@ -6,7 +6,7 @@ namespace Frosty.Sdk.Attributes;
 /// <summary>
 /// Mandatory attribute for all Ebx based fields
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+[AttributeUsage(FrostyAttributeTargets.Field)]
 public class EbxFieldMetaAttribute : Attribute
 {
     public TypeFlags Flags { get; set; }

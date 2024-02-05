@@ -5,7 +5,7 @@ namespace Frosty.Sdk.Attributes;
 /// <summary>
 /// Specifies the fields index, which may differ from its offset
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+[AttributeUsage(FrostyAttributeTargets.Field)]
 public class FieldIndexAttribute : Attribute
 {
     public int Index { get; set; }

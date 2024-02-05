@@ -2,7 +2,7 @@
 
 namespace Frosty.Sdk.Attributes;
 
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Enum | AttributeTargets.Delegate | AttributeTargets.Struct)]
+[AttributeUsage(FrostyAttributeTargets.Type)]
 public class SignatureAttribute : Attribute
 {
     public uint Signature { get; }
