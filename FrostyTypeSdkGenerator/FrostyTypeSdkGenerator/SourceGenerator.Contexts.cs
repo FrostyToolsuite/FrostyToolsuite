@@ -6,10 +6,10 @@ using System.Linq;
 namespace FrostyTypeSdkGenerator;
 
 public sealed partial class SourceGenerator
-{   
+{
     private readonly record struct TypeContext(string? Namespace, string Name, bool IsValueType, ImmutableArray<FieldContext> Fields);
-    
-    private readonly record struct FieldContext(string Name, string Type, ImmutableArray<string> Attributes);
+
+    private readonly record struct FieldContext(string Name, string Type, ImmutableArray<string> Attributes, bool NeedsConstructor);
 
     private sealed class TypeContextEqualityComparer : IEqualityComparer<TypeContext>
     {

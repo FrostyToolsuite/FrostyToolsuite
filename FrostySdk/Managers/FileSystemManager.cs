@@ -91,6 +91,11 @@ public static class FileSystemManager
             }
         }
 
+        if (!Directory.Exists($"{BasePath}/{FileSystemSource.Patch.Path}"))
+        {
+            Sources.RemoveAt(0);
+        }
+
         if (!ProcessLayouts())
         {
             return false;

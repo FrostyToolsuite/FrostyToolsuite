@@ -6,7 +6,7 @@ namespace Frosty.Sdk.Attributes;
 /// <summary>
 /// Mandatory attribute for all Ebx based classes
 /// </summary>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Delegate | AttributeTargets.Method)]
+[AttributeUsage(FrostyAttributeTargets.Type)]
 public class EbxTypeMetaAttribute : Attribute
 {
     public TypeFlags Flags { get; set; }

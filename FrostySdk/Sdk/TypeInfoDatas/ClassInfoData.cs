@@ -92,10 +92,10 @@ internal class ClassInfoData : TypeInfoData
         }
 
         // TODO: what to do with functions
-        foreach (MethodInfo method in m_methodInfos)
+        /*foreach (MethodInfo method in m_methodInfos)
         {
             method.GetFunctionInfo().CreateType(sb);
-        }
+        }*/
 
         sb.AppendLine("}");
 

@@ -3,7 +3,7 @@ using Frosty.Sdk.Sdk;
 
 namespace Frosty.Sdk.Attributes;
 
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Delegate)]
+[AttributeUsage(FrostyAttributeTargets.Type | FrostyAttributeTargets.Field)]
 public class EbxArrayMetaAttribute : Attribute
 {
     public TypeFlags Flags { get; set; }

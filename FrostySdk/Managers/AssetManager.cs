@@ -349,7 +349,8 @@ public static class AssetManager
     internal static BundleInfo AddBundle(string name, SuperBundleInstallChunk sbIc)
     {
         BundleInfo bundle = new(name, sbIc);
-        Debug.Assert(s_bundleMapping.TryAdd(bundle.Id, bundle), "fuck");
+        bool success = s_bundleMapping.TryAdd(bundle.Id, bundle);
+        Debug.Assert(success, "fuck");
         return bundle;
     }
 
@@ -357,7 +358,8 @@ public static class AssetManager
     {
         BundleInfo bundle = new(inName, inBundleInfo.Parent);
         s_bundleMapping.Remove(inBundleInfo.Id);
-        Debug.Assert(s_bundleMapping.TryAdd(bundle.Id, bundle), "fuck");
+        bool success = s_bundleMapping.TryAdd(bundle.Id, bundle);
+        Debug.Assert(success, "fuck");
     }
 
     private static IAssetLoader GetAssetLoader()
