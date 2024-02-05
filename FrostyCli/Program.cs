@@ -57,7 +57,7 @@ internal static class Program
                      Logger.LogErrorInternal("Not implemented yet.");
                      break;
                  case ActionType.UpdateMod:
-                     Logger.LogErrorInternal("Not implemented yet.");
+                     UpdateMod();
                      break;
                  case ActionType.GetEbx:
                      GetEbx();
@@ -170,6 +170,20 @@ internal static class Program
         if (!AssetManager.Initialize())
         {
         }
+    }
+
+    private static void UpdateMod()
+    {
+        FileInfo modFileInfo = new(Prompt.Input<string>("Pass in the path to the mod that should get updated"));
+        if (!modFileInfo.Exists)
+        {
+            Logger.LogErrorInternal("Mod file does not exist");
+            return;
+        }
+
+        FileInfo outputFileInfo = new(Prompt.Input<string>("Pass in the path where the updated mod should get saved to"));
+
+        ModUpdater.UpdateMod(modFileInfo.FullName, outputFileInfo.FullName);
     }
 
     private static void GetEbx()

@@ -16,8 +16,8 @@ namespace Frosty.ModSupport.Mod;
 
 public class ModUpdater
 {
-    private static Dictionary<int, HashSet<int>> s_bundleMapping = new();
-    private static Dictionary<int, string> s_superBundleMapping = new();
+    private static readonly Dictionary<int, HashSet<int>> s_bundleMapping = new();
+    private static readonly Dictionary<int, string> s_superBundleMapping = new();
 
     public static bool UpdateMod(string inPath, string inNewPath)
     {
@@ -48,7 +48,9 @@ public class ModUpdater
 
         if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
         {
-            s_superBundleMapping.Add(Utils.HashStringA("<none>"), FileSystemManager.GetSuperBundle(FileSystemManager.DefaultInstallChunk!.SuperBundles.First()).InstallChunks[0].Name);
+            s_superBundleMapping.Add(Utils.HashStringA("<none>"),
+                FileSystemManager.GetSuperBundle(FileSystemManager.DefaultInstallChunk!.SuperBundles.First())
+                    .InstallChunks[0].Name);
         }
         else
         {
@@ -115,17 +117,19 @@ public class ModUpdater
         uint head = inStream.ReadUInt32();
 
         FrostyModDetails modDetails = new(inStream.ReadNullTerminatedString(), inStream.ReadNullTerminatedString(),
-            inStream.ReadNullTerminatedString(), inStream.ReadNullTerminatedString(), inStream.ReadNullTerminatedString(),
-            version > 4 ? inStream.ReadNullTerminatedString() : string.Empty);
+            inStream.ReadNullTerminatedString(), inStream.ReadNullTerminatedString(),
+            inStream.ReadNullTerminatedString(), version > 4 ? inStream.ReadNullTerminatedString() : string.Empty);
 
-        FrostyLogger.Logger?.LogInfo($"Converting mod \"{modDetails.Title}\" from version {version} to {FrostyMod.Version}");
+        FrostyLogger.Logger?.LogInfo(
+            $"Converting mod \"{modDetails.Title}\" from version {version} to {FrostyMod.Version}");
 
         int resourceCount = inStream.ReadInt32();
         BaseModResource[] resources = new BaseModResource[resourceCount];
         for (int i = 0; i < resourceCount; i++)
         {
             ModResourceType type = (ModResourceType)inStream.ReadByte();
-            (int ResourceIndex, string Name, Sha1 Sha1, long OriginalSize, int HandlerHash, string UserData, IEnumerable<int> BundlesToAdd, bool HasBundleToAdd) baseResource;
+            (int ResourceIndex, string Name, Sha1 Sha1, long OriginalSize, int HandlerHash, string UserData,
+                IEnumerable<int> BundlesToAdd, bool HasBundleToAdd) baseResource;
             BaseModResource.ResourceFlags flags;
             switch (type)
             {
@@ -151,17 +155,24 @@ public class ModUpdater
                     // we now store ebx names the same way they are stored in the bundle, so all lowercase
                     baseResource.Name = baseResource.Name.ToLower();
 
-                    flags = AssetManager.GetEbxAssetEntry(baseResource.Name) is null ? BaseModResource.ResourceFlags.IsAdded : 0;
+                    flags = AssetManager.GetEbxAssetEntry(baseResource.Name) is null
+                        ? BaseModResource.ResourceFlags.IsAdded
+                        : 0;
 
-                    resources[i] = new EbxModResource(baseResource.ResourceIndex, baseResource.Name, baseResource.Sha1, baseResource.OriginalSize, flags, baseResource.HandlerHash, baseResource.UserData, baseResource.BundlesToAdd, Enumerable.Empty<int>());
+                    resources[i] = new EbxModResource(baseResource.ResourceIndex, baseResource.Name, baseResource.Sha1,
+                        baseResource.OriginalSize, flags, baseResource.HandlerHash, baseResource.UserData,
+                        baseResource.BundlesToAdd, Enumerable.Empty<int>());
                     break;
                 case ModResourceType.Res:
                     baseResource = ReadBaseModResource(inStream, version);
-                    flags = AssetManager.GetResAssetEntry(baseResource.Name) is null ? BaseModResource.ResourceFlags.IsAdded : 0;
+                    flags = AssetManager.GetResAssetEntry(baseResource.Name) is null
+                        ? BaseModResource.ResourceFlags.IsAdded
+                        : 0;
 
-                    resources[i] = new ResModResource(baseResource.ResourceIndex, baseResource.Name, baseResource.Sha1, baseResource.OriginalSize, flags, baseResource.HandlerHash, baseResource.UserData, baseResource.BundlesToAdd,
-                        Enumerable.Empty<int>(), inStream.ReadUInt32(), inStream.ReadUInt64(),
-                        inStream.ReadBytes(inStream.ReadInt32()));
+                    resources[i] = new ResModResource(baseResource.ResourceIndex, baseResource.Name, baseResource.Sha1,
+                        baseResource.OriginalSize, flags, baseResource.HandlerHash, baseResource.UserData,
+                        baseResource.BundlesToAdd, Enumerable.Empty<int>(), inStream.ReadUInt32(),
+                        inStream.ReadUInt64(), inStream.ReadBytes(inStream.ReadInt32()));
                     break;
                 case ModResourceType.Chunk:
                     baseResource = ReadBaseModResource(inStream, version);
@@ -176,9 +187,10 @@ public class ModUpdater
                         ref logicalOffset, ref logicalSize, ref rangeStart, ref rangeEnd, ref firstMip,
                         out IEnumerable<int> superBundlesToAdd);
 
-                    resources[i] = new ChunkModResource(baseResource.ResourceIndex, baseResource.Name, baseResource.Sha1, baseResource.OriginalSize, flags, baseResource.HandlerHash, baseResource.UserData,
-                        baseResource.BundlesToAdd, Enumerable.Empty<int>(), rangeStart, rangeEnd, logicalOffset, logicalSize, h32,
-                        firstMip, superBundlesToAdd, Enumerable.Empty<int>());
+                    resources[i] = new ChunkModResource(baseResource.ResourceIndex, baseResource.Name,
+                        baseResource.Sha1, baseResource.OriginalSize, flags, baseResource.HandlerHash,
+                        baseResource.UserData, baseResource.BundlesToAdd, Enumerable.Empty<int>(), rangeStart, rangeEnd,
+                        logicalOffset, logicalSize, h32, firstMip, superBundlesToAdd, Enumerable.Empty<int>());
                     break;
                 default:
                     throw new Exception("Unexpected mod resource type");
@@ -224,18 +236,21 @@ public class ModUpdater
         if (version > 2)
         {
             // we just ignore the converted daimods from v1.0.6.2, user should import the original daimod
-            FrostyLogger.Logger?.LogError("This mod was converted from a daimod in an older version of frosty, please update the original daimod instead");
+            FrostyLogger.Logger?.LogError(
+                "This mod was converted from a daimod in an older version of frosty, please update the original daimod instead");
             return null;
         }
 
         FrostyModDetails modDetails = new(mod.AsString("title"), mod.AsString("author"), mod.AsString("category"),
             mod.AsString("version"), mod.AsString("description"), string.Empty);
 
-        FrostyLogger.Logger?.LogInfo($"Converting legacy mod \"{modDetails.Title}\" with version {version} to new binary format with version {FrostyMod.Version}");
+        FrostyLogger.Logger?.LogInfo(
+            $"Converting legacy mod \"{modDetails.Title}\" with version {version} to new binary format with version {FrostyMod.Version}");
 
         if (modDetails.Description.Contains("(Converted from .daimod)"))
         {
-            FrostyLogger.Logger?.LogError("This mod was converted from a daimod in an older version of frosty, please update the original daimod instead");
+            FrostyLogger.Logger?.LogError(
+                "This mod was converted from a daimod in an older version of frosty, please update the original daimod instead");
             return null;
         }
 
@@ -431,10 +446,10 @@ public class ModUpdater
             return null;
         }
 
-        int unk = inStream.ReadInt32();
-        string name = inStream.ReadNullTerminatedString();
+        inStream.ReadInt32(); // unk (version idk)
+        inStream.ReadNullTerminatedString(); // name
         string xml = inStream.ReadNullTerminatedString();
-        string code = inStream.ReadNullTerminatedString();
+        inStream.ReadNullTerminatedString(); // code
 
         XmlDocument doc = new();
         doc.LoadXml(xml);
@@ -449,10 +464,12 @@ public class ModUpdater
         // create mod details
         XmlElement? detailsElem = mod["details"];
         FrostyModDetails details = new(detailsElem?["name"]?.InnerText ?? string.Empty,
-            detailsElem?["author"]?.InnerText ?? string.Empty, "DAI Mods", detailsElem?["version"]?.InnerText ?? string.Empty,
+            detailsElem?["author"]?.InnerText ?? string.Empty, "DAI Mods",
+            detailsElem?["version"]?.InnerText ?? string.Empty,
             "Converted from DAI Mod\n" + detailsElem?["description"]?.InnerText, string.Empty);
 
-        FrostyLogger.Logger?.LogInfo($"Converting daimod \"{details.Title}\" to new binary fbmod format with version {FrostyMod.Version}");
+        FrostyLogger.Logger?.LogInfo(
+            $"Converting daimod \"{details.Title}\" to new binary fbmod format with version {FrostyMod.Version}");
 
         // get bundle actions
         Dictionary<int, (HashSet<int>, HashSet<int>)> bundles = new();
@@ -489,7 +506,8 @@ public class ModUpdater
         }
 
         XmlElement? resourcesElem = mod["resources"];
-        List<BaseModResource> resources = new(5 + resourcesElem?.ChildNodes.Count ?? 0) { new EmbeddedModResource(-1, "Icon") };
+        List<BaseModResource> resources =
+            new(5 + resourcesElem?.ChildNodes.Count ?? 0) { new EmbeddedModResource(-1, "Icon") };
 
         for (int i = 1; i < 5; i++)
         {
@@ -678,12 +696,13 @@ public class ModUpdater
         return retVal;
     }
 
-    private static BaseModResource.ResourceFlags FixChunk(int inResourceIndex, bool inHasBundlesToAdd, Guid inId, ref uint logicalOffset, ref uint logicalSize, ref uint rangeStart, ref uint rangeEnd, ref int firstMip,
+    private static BaseModResource.ResourceFlags FixChunk(int inResourceIndex, bool inHasBundlesToAdd, Guid inId,
+        ref uint logicalOffset, ref uint logicalSize, ref uint rangeStart, ref uint rangeEnd, ref int firstMip,
         out IEnumerable<int> superBundlesToAdd)
     {
         if (firstMip == -1 && rangeEnd != 0)
         {
-            // set the firstmip to 0 and hope not too many issues arise
+            // set the firstMip to 0 and hope not too many issues arise
             firstMip = 0;
         }
 
