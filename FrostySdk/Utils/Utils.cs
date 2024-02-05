@@ -25,6 +25,21 @@ public static class Utils
         return (int)hash;
     }
 
+    public static int HashStringA(string value, bool toLower = false)
+    {
+        const uint kOffset = 5381;
+        const uint kPrime = 33;
+
+        uint hash = kOffset;
+        for (int i = 0; i < value.Length; i++)
+        {
+            hash ^= (byte)(toLower ? char.ToLower(value[i]) : value[i]);
+            hash *= kPrime;
+        }
+
+        return (int)hash;
+    }
+
     public static Guid GenerateDeterministicGuid(IEnumerable<object> objects, string type, Guid fileGuid)
     {
         return GenerateDeterministicGuid(objects, TypeLibrary.GetType(type)!, fileGuid);

@@ -5,7 +5,7 @@ namespace Frosty.Sdk.Attributes;
 /// <summary>
 /// Specifies that this property should not be saved
 /// </summary>
-[AttributeUsage(AttributeTargets.Property)]
+[AttributeUsage(FrostyAttributeTargets.Field)]
 public class IsTransientAttribute : Attribute
 {
 }

@@ -113,6 +113,10 @@ internal class TypeInfo
         {
             return new DelegateInfo(delegateData);
         }
+        if (data is InterfaceInfoData interfaceData)
+        {
+            return new InterfaceInfo(interfaceData);
+        }
         if (data is PrimitiveInfoData primitiveData)
         {
             return new PrimitiveInfo(primitiveData);

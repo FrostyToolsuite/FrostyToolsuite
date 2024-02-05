@@ -44,10 +44,20 @@ public class BlockStream : DataStream
         base.WriteByte(value);
     }
 
-    public override void CopyTo(Stream destination, int bufferSize)
+    public unsafe void CopyTo(BlockStream destination, int bufferSize)
     {
-        ResizeStream(Position + bufferSize);
-        base.CopyTo(destination, bufferSize);
+        destination.ResizeStream(destination.Position + bufferSize);
+
+        using (Block<byte> a = new(m_block.BasePtr + Position, bufferSize))
+        using (Block<byte> b = new(destination.m_block.BasePtr + destination.Position, bufferSize))
+        {
+            a.MarkMemoryAsFragile();
+            b.MarkMemoryAsFragile();
+            a.CopyTo(b);
+        }
+
+        destination.Position += bufferSize;
+        Position += bufferSize;
     }
 
     public override unsafe string ReadNullTerminatedString()

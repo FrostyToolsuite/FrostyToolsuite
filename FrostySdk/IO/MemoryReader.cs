@@ -260,7 +260,7 @@ public sealed unsafe partial class MemoryReader
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            nint currentAddress = 0;
+            nint currentAddress = m_process.MainModule?.BaseAddress ?? 0;
 
             while (true)
             {

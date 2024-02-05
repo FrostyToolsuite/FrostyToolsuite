@@ -131,7 +131,8 @@ internal struct EbxHeader
                 Alignment = inStream.ReadByte(),
                 Flags = inStream.ReadUInt16(),
                 Size = inStream.ReadUInt16(),
-                SecondSize = inStream.ReadUInt16()
+                SecondSize = inStream.ReadUInt16(),
+                Index = -1
             };
 
             typeDescriptor.Name = typeNames.TryGetValue((int)typeDescriptor.NameHash, out string? value)

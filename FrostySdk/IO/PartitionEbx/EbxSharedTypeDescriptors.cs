@@ -57,7 +57,7 @@ public static class EbxSharedTypeDescriptors
 
     private static void Read(Block<byte> file)
     {
-        using (DataStream stream = new(file.ToStream()))
+        using (BlockStream stream = new(file))
         {
             EbxVersion magic = (EbxVersion)stream.ReadUInt32();
 
@@ -72,7 +72,6 @@ public static class EbxSharedTypeDescriptors
             s_typeDescriptors.Capacity = typeDescriptorCount + s_typeDescriptors.Count;
             s_fieldDescriptors.Capacity = fieldDescriptorCount + s_fieldDescriptors.Count;
 
-            int startTypes = s_typeDescriptors.Count;
             int startFields = s_fieldDescriptors.Count;
 
             for (int i = 0; i < fieldDescriptorCount; i++)

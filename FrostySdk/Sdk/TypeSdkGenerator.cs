@@ -199,6 +199,7 @@ public class TypeSdkGenerator
             {
                 // remove entry from dict
                 Strings.TypeMapping.Remove(key);
+                Strings.FieldMapping.Remove(key);
             }
 
             int totalFieldNames = 0;
@@ -227,6 +228,17 @@ public class TypeSdkGenerator
 
             FrostyLogger.Logger?.LogInfo($"Resolved {totalFieldNames - unresolvedFieldNames} field names");
             FrostyLogger.Logger?.LogInfo($"{unresolvedFieldNames} unresolved field names left");
+
+            Strings.TypeNames.UnionWith(Strings.TypeMapping.Values);
+            foreach (KeyValuePair<uint,Dictionary<uint,string>> pair in Strings.FieldMapping)
+            {
+                HashSet<string> fields = new();
+                foreach (string name in pair.Value.Values)
+                {
+                    fields.Add(name);
+                }
+                Strings.FieldNames.Add(Strings.TypeMapping[pair.Key], fields);
+            }
 
             // save file and reload TypeInfo
             File.WriteAllText(typeNamesPath, JsonSerializer.Serialize(Strings.TypeNames));
@@ -286,6 +298,7 @@ public class TypeSdkGenerator
                 case TypeFlags.TypeEnum.Class:
                 case TypeFlags.TypeEnum.Enum:
                 case TypeFlags.TypeEnum.Delegate:
+                case TypeFlags.TypeEnum.Interface:
                     typeInfo.CreateType(sb);
                     break;
 

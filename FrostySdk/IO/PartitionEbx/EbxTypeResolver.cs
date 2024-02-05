@@ -33,7 +33,7 @@ internal class EbxTypeResolver
         return m_typeDescriptors[index];
     }
 
-    public virtual EbxFieldDescriptor ResolveField(int index)
+    public EbxFieldDescriptor ResolveField(int index)
     {
         if (m_fieldDescriptors.Length == 0)
         {

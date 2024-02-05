@@ -144,9 +144,11 @@ public static class ResourceManager
         {
             infos.TryGetValue(entry.BaseSha1, out CasFileInfo? baseFileInfo);
 
-            Debug.Assert(infos.TryGetValue(entry.DeltaSha1, out CasFileInfo? deltaFileInfo), "No delta entry!");
+            infos.TryGetValue(entry.DeltaSha1, out CasFileInfo? deltaFileInfo);
 
-            CasFileInfo fileInfo = new(baseFileInfo?.GetBase(), deltaFileInfo.GetBase());
+            Debug.Assert(deltaFileInfo is not null, "No delta entry!");
+
+            CasFileInfo fileInfo = new(baseFileInfo?.GetBase(), deltaFileInfo?.GetBase());
             s_resourceEntries.TryAdd(entry.Sha1, fileInfo);
         }
         s_patchEntries.Clear();
