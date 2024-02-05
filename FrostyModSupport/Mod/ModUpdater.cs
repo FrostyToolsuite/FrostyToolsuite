@@ -142,12 +142,13 @@ public class ModUpdater
                     inStream.ReadNullTerminatedString();
                     int superBundleHash = inStream.ReadInt32();
                     string sbIcName = s_superBundleMapping[superBundleHash];
+                    int bundleHash = Utils.HashString(baseResource.Name + sbIcName, true);
                     s_bundleMapping.Add(Utils.HashString(baseResource.Name, true), new HashSet<int>
                     {
-                        Utils.HashString(baseResource.Name + sbIcName, true)
+                        bundleHash
                     });
 
-                    resources[i] = new BundleModResource(baseResource.Name, superBundleHash);
+                    resources[i] = new BundleModResource(baseResource.Name, bundleHash, superBundleHash);
                     break;
                 case ModResourceType.Ebx:
                     baseResource = ReadBaseModResource(inStream, version);
@@ -360,12 +361,13 @@ public class ModUpdater
                 {
                     int superBundleHash = Utils.HashString(resource.AsString("sb"), true);
                     string sbIcName = s_superBundleMapping[superBundleHash];
+                    int bundleHash = Utils.HashString(name + sbIcName, true);
                     s_bundleMapping.Add(Utils.HashString(name, true), new HashSet<int>
                     {
-                        Utils.HashString(name + sbIcName, true)
+                        bundleHash
                     });
 
-                    resources.Add(new BundleModResource(name, superBundleHash));
+                    resources.Add(new BundleModResource(name, bundleHash, superBundleHash));
                     break;
                 }
                 case "ebx":
