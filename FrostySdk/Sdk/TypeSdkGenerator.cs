@@ -5,10 +5,11 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Basic.Reference.Assemblies;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using FrostyTypeSdkGenerator;
@@ -331,11 +332,7 @@ public class TypeSdkGenerator
 
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);
 
-        List<MetadataReference> references =
-            new() { MetadataReference.CreateFromFile(typeof(TypeLibrary).Assembly.Location) };
-
-        references.AddRange(Net70.References.All);
-
+        List<MetadataReference> references = GetMetadataReferences();
 
 #if EBX_TYPE_SDK_DEBUG
         OptimizationLevel level = OptimizationLevel.Debug;
@@ -398,6 +395,26 @@ public class TypeSdkGenerator
         }
 
         return true;
+    }
+
+    private List<MetadataReference> GetMetadataReferences()
+    {
+        Assembly[] domainAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+        List<MetadataReference> metadataReferenceList = new();
+
+        foreach (Assembly assembly in domainAssemblies)
+        {
+            unsafe
+            {
+                assembly.TryGetRawMetadata(out byte* blob, out int length);
+                ModuleMetadata moduleMetadata = ModuleMetadata.CreateFromMetadata((IntPtr)blob, length);
+                AssemblyMetadata assemblyMetadata = AssemblyMetadata.Create(moduleMetadata);
+                PortableExecutableReference metadataReference = assemblyMetadata.GetReference();
+                metadataReferenceList.Add(metadataReference);
+            }
+        }
+
+        return metadataReferenceList;
     }
 
     private static uint HashTypeName(string inName)

@@ -3,7 +3,6 @@ using System.CommandLine;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Reflection;
 using Frosty.ModSupport.Mod;
 using Frosty.Sdk;
 using Frosty.Sdk.Ebx;
