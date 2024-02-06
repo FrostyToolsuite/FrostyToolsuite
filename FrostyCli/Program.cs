@@ -1,6 +1,7 @@
 ﻿using System;
 using System.CommandLine;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using Frosty.ModSupport;
@@ -100,7 +101,7 @@ internal static class Program
         FrostyLogger.Logger = new Logger();
 
         // set base directory to the directory containing the executable
-        Utils.BaseDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+        Utils.BaseDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
 
         // init profile
         if (!ProfilesLibrary.Initialize(Path.GetFileNameWithoutExtension(inGameFileInfo.Name)))
@@ -231,10 +232,17 @@ internal static class Program
 
     private static void GetRes()
     {
-        string name = Prompt.Input<string>("Input res name");
+        string name = Prompt.Input<string>("Input res name or rid");
 
-        AssetEntry? entry = AssetManager.GetResAssetEntry(name);
-
+        AssetEntry? entry;
+        if (ulong.TryParse(name, NumberStyles.HexNumber, null, out ulong rid))
+        {
+            entry = AssetManager.GetResAssetEntry(rid);
+        }
+        else
+        {
+            entry = AssetManager.GetResAssetEntry(name);
+        }
         if (entry is null)
         {
             Logger.LogErrorInternal("Asset does not exist");
@@ -307,7 +315,7 @@ internal static class Program
         FrostyLogger.Logger = new Logger();
 
         // set base directory to the directory containing the executable
-        Utils.BaseDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+        Utils.BaseDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
 
         // init profile
         if (!ProfilesLibrary.Initialize(Path.GetFileNameWithoutExtension(inGameFileInfo.Name)))

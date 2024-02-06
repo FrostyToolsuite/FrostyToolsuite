@@ -293,7 +293,7 @@ public sealed unsafe partial class MemoryReader
                 nint end = nint.Parse(arr[0][(index + 1)..], NumberStyles.HexNumber);
 
                 string perm = arr[1];
-                if (perm[0] == '-' || perm[2] != 'x')
+                if (perm[0] == '-' || perm[1] == '-' || perm[2] != 'x')
                 {
                     continue;
                 }
