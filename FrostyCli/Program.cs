@@ -1,6 +1,7 @@
 ﻿using System;
 using System.CommandLine;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using Frosty.ModSupport.Mod;
@@ -230,10 +231,17 @@ internal static class Program
 
     private static void GetRes()
     {
-        string name = Prompt.Input<string>("Input res name");
+        string name = Prompt.Input<string>("Input res name or rid");
 
-        AssetEntry? entry = AssetManager.GetResAssetEntry(name);
-
+        AssetEntry? entry;
+        if (ulong.TryParse(name, NumberStyles.HexNumber, null, out ulong rid))
+        {
+            entry = AssetManager.GetResAssetEntry(rid);
+        }
+        else
+        {
+            entry = AssetManager.GetResAssetEntry(name);
+        }
         if (entry is null)
         {
             Logger.LogErrorInternal("Asset does not exist");
