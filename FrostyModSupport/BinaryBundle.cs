@@ -212,9 +212,9 @@ public static class BinaryBundle
             stream.WriteInt32(res.Length, endian);
             stream.WriteInt32(chunks.Length, endian);
 
-            stream.WriteUInt32((uint)stringsOffset, endian);
-            stream.WriteUInt32(0xDEADBEEF, endian); // TODO: metaOffset
-            stream.WriteUInt32(0xDEADBEEF, endian); // TODO: metaSize
+            stream.WriteUInt32(0xDEADBEEF, endian);
+            stream.WriteUInt32(0xDEADBEEF, endian);
+            stream.WriteUInt32(0xDEADBEEF, endian);
 
             foreach (Sha1 value in sha1)
             {
@@ -257,14 +257,21 @@ public static class BinaryBundle
                 stream.WriteUInt32(entry.LogicalSize, endian);
             }
 
-            // TODO: chunk meta
+            uint chunkMetaOffset = (uint)stream.Position - 4;
+            DbObject.Serialize(stream, chunkMeta);
+            uint chunkMetaSize = (uint)(stream.Position - 4 - chunkMetaOffset);
 
-            Debug.Assert(stream.Position == stringsOffset + 4);
+            // Debug.Assert(stream.Position == stringsOffset + 4);
             foreach (KeyValuePair<string,uint> pair in strings)
             {
                 stream.Position = stringsOffset + 4 + pair.Value;
                 stream.WriteNullTerminatedString(pair.Key);
             }
+
+            stream.Position = 24;
+            stream.WriteUInt32(chunkMetaOffset + chunkMetaSize);
+            stream.WriteUInt32(chunkMetaOffset, endian);
+            stream.WriteUInt32(chunkMetaSize, endian);
         }
 
         return retVal;

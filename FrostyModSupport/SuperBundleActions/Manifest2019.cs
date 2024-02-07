@@ -399,6 +399,10 @@ internal class Manifest2019 : IDisposable
             }
 
             // TODO: bundle hashmap
+            for (int i = 0; i < bundles.Count; i++)
+            {
+                
+            }
 
             long bundlesOffset = stream.Position;
             foreach ((StringHelper.String, uint, long) bundle in bundles)
