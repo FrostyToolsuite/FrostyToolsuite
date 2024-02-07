@@ -59,6 +59,15 @@ internal static class Program
                  case ActionType.UpdateMod:
                      UpdateMod();
                      break;
+                 case ActionType.ListEbx:
+                     ListEbx();
+                     break;
+                 case ActionType.ListRes:
+                     ListRes();
+                     break;
+                 case ActionType.ListChunks:
+                     ListChunks();
+                     break;
                  case ActionType.GetEbx:
                      GetEbx();
                      break;
@@ -81,6 +90,9 @@ internal static class Program
         Quit,
         Mod,
         UpdateMod,
+        ListEbx,
+        ListRes,
+        ListChunks,
         GetEbx,
         GetDbx,
         GetRes,
@@ -184,6 +196,30 @@ internal static class Program
         FileInfo outputFileInfo = new(Prompt.Input<string>("Pass in the path where the updated mod should get saved to"));
 
         ModUpdater.UpdateMod(modFileInfo.FullName, outputFileInfo.FullName);
+    }
+
+    private static void ListEbx()
+    {
+        foreach (EbxAssetEntry entry in AssetManager.EnumerateEbxAssetEntries())
+        {
+            Console.WriteLine(entry.Name);
+        }
+    }
+
+    private static void ListRes()
+    {
+        foreach (ResAssetEntry entry in AssetManager.EnumerateResAssetEntries())
+        {
+            Console.WriteLine(entry.Name);
+        }
+    }
+
+    private static void ListChunks()
+    {
+        foreach (ChunkAssetEntry entry in AssetManager.EnumerateChunkAssetEntries())
+        {
+            Console.WriteLine(entry.Name);
+        }
     }
 
     private static void GetEbx()
