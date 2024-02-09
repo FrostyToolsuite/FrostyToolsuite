@@ -17,7 +17,9 @@ public class Profile
     public string FrostbiteVersion { get; set; } = "0.0.0";
 
     public int EbxVersion { get; set; }
-    public bool RequiresKey { get; set; }
+    public bool RequiresInitFsKey { get; set; }
+    public bool RequiresBundleKey { get; set; }
+    public bool RequiresCasKey { get; set; }
     public bool MustAddChunks { get; set; }
     public bool EnableExecution { get; set; }
     public bool HasAntiCheat { get; set; }

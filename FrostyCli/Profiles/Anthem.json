@@ -18,7 +18,7 @@
     }
   ],
   "EbxVersion": 5,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

@@ -7,7 +7,7 @@
   "FrostbiteVersion": "2018.2",
   "HasStrippedTypeNames": false,
   "EbxVersion": 4,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

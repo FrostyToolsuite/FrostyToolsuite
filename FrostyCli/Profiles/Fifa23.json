@@ -7,7 +7,7 @@
   "FrostbiteVersion": "2021.2.0",
   "HasStrippedTypeNames": false,
   "EbxVersion": 6,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": true,

@@ -42,7 +42,7 @@ public partial class MainWindowViewModel : ObservableObject, IDropTarget
                 return false;
             }
 
-            if (ProfilesLibrary.RequiresKey)
+            if (ProfilesLibrary.RequiresInitFsKey)
             {
                 // TODO: key window
                 string keyPath = $"Keys/{ProfilesLibrary.InternalName}.key";

@@ -23,7 +23,9 @@ public static class ProfilesLibrary
     public static string SdkPath => s_effectiveProfile is null ? string.Empty : Path.Combine(Utils.Utils.BaseDirectory, "Sdk", $"{s_effectiveProfile.InternalName}.dll");
 
     public static int EbxVersion => s_effectiveProfile?.EbxVersion ?? -1;
-    public static bool RequiresKey => s_effectiveProfile?.RequiresKey ?? false;
+    public static bool RequiresInitFsKey => s_effectiveProfile?.RequiresInitFsKey ?? false;
+    public static bool RequiresBundleKey => s_effectiveProfile?.RequiresBundleKey ?? false;
+    public static bool RequiresCasKey => s_effectiveProfile?.RequiresBundleKey ?? false;
     public static bool MustAddChunks => s_effectiveProfile?.MustAddChunks ?? false;
     public static bool EnableExecution => s_effectiveProfile?.EnableExecution ?? false;
     public static bool HasAntiCheat => s_effectiveProfile?.HasAntiCheat ?? false;

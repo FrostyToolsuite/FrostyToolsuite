@@ -119,7 +119,7 @@ internal static class Program
             return;
         }
 
-        if (ProfilesLibrary.RequiresKey)
+        if (ProfilesLibrary.RequiresInitFsKey)
         {
             string keyPath = Prompt.Input<string>("Pass in the path to an initfs key");
 
@@ -132,6 +132,36 @@ internal static class Program
             }
 
             KeyManager.AddKey("InitFsKey", File.ReadAllBytes(keyFileInfo.FullName));
+        }
+
+        if (ProfilesLibrary.RequiresBundleKey)
+        {
+            string keyPath = Prompt.Input<string>("Pass in the path to an bundle key");
+
+            FileInfo keyFileInfo = new(keyPath);
+
+            if (!keyFileInfo.Exists)
+            {
+                Logger.LogErrorInternal("Key does not exist");
+                return;
+            }
+
+            KeyManager.AddKey("BundleEncryptionKey", File.ReadAllBytes(keyFileInfo.FullName));
+        }
+
+        if (ProfilesLibrary.RequiresCasKey)
+        {
+            string keyPath = Prompt.Input<string>("Pass in the path to an cas key");
+
+            FileInfo keyFileInfo = new(keyPath);
+
+            if (!keyFileInfo.Exists)
+            {
+                Logger.LogErrorInternal("Key does not exist");
+                return;
+            }
+
+            KeyManager.AddKey("CasObfuscationKey", File.ReadAllBytes(keyFileInfo.FullName));
         }
 
         if (inGameFileInfo.DirectoryName is null)
@@ -357,7 +387,7 @@ internal static class Program
             return;
         }
 
-        if (ProfilesLibrary.RequiresKey)
+        if (ProfilesLibrary.RequiresInitFsKey)
         {
             if (inKeyFileInfo is null || !inKeyFileInfo.Exists)
             {
