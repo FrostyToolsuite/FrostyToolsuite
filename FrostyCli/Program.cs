@@ -353,7 +353,7 @@ internal static class Program
             description: "The path to a file containing a key for the initfs if needed.");
 
         Option<int?> sdkOption = new(
-            name: "--sdk",
+            name: "--pid",
             description: "The pid of the game if a sdk should get generated for the game.");
 
         Command loadCommand = new("load", "Load a games data from the cache or create it.")
