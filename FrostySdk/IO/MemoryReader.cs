@@ -298,7 +298,6 @@ public sealed unsafe partial class MemoryReader
                     continue;
                 }
 
-                FrostyLogger.Logger?.LogInfo($"Address: {start:X8}");
                 yield return (start, (int)(end - start));
             }
         }
