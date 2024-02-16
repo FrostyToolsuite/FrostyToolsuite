@@ -2,7 +2,7 @@
   "Name": "bfv",
   "DisplayName": "Battlefield™ V",
   "InternalName": "bfv",
-  "TypeInfoSignature": "",
+  "TypeInfoSignature": "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
   "DataVersion": 20181119,
   "_comment": "Actual version 2018.0, its the fb game with the most unique stuff so i just gave it the same version as swbf2 and sws.",
   "FrostbiteVersion": "2016.4.4",
