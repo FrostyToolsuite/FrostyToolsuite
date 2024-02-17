@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Frosty.Sdk.Attributes;
+using Frosty.Sdk.Managers;
 
 namespace Frosty.Sdk;
 
@@ -29,6 +30,11 @@ public static class TypeLibrary
         }
 
         Assembly sdk = Assembly.LoadFile(fileInfo.FullName);
+
+        if ((sdk.GetCustomAttribute<SdkVersionAttribute>()?.Head ?? 0) != FileSystemManager.Head)
+        {
+            FrostyLogger.Logger?.LogInfo("Outdated Type Sdk, please regenerate it to avoid issues");
+        }
 
         s_types = sdk.GetExportedTypes();
 
