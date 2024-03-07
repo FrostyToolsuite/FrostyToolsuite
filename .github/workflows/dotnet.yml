@@ -21,7 +21,9 @@ jobs:
       with:
         dotnet-version: 7.0.x
     - name: Restore dependencies
-      run: dotnet restore
+      run: | 
+        dotnet restore --runtime win-x64
+        dotnet restore --runtime linux-x64
     - name: Build FrostySdk
       run: |
         cd FrostySdk
