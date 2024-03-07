@@ -6,14 +6,8 @@
   "DataVersion": 20160000,
   "FrostbiteVersion": "2014.4.11",
   "HasStrippedTypeNames": false,
-  "Sources": [
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 2,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

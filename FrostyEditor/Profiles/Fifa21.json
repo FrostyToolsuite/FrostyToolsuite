@@ -6,18 +6,8 @@
   "DataVersion": 20201001,
   "FrostbiteVersion": "2019.0",
   "HasStrippedTypeNames": false,
-  "Sources": [
-    {
-      "Path": "Patch",
-      "SubDirs": false
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 5,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

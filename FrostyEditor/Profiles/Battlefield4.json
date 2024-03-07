@@ -6,22 +6,8 @@
   "DataVersion": 20131101,
   "FrostbiteVersion": "2013.2",
   "HasStrippedTypeNames": false,
-  "Sources": [
-    {
-      "Path": "Update/Patch/Data",
-      "SubDirs": false
-    },
-    {
-      "Path": "Update",
-      "SubDirs": true
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 2,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

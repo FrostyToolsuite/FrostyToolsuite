@@ -6,22 +6,10 @@
   "DataVersion": 20180828,
   "FrostbiteVersion": "2017.3",
   "HasStrippedTypeNames": false,
-  "Sources": [
-    {
-      "Path": "Patch",
-      "SubDirs": false
-    },
-    {
-      "Path": "Update",
-      "SubDirs": true
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 4,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
+  "RequiresBundleKey": true,
+  "RequiresCasKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

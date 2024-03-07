@@ -2,26 +2,12 @@
   "Name": "GW2.Main_Win64_Retail",
   "DisplayName": "Plants vs Zombies™ Garden Warfare 2",
   "InternalName": "pvz2",
-  "TypeInfoSignature" : "",
+  "TypeInfoSignature" : "48 8B 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? 48 8D 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E9",
   "HasStrippedTypeNames": false,
   "DataVersion": 20160222,
   "FrostbiteVersion": "2014.4.11",
-  "Sources": [
-    {
-      "Path": "Update/Patch/Data",
-      "SubDirs": false
-    },
-    {
-      "Path": "Update",
-      "SubDirs": true
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 2,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

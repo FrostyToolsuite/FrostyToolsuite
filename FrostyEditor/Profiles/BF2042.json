@@ -2,22 +2,13 @@
   "Name": "BF2042",
   "DisplayName": "Battlefield™ 2042",
   "InternalName": "bf2042",
-  "TypeInfoSignature": "",
+  "TypeInfoSignature": "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10",
+  "TypeHashSeed": "1030",
   "DataVersion": 20211119,
   "FrostbiteVersion": "2021.1.1",
   "HasStrippedTypeNames": true,
-  "Sources": [
-    {
-      "Path": "Patch",
-      "SubDirs": false
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 6,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": true,

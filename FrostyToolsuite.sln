@@ -8,7 +8,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyModSupport", "FrostyM
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostySdkTest", "FrostySdkTest\FrostySdkTest.csproj", "{0D68BF68-5166-4995-BBAF-4D0257A9DB38}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyEditor", "FrostyEditor\FrostyEditor.csproj", "{691E26AC-EF5E-4138-B18B-F1E75AEB6C8C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyEditor", "FrostyEditor\FrostyEditor.csproj", "{E9375102-4BDB-4E18-ABC2-9BDC0FBFA3D7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1E32C01C-7858-4510-80C2-C6A705DC8926}"
 	ProjectSection(SolutionItems) = preProject

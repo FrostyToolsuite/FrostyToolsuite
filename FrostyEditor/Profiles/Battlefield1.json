@@ -7,22 +7,8 @@
   "_comment": "Actual version 2014.4.11, it seems like for some reason they forgot to update it, since its different from other games using that version.",
   "FrostbiteVersion": "2014.4.17",
   "HasStrippedTypeNames": false,
-  "Sources": [
-    {
-      "Path": "Patch",
-      "SubDirs": false
-    },
-    {
-      "Path": "Update",
-      "SubDirs": true
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 2,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

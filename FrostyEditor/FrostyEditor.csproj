@@ -1,40 +1,68 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net7.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-    <OutputType>WinExe</OutputType>
-    <IsPackable>False</IsPackable>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <None Remove="Assets\*" />
-    <None Update="Profiles\*.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 
-  <ItemGroup>
-    <AvaloniaResource Include="Assets\*" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="11.0.9" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.0.9" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.9" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.9" />
+        <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.9" />
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+        <PackageReference Include="MessageBox.Avalonia" Version="3.1.5.1" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.0.0" />
-    <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.0.1" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.0.0" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.0" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.0" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
-    <PackageReference Include="Dock.Avalonia" Version="11.0.0" />
-    <PackageReference Include="Dock.Model" Version="11.0.0" />
-    <PackageReference Include="Dock.Model.Mvvm" Version="11.0.0" />
-    <PackageReference Include="Dock.Serializer" Version="11.0.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.7.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Scripting.Common" Version="4.7.0" />
-  </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\FrostySdk\FrostySdk.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+      <AdditionalFiles Include="Languages\en-US.axaml" />
+      <AdditionalFiles Include="Languages\Languages.axaml" />
+      <AdditionalFiles Include="Windows\MainWindow.axaml" />
+      <AdditionalFiles Include="Windows\StartupWindow.axaml" />
+    </ItemGroup>
 
+
+    <ItemGroup>
+      <Compile Update="Languages\Languages.axaml.cs">
+        <DependentUpon>Languages.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Languages\Languages.axaml.cs">
+        <DependentUpon>Languages.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <ProjectReference Include="..\FrostySdk\FrostySdk.csproj" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <None Update="Sdk\*.dll" CopyToOutputDirectory="PreserveNewest" />
+      <None Update="Profiles\*.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <Reference Include="Avalonia.Controls.TreeDataGrid">
+        <HintPath>..\..\..\.nuget\packages\avalonia.controls.treedatagrid\11.0.1\lib\net5.0\Avalonia.Controls.TreeDataGrid.dll</HintPath>
+      </Reference>
+      <Reference Include="Pastel">
+        <HintPath>..\..\..\.nuget\packages\pastel\4.2.0\lib\net7.0\Pastel.dll</HintPath>
+      </Reference>
+    </ItemGroup>
 </Project>

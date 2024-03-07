@@ -11,6 +11,7 @@ using Frosty.Sdk.Interfaces;
 using static Frosty.Sdk.Sdk.TypeFlags;
 using System.Text.RegularExpressions;
 using System.Globalization;
+using System.IO;
 
 namespace Frosty.Sdk.IO;
 
@@ -33,6 +34,12 @@ public sealed class DbxWriter : IDisposable
     {
         m_filePath = inFilePath;
         m_xmlWriter = XmlWriter.Create(m_filePath, m_settings);
+    }
+
+    public DbxWriter(Stream inStream)
+    {
+        m_filePath = string.Empty;
+        m_xmlWriter = XmlWriter.Create(inStream, m_settings);
     }
 
     public void Write(EbxAsset inAsset)

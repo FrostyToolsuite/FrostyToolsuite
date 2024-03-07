@@ -1,7 +1,5 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-
 namespace FrostyEditor.ViewModels;
 
-public partial class MenuViewModel : ObservableObject
+public partial class MenuViewModel : ViewModelBase
 {
 }
