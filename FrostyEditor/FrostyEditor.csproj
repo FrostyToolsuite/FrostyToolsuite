@@ -29,26 +29,6 @@
 
 
     <ItemGroup>
-      <AdditionalFiles Include="Languages\en-US.axaml" />
-      <AdditionalFiles Include="Languages\Languages.axaml" />
-      <AdditionalFiles Include="Windows\MainWindow.axaml" />
-      <AdditionalFiles Include="Windows\StartupWindow.axaml" />
-    </ItemGroup>
-
-
-    <ItemGroup>
-      <Compile Update="Languages\Languages.axaml.cs">
-        <DependentUpon>Languages.axaml</DependentUpon>
-        <SubType>Code</SubType>
-      </Compile>
-      <Compile Update="Languages\Languages.axaml.cs">
-        <DependentUpon>Languages.axaml</DependentUpon>
-        <SubType>Code</SubType>
-      </Compile>
-    </ItemGroup>
-
-
-    <ItemGroup>
       <ProjectReference Include="..\FrostySdk\FrostySdk.csproj" />
     </ItemGroup>
 
