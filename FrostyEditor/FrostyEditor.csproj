@@ -15,6 +15,7 @@
 
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="11.0.9" />
+        <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.0.2" />
         <PackageReference Include="Avalonia.Desktop" Version="11.0.9" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.9" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.9" />
@@ -23,6 +24,7 @@
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
         <PackageReference Include="MessageBox.Avalonia" Version="3.1.5.1" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0" />
+        <PackageReference Include="Pastel" Version="5.0.0" />
     </ItemGroup>
 
 
@@ -54,15 +56,5 @@
     <ItemGroup>
       <None Update="Sdk\*.dll" CopyToOutputDirectory="PreserveNewest" />
       <None Update="Profiles\*.json" CopyToOutputDirectory="PreserveNewest" />
-    </ItemGroup>
-
-
-    <ItemGroup>
-      <Reference Include="Avalonia.Controls.TreeDataGrid">
-        <HintPath>..\..\..\.nuget\packages\avalonia.controls.treedatagrid\11.0.1\lib\net5.0\Avalonia.Controls.TreeDataGrid.dll</HintPath>
-      </Reference>
-      <Reference Include="Pastel">
-        <HintPath>..\..\..\.nuget\packages\pastel\4.2.0\lib\net7.0\Pastel.dll</HintPath>
-      </Reference>
     </ItemGroup>
 </Project>
