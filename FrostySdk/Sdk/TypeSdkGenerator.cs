@@ -24,18 +24,35 @@ public class TypeSdkGenerator
 {
     private long FindTypeInfoOffset(Process process)
     {
-        // TODO: remove this once all games have their correct pattern
-        // string[] patterns =
-        // {
-        //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
-        //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? C3",
-        //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ??",
-        //     "48 8b 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? 48 8d 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E9",
-        //     "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10", // new games
-        // };
-
         MemoryReader reader = new(process);
-        nint offset = reader.ScanPatter(ProfilesLibrary.TypeInfoSignature);
+
+        nint offset = nint.Zero;
+
+        if (!string.IsNullOrEmpty(ProfilesLibrary.TypeInfoSignature))
+        {
+            offset = reader.ScanPatter(ProfilesLibrary.TypeInfoSignature);
+        }
+        else
+        {
+            // TODO: remove this once all games have their correct pattern
+            string[] patterns =
+            {
+                "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
+                "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? C3",
+                "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ??",
+                "48 8b 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? 48 8d 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E9",
+                "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10", // new games
+            };
+            foreach (string sig in patterns)
+            {
+                offset = reader.ScanPatter(sig);
+                if (offset != nint.Zero)
+                {
+                    FrostyLogger.Logger?.LogInfo($"No TypeInfoSig set, found offset for \"{sig}\"");
+                    break;
+                }
+            }
+        }
 
         if (offset == nint.Zero)
         {
