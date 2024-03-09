@@ -3,7 +3,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModels="clr-namespace:FrostyEditor.ViewModels"
-             xmlns:diagnostics="clr-namespace:System.Diagnostics;assembly=System.Diagnostics.Process"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="FrostyEditor.Views.SdkUpdateView"
              x:DataType="viewModels:SdkUpdateViewModel"
@@ -18,11 +17,13 @@
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
-    <StackPanel Grid.Row="1">
+    <DockPanel Grid.Row="1">
       <Button Content="Create"
-              Command="{Binding CreateSdkCommand}" />
+              Command="{Binding CreateSdkCommand}"
+              DockPanel.Dock="Right" />
       <Button Content="Refresh"
-              Command="{Binding RefreshProcessesCommand}" />
-    </StackPanel>
+              Command="{Binding RefreshProcessesCommand}"
+              DockPanel.Dock="Left" />
+    </DockPanel>
   </Grid>
 </UserControl>

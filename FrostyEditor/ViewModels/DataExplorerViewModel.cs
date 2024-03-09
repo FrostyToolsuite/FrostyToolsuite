@@ -17,6 +17,7 @@ using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Utils;
+using FrostyEditor.Managers;
 using FrostyEditor.Models;
 using FrostyEditor.Utils;
 
@@ -183,9 +184,7 @@ public partial class DataExplorerViewModel : ViewModelBase
             return;
         }
 
-        AssetEditorViewModel editor = new(entry);
-
-        App.MainViewModel?.AddEditor(editor);
+        App.MainViewModel?.AddEditor(PluginManager.GetEbxAssetEditor(entry));
     }
 
     private void OnSelectionChanged(object? sender, TreeSelectionModelSelectionChangedEventArgs<FolderTreeNodeModel> e)

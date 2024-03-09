@@ -1,59 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Frosty.Sdk;
-using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
-using Frosty.Sdk.Sdk;
 using FrostyEditor.Utils;
 using FrostyEditor.Windows;
 using MsBox.Avalonia;
-using Pastel;
 
 namespace FrostyEditor.ViewModels;
 
-internal class Logger : ILogger
-{
-    private static readonly string s_info = "INFO".Pastel(ConsoleColor.Green);
-    private static readonly string s_warn = "WARN".Pastel(ConsoleColor.DarkYellow);
-    private static readonly string s_error = "ERROR".Pastel(ConsoleColor.Red);
-
-    public void LogInfo(string message)
-    {
-        Console.WriteLine($"{s_info} - {message}");
-    }
-
-    public void LogWarning(string message)
-    {
-        Console.WriteLine($"{s_warn} - {message}");
-    }
-
-    public void LogError(string message)
-    {
-        Console.WriteLine($"{s_error} - {message}");
-    }
-
-    internal static void LogErrorInternal(string message)
-    {
-        Console.WriteLine($"{s_error} - {message}");
-    }
-
-    public void LogProgress(double progress)
-    {
-    }
-}
-
-public partial class ProfileSelectViewModel : ViewModelBase
+public partial class ProfileSelectViewModel : WindowViewModel
 {
     public class ProfileConfig
     {
@@ -76,6 +40,9 @@ public partial class ProfileSelectViewModel : ViewModelBase
 
     public ProfileSelectViewModel()
     {
+        Title = "FrostyEditor";
+        Width = Height = 500;
+
         // init ProfilesLibrary to load all profile json files
         ProfilesLibrary.Initialize();
 
@@ -148,11 +115,9 @@ public partial class ProfileSelectViewModel : ViewModelBase
     {
         if (SelectedProfile is not null && Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
         {
-            Window? window = desktopLifetime.MainWindow;
-
             // TODO: add some kind of task window which shows a loading screen or sth
 
-            FrostyLogger.Logger = new Logger();
+            FrostyLogger.Logger = new LoggerViewModel();
 
             // set base directory to the directory containing the executable
             Frosty.Sdk.Utils.Utils.BaseDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
@@ -197,11 +162,11 @@ public partial class ProfileSelectViewModel : ViewModelBase
             string sdkPath = ProfilesLibrary.SdkPath;
             if (!File.Exists(sdkPath))
             {
-                SdkUpdateViewModel vm = new();
-                ViewWindow sdkUpdateWindow = new(vm);
-                sdkUpdateWindow.Show();
+                ViewWindow sdkUpdateWindow = ViewWindow.Create(out SdkUpdateViewModel vm);
+                await sdkUpdateWindow.ShowDialog(desktopLifetime.MainWindow!);
                 if (!vm.GeneratedSdk)
                 {
+                    CloseWindow?.Invoke();
                 }
             }
 
@@ -218,16 +183,13 @@ public partial class ProfileSelectViewModel : ViewModelBase
             failed:
             MessageBoxManager.GetMessageBoxStandard("FrostyEditor", "Failed to initialize Frosty, for more information check the log.");
 
-            window?.Close();
+            CloseWindow?.Invoke();
         }
     }
 
     [RelayCommand]
     private void Cancel()
     {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
-        {
-            desktopLifetime.MainWindow?.Close();
-        }
+        CloseWindow?.Invoke();
     }
 }

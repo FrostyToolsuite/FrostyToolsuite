@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Frosty.Sdk;
@@ -8,7 +9,7 @@ using Frosty.Sdk.Sdk;
 
 namespace FrostyEditor.ViewModels;
 
-public partial class SdkUpdateViewModel : ViewModelBase
+public partial class SdkUpdateViewModel : WindowViewModel
 {
     [ObservableProperty]
     private ObservableCollection<Process> m_runningProcesses = new();
@@ -20,6 +21,9 @@ public partial class SdkUpdateViewModel : ViewModelBase
 
     public SdkUpdateViewModel()
     {
+        Title = "SdkUpdateWindow";
+        Height = Width = 500;
+
         RefreshProcesses();
     }
 
@@ -34,25 +38,30 @@ public partial class SdkUpdateViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CreateSdk()
+    private async Task CreateSdk()
     {
         if (SelectedProcess is null)
         {
             return;
         }
 
-        TypeSdkGenerator typeSdkGenerator = new();
-
-        if (!typeSdkGenerator.DumpTypes(SelectedProcess))
+        await Task.Run(() =>
         {
-            return;
-        }
+            TypeSdkGenerator typeSdkGenerator = new();
 
-        if (!typeSdkGenerator.CreateSdk(ProfilesLibrary.SdkPath))
-        {
-            return;
-        }
+            if (!typeSdkGenerator.DumpTypes(SelectedProcess))
+            {
+                return;
+            }
 
-        GeneratedSdk = true;
+            if (!typeSdkGenerator.CreateSdk(ProfilesLibrary.SdkPath))
+            {
+                return;
+            }
+
+            GeneratedSdk = true;
+        });
+
+        CloseWindow?.Invoke();
     }
 }

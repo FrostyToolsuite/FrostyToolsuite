@@ -9,9 +9,10 @@
              x:DataType="viewModels:MainViewModel"
              x:CompileBindings="True">
   
-  <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,2*">
+  <Grid RowDefinitions="Auto,2*,*" ColumnDefinitions="*,2*">
     <ContentControl Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Content="{Binding Menu}" />
-    <ContentControl Grid.Row="1" Grid.Column="0"  Content="{Binding DataExplorer}" />
+    <ContentControl Grid.Row="1" Grid.RowSpan="2" Grid.Column="0"  Content="{Binding DataExplorer}" />
+    <ContentControl Grid.Row="2" Grid.Column="1" Content="{Binding Logger}" />
     <TabControl Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" ItemsSource="{Binding Documents}">
       <TabControl.ItemTemplate>
         <DataTemplate>
