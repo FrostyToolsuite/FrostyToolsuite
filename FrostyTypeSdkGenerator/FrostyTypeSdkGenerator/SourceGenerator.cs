@@ -17,11 +17,6 @@ public sealed partial class SourceGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        if (!Debugger.IsAttached)
-        {
-            Debugger.Launch();
-        }
-
         // Equals and GetHashCode overrides for structs
         {
             IncrementalValuesProvider<TypeContext> syntaxProvider = context.SyntaxProvider
