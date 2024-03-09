@@ -161,7 +161,7 @@ public static class Cas
             }
         }
 
-        Debug.Assert(inBaseStream.Position == inBaseStream.Length);
+        Debug.Assert(inBaseStream?.Position == inBaseStream?.Length);
         Debug.Assert(outBuffer.Size == 0);
 
         outBuffer.ResetShift();
