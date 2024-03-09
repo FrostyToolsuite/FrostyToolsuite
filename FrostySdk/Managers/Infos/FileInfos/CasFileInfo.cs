@@ -53,13 +53,13 @@ public class CasFileInfo : IFileInfo
 
     public Block<byte> GetRawData()
     {
-        if (m_base is null)
-        {
-            throw new Exception("Base CasResourceInfo can't be null.");
-        }
-
         if (m_delta is null)
         {
+            if (m_base is null)
+            {
+                throw new Exception("Base CasResourceInfo can't be null.");
+            }
+
             return m_base.GetRawData();
         }
 
@@ -68,19 +68,23 @@ public class CasFileInfo : IFileInfo
 
     public Block<byte> GetData(int inOriginalSize)
     {
-        if (m_base is null)
-        {
-            throw new Exception("Base CasResourceInfo can't be null.");
-        }
-
         if (m_delta is null)
         {
+            if (m_base is null)
+            {
+                throw new Exception("Base CasResourceInfo can't be null.");
+            }
+
             return m_base.GetData(inOriginalSize);
         }
 
         using (BlockStream deltaStream = new(m_delta.GetRawData()))
-        using (BlockStream baseStream = new(m_base.GetRawData()))
         {
+            BlockStream? baseStream = null;
+            if (m_base is not null)
+            {
+                baseStream = new(m_base.GetRawData());
+            }
             return Cas.DecompressData(deltaStream, baseStream, inOriginalSize);
         }
     }

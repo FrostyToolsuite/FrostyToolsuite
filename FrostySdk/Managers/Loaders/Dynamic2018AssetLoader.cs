@@ -34,8 +34,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 if (!FileSystemManager.TryResolvePath(sbIc.InstallChunk.InstallBundle, out _))
                 {
                     // InstallBundle does not exist, so skip it
-                    Debug.Assert(sbIc.InstallChunk.OptionalDlc);
-
                     FrostyLogger.Logger?.LogWarning($"Skipping SuperBundle \"{sbIc.Name}\", InstallBundle \"{sbIc.InstallChunk.InstallBundle}\" does not exist");
 
                     continue;
