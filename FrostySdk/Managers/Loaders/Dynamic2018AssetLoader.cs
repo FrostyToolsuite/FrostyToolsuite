@@ -160,7 +160,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
                                 BlockStream.FromFile(baseSbPath, false);
                         }
 
-                        LoadDeltaBundle(sbStream, offset, size, baseSbStream, helper.Offset, helper.Size, ref bundle, sbPath, baseSbPath ?? string.Empty);
+                        LoadDeltaBundle(sbStream, offset, size, baseSbStream, helper.Offset, helper.Size, ref bundle,
+                            Path.GetRelativePath(FileSystemManager.BasePath, sbPath), baseSbPath is not null ? Path.GetRelativePath(FileSystemManager.BasePath, baseSbPath) : string.Empty);
                     }
                     else
                     {
