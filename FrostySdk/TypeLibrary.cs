@@ -49,7 +49,7 @@ public static class TypeLibrary
                 continue;
             }
             uint nameHash = nameHashAttribute.Hash;
-            string name = type.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name;
+            string name = type.GetName();
             Guid? guid = type.GetCustomAttribute<GuidAttribute>()?.Guid;
 
             s_nameMapping.Add(name, i);
@@ -63,6 +63,8 @@ public static class TypeLibrary
         IsInitialized = true;
         return true;
     }
+
+    public static IEnumerable<Type> EnumerateTypes() => s_types;
 
     public static Type? GetType(string name)
     {
@@ -137,5 +139,10 @@ public static class TypeLibrary
         Type? sourceType = GetType(type);
 
         return sourceType != null && IsSubClassOf(sourceType, name);
+    }
+
+    public static string GetName(this MemberInfo type)
+    {
+        return type.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name;
     }
 }

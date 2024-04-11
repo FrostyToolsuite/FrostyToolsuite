@@ -35,7 +35,7 @@ public class EbxReader : BaseEbxReader
             return type.Name;
         }
 
-        return GetType(type).GetCustomAttribute<DisplayNameAttribute>()!.Name;
+        return GetType(type).GetName();
     }
 
     public override HashSet<Guid> GetDependencies() => m_header.Dependencies;
@@ -194,7 +194,7 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(m_stream.ReadFixedSizedString(32));
                 break;
             case TypeFlags.TypeEnum.CString:
-                inAddFunc(ReadCString(m_stream.ReadUInt32()));
+                inAddFunc(ReadString(m_stream.ReadUInt32()));
                 break;
             case TypeFlags.TypeEnum.FileRef:
                 inAddFunc(ReadFileRef());
@@ -262,8 +262,6 @@ public class EbxReader : BaseEbxReader
 
         return retStr;
     }
-
-    private CString ReadCString(uint offset) => new(ReadString(offset));
 
     private ResourceRef ReadResourceRef() => new(m_stream.ReadUInt64());
 

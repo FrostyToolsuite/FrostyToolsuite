@@ -145,17 +145,26 @@ dotnet_naming_style.constant_case_style.capitalization = camel_case
 dotnet_naming_style.constant_case_style.required_prefix = c_
 dotnet_naming_style.static_case_style.capitalization = camel_case
 dotnet_naming_style.static_case_style.required_prefix = s_
+dotnet_naming_style.private_case_style.capitalization = camel_case
+dotnet_naming_style.private_case_style.required_prefix = m_
 
 # Use PascalCase for public symbols
-dotnet_naming_symbols.public_symbols.applicable_kinds = property,method,field,event,delegate
+dotnet_naming_symbols.public_symbols.applicable_kinds = property,method,field,event,delegate,enum
 dotnet_naming_symbols.public_symbols.applicable_accessibilities = public
-dotnet_naming_symbols.public_symbols.required_modifiers = readonly
 dotnet_naming_rule.public_members.symbols = public_symbols
 dotnet_naming_rule.public_members.style = pascal_case_style
 dotnet_naming_rule.public_members.severity = warning
 
+# Use camelCase and m_ prefix for member symbols
+dotnet_naming_symbols.private_symbols.applicable_kinds = property,field
+dotnet_naming_symbols.private_symbols.applicable_accessibilities = private,private_protected,protected
+dotnet_naming_rule.private_members.symbols = private_symbols
+dotnet_naming_rule.private_members.style = private_case_style
+dotnet_naming_rule.private_members.severity = warning
+
 # Use camelCase and c_ prefix for constant symbols
 dotnet_naming_symbols.constant_symbols.applicable_kinds = field
+dotnet_naming_symbols.constant_symbols.applicable_accessibilities = private_protected
 dotnet_naming_symbols.constant_symbols.required_modifiers = const
 dotnet_naming_rule.constant_members.symbols = constant_symbols
 dotnet_naming_rule.constant_members.style = constant_case_style
@@ -163,6 +172,7 @@ dotnet_naming_rule.constant_members.severity = warning
 
 # Use camelCase and s_ prefix for static symbols
 dotnet_naming_symbols.static_symbols.applicable_kinds = field
+dotnet_naming_symbols.static_symbols.applicable_accessibilities = private_protected
 dotnet_naming_symbols.static_symbols.required_modifiers = static
 dotnet_naming_rule.static_members.symbols = static_symbols
 dotnet_naming_rule.static_members.style = static_case_style

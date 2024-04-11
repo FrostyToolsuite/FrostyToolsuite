@@ -183,7 +183,10 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         int currentOffset = ShiftAmount;
         int newSize = inNewSize * sizeof(T);
         BasePtr = (T*)Marshal.ReAllocHGlobal((IntPtr)BasePtr, newSize);
-        GC.RemoveMemoryPressure(BaseSize * sizeof(T));
+        if (BaseSize > 0)
+        {
+            GC.RemoveMemoryPressure(BaseSize * sizeof(T));
+        }
         BaseSize = newSize;
         GC.AddMemoryPressure(BaseSize * sizeof(T));
         // Adjust Ptr since BasePtr has changed.

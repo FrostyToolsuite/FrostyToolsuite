@@ -50,7 +50,7 @@ public class EbxReader : BaseEbxReader
     public override string GetRootType()
     {
         m_stream.Position = m_payloadOffset + m_fixup.InstanceOffsets[0];
-        return TypeLibrary.GetType(m_fixup.TypeGuids[m_stream.ReadUInt16()])?.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? string.Empty;
+        return TypeLibrary.GetType(m_fixup.TypeGuids[m_stream.ReadUInt16()])?.GetName() ?? string.Empty;
     }
 
     public override HashSet<Guid> GetDependencies() => m_fixup.Dependencies;
@@ -263,7 +263,7 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(m_stream.ReadFixedSizedString(32));
                 break;
             case TypeFlags.TypeEnum.CString:
-                inAddFunc(ReadCString(m_stream.ReadUInt32()));
+                inAddFunc(ReadString(m_stream.ReadUInt32()));
                 break;
             case TypeFlags.TypeEnum.FileRef:
                 inAddFunc(ReadFileRef());
@@ -348,7 +348,7 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(m_stream.ReadFixedSizedString(32));
                 break;
             case TypeFlags.TypeEnum.CString:
-                inAddFunc(ReadCString(m_stream.ReadUInt32()));
+                inAddFunc(ReadString(m_stream.ReadUInt32()));
                 break;
             case TypeFlags.TypeEnum.FileRef:
                 inAddFunc(ReadFileRef());
@@ -436,8 +436,6 @@ public class EbxReader : BaseEbxReader
         return retStr;
     }
 
-    private CString ReadCString(long offset) => new(ReadString(offset));
-
     private ResourceRef ReadResourceRef() => new(m_stream.ReadUInt64());
 
     private FileRef ReadFileRef()
@@ -481,7 +479,7 @@ public class EbxReader : BaseEbxReader
         if ((packed & 0x80000000) != 0)
         {
             // primitive type
-            return new TypeRef(GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1).GetCustomAttribute<DisplayNameAttribute>()?.Name ?? string.Empty);
+            return new TypeRef(GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1).GetName());
         }
 
         int typeRef = (int)(packed >> 2);

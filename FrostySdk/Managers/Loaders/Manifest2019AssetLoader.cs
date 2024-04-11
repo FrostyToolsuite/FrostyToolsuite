@@ -265,7 +265,7 @@ public class Manifest2019AssetLoader : IAssetLoader
 
         stream.Position = inOffset + locationOffset;
 
-        Block<byte> fileIdentifierFlags = new Block<byte>(totalCount);
+        Block<byte> fileIdentifierFlags = new(totalCount);
         stream.ReadExactly(fileIdentifierFlags);
 
         // the flags should be the last thing in the bundle

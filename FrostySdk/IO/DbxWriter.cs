@@ -119,7 +119,7 @@ public sealed class DbxWriter : IDisposable
         Type ebxType = ebxObj.GetType();
 
         WriteInstanceStart(guid,
-            $"{ebxType.Namespace}.{ebxType.GetCustomAttribute<DisplayNameAttribute>()!.Name}",
+            $"{ebxType.Namespace}.{ebxType.GetName()}",
             ((dynamic)ebxObj).__Id);
 
         if (ebxType.IsClass)
@@ -206,8 +206,6 @@ public sealed class DbxWriter : IDisposable
                 WriteFieldWithValue(fieldName!, GetFieldValue<double>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.CString:
-                WriteFieldWithValue(fieldName!, GetFieldValue<CString>(obj).ToString(), isArrayItem, isTransient, isHidden);
-                break;
             case TypeEnum.String:
                 WriteFieldWithValue(fieldName!, GetFieldValue<string>(obj), isArrayItem, isTransient, isHidden);
                 break;
@@ -417,7 +415,7 @@ public sealed class DbxWriter : IDisposable
         Type memberType = isRef ? arrayBaseType! : arrayType.GenericTypeArguments[0];
         EbxTypeMetaAttribute memberMeta = memberType.GetCustomAttribute<EbxTypeMetaAttribute>()!;
 
-        string typeDisplayName = memberType.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? memberType.Name;
+        string typeDisplayName = memberType.GetName();
 
         WriteArrayStart(arrayName, isRef ? $"ref({typeDisplayName})" : typeDisplayName);
 
@@ -594,7 +592,7 @@ public sealed class DbxWriter : IDisposable
                 pi.GetValue(classObj)!,
                 pi.PropertyType,
                 fieldMeta.BaseType,
-                pi.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? pi.Name,
+                pi.GetName(),
                 false,
                 pi.GetCustomAttribute<IsTransientAttribute>() is not null,
                 pi.GetCustomAttribute<IsHiddenAttribute>() is not null);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Frosty.Sdk.IO;
+using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.DbObjectElements;
 
@@ -19,7 +20,7 @@ public class DbObjectDict : DbObject
     {
         m_items = new Dictionary<string, DbObject>(inCapacity);
     }
-    
+
     protected internal DbObjectDict(string inName, int inCapacity)
         : base(Type.Dict, inName)
     {
@@ -52,7 +53,7 @@ public class DbObjectDict : DbObject
     {
         return m_items.TryGetValue(name, out DbObject? item) ? item.AsList() : defaultValue;
     }
-    
+
     public bool AsBoolean(string name, bool defaultValue = default)
     {
         return m_items.TryGetValue(name, out DbObject? item) ? item.AsBoolean() : defaultValue;
@@ -119,7 +120,7 @@ public class DbObjectDict : DbObject
     {
         m_items.Add(name, value);
     }
-    
+
     public void Add(string name, bool value)
     {
         m_items.Add(name, new DbObjectBool(name, value));
@@ -174,23 +175,24 @@ public class DbObjectDict : DbObject
     {
         m_items.Add(name, new DbObjectBlob(name, value));
     }
-    
+
     protected override void InternalSerialize(DataStream stream)
     {
-        long curPos = stream.Position;
-
-        foreach (DbObject value in m_items.Values)
+        Block<byte> sub = new(0);
+        using (BlockStream subStream = new(sub, true))
         {
-            Serialize(stream, value);
-        }
-        
-        // write terminator
-        stream.WriteByte((byte)Type.Null);
+            foreach (DbObject value in m_items.Values)
+            {
+                Serialize(subStream, value);
+            }
 
-        long size = stream.Position - curPos;
-        stream.Position = curPos;
-        stream.Write7BitEncodedInt64(size);
-        stream.Position = curPos + size;
+            // write terminator
+            subStream.WriteByte((byte)Type.Null);
+        }
+
+        stream.Write7BitEncodedInt64(sub.Size);
+        stream.Write(sub);
+        sub.Dispose();
     }
 
     protected override void InternalDeserialize(DataStream stream)
@@ -204,7 +206,7 @@ public class DbObjectDict : DbObject
             {
                 break;
             }
-            
+
             m_items.Add(obj.Name, obj);
         }
     }

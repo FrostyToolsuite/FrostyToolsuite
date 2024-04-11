@@ -295,8 +295,7 @@ public static class AssetManager
         using (BlockStream stream = new(GetAsset(entry)))
         {
             T retVal = new();
-            retVal.Set(entry);
-            retVal.Deserialize(stream);
+            retVal.Deserialize(stream, entry.ResMeta);
 
             return retVal;
         }
