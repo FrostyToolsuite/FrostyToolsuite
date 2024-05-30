@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:FrostyEditor.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="FrostyEditor.Views.SdkUpdateView"
+             x:DataType="viewModels:SdkUpdateViewModel"
+             x:CompileBindings="True">
+  <Grid RowDefinitions="*, Auto">
+    <ListBox Grid.Row="0"
+             ItemsSource="{Binding RunningProcesses}"
+             SelectedItem="{Binding SelectedProcess, Mode=OneWayToSource}">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <TextBlock Text="{Binding ProcessName}" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <DockPanel Grid.Row="1">
+      <Button Content="Create"
+              Command="{Binding CreateSdkCommand}"
+              DockPanel.Dock="Right" />
+      <Button Content="Refresh"
+              Command="{Binding RefreshProcessesCommand}"
+              DockPanel.Dock="Left" />
+    </DockPanel>
+  </Grid>
+</UserControl>

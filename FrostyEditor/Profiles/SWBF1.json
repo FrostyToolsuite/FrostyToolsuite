@@ -2,26 +2,12 @@
   "Name": "starwarsbattlefront",
   "DisplayName": "STAR WARS™ Battlefront™",
   "InternalName": "starwars",
-  "TypeInfoSignature": "",
+  "TypeInfoSignature": "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
   "DataVersion": 20151117,
   "FrostbiteVersion": "2014.4.17",
   "HasStrippedTypeNames": false,
-  "Sources": [
-    {
-      "Path": "Patch",
-      "SubDirs": false
-    },
-    {
-      "Path": "Update",
-      "SubDirs": true
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 2,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

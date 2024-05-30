@@ -2,22 +2,12 @@
   "Name": "Madden22",
   "DisplayName": "Madden NFL 22™",
   "InternalName": "madden22",
-  "TypeInfoSignature": "",
+  "TypeInfoSignature": "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10",
   "DataVersion": 20210819,
   "FrostbiteVersion": "2020.0",
   "HasStrippedTypeNames": false,
-  "Sources": [
-    {
-      "Path": "Patch",
-      "SubDirs": false
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 6,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

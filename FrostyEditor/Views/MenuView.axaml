@@ -1,22 +1,14 @@
-﻿<UserControl x:Class="FrostyEditor.Views.MenuView"
-             xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:vm="clr-namespace:FrostyEditor.ViewModels"
-             mc:Ignorable="d"
-             d:DesignWidth="600" d:DesignHeight="20"
-             x:DataType="vm:MenuViewModel"
-             x:CompileBindings="True">
-    <Menu>
-        <MenuItem Header="{StaticResource ID_MENU_FILE}">
-      
-        </MenuItem>
-        <MenuItem Header="{StaticResource ID_MENU_TOOLS}">
-  
-        </MenuItem>
-        <MenuItem Header="{StaticResource ID_MENU_HELP}">
-  
-        </MenuItem>
-    </Menu>
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:FrostyEditor.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="FrostyEditor.Views.MenuView"
+             x:CompileBindings="True"
+             x:DataType="viewModels:MenuViewModel">
+  <Menu>
+    <MenuItem Header="{StaticResource ID_MENU_FILE}" />
+    <MenuItem Header="{StaticResource ID_MENU_TOOLS}" />
+  </Menu>
 </UserControl>

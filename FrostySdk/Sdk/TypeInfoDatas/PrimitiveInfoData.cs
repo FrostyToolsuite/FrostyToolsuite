@@ -11,14 +11,14 @@ internal class PrimitiveInfoData : TypeInfoData
         base.CreateType(sb);
 
         string actualType = string.Empty;
+        bool isString = false;
 
         switch (m_flags.GetTypeEnum())
         {
             case TypeFlags.TypeEnum.String:
-                actualType = "System.String";
-                break;
             case TypeFlags.TypeEnum.CString:
-                actualType = "Frosty.Sdk.Ebx.CString";
+                actualType = "System.String";
+                isString = true;
                 break;
             case TypeFlags.TypeEnum.FileRef:
                 actualType = "Frosty.Sdk.Ebx.FileRef";
@@ -76,7 +76,11 @@ internal class PrimitiveInfoData : TypeInfoData
         sb.AppendLine($$"""
                         public struct {{m_name}} : IPrimitive
                         {
-                            private {{actualType}} m_value;
+                            private {{actualType}} m_value{{(isString ? " = string.Empty" : string.Empty)}};
+
+                            public {{m_name}}()
+                            {
+                            }
 
                             public object ToActualType() => m_value;
 

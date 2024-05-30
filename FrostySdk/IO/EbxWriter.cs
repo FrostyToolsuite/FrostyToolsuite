@@ -478,7 +478,7 @@ public class EbxWriter
             }
             case TypeEnum.CString:
             {
-                writer.WriteUInt32(AddString((CString)((IPrimitive)ebxObj).ToActualType()));
+                writer.WriteUInt32(AddString((string)((IPrimitive)ebxObj).ToActualType()));
                 break;
             }
             case TypeEnum.Class:
@@ -789,7 +789,7 @@ public class EbxWriter
             string[] enumNames = objType.GetEnumNames();
             Array enumValues = objType.GetEnumValues();
 
-            string name = objType.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? objType.Name;
+            string name = objType.GetName();
 
             index = AddClass(name,
                 objType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? 0,
@@ -811,7 +811,7 @@ public class EbxWriter
         {
             Type elementType = objType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : objType.GenericTypeArguments[0];
 
-            string name = elementType.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? elementType!.Name;
+            string name = elementType.GetName();
 
             index = AddClass($"{name}-Array", elementType.GetCustomAttribute<ArrayHashAttribute>()?.Hash ?? 0,
                 m_fieldTypes.Count, 1, 4, elementType.GetCustomAttribute<EbxArrayMetaAttribute>()!.Flags, 4, 0);
@@ -846,7 +846,7 @@ public class EbxWriter
                 classProperties.Add(pi);
             }
 
-            string name = objType.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? objType.Name;
+            string name = objType.GetName();
 
             index = AddClass(name,
                 objType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? 0,
@@ -918,7 +918,7 @@ public class EbxWriter
                 objProperties.Add(propertyInfo);
             }
 
-            string name = objType.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? objType.Name;
+            string name = objType.GetName();
 
             index = AddClass(name,
                 objType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name),

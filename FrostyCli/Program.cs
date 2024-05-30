@@ -61,6 +61,15 @@ internal static class Program
                  case ActionType.UpdateMod:
                      UpdateMod();
                      break;
+                 case ActionType.ListEbx:
+                     ListEbx();
+                     break;
+                 case ActionType.ListRes:
+                     ListRes();
+                     break;
+                 case ActionType.ListChunks:
+                     ListChunks();
+                     break;
                  case ActionType.GetEbx:
                      GetEbx();
                      break;
@@ -83,6 +92,9 @@ internal static class Program
         Quit,
         Mod,
         UpdateMod,
+        ListEbx,
+        ListRes,
+        ListChunks,
         GetEbx,
         GetDbx,
         GetRes,
@@ -109,7 +121,7 @@ internal static class Program
             return;
         }
 
-        if (ProfilesLibrary.RequiresKey)
+        if (ProfilesLibrary.RequiresInitFsKey)
         {
             string keyPath = Prompt.Input<string>("Pass in the path to an initfs key");
 
@@ -122,6 +134,36 @@ internal static class Program
             }
 
             KeyManager.AddKey("InitFsKey", File.ReadAllBytes(keyFileInfo.FullName));
+        }
+
+        if (ProfilesLibrary.RequiresBundleKey)
+        {
+            string keyPath = Prompt.Input<string>("Pass in the path to an bundle key");
+
+            FileInfo keyFileInfo = new(keyPath);
+
+            if (!keyFileInfo.Exists)
+            {
+                Logger.LogErrorInternal("Key does not exist");
+                return;
+            }
+
+            KeyManager.AddKey("BundleEncryptionKey", File.ReadAllBytes(keyFileInfo.FullName));
+        }
+
+        if (ProfilesLibrary.RequiresCasKey)
+        {
+            string keyPath = Prompt.Input<string>("Pass in the path to an cas key");
+
+            FileInfo keyFileInfo = new(keyPath);
+
+            if (!keyFileInfo.Exists)
+            {
+                Logger.LogErrorInternal("Key does not exist");
+                return;
+            }
+
+            KeyManager.AddKey("CasObfuscationKey", File.ReadAllBytes(keyFileInfo.FullName));
         }
 
         if (inGameFileInfo.DirectoryName is null)
@@ -186,6 +228,30 @@ internal static class Program
         FileInfo outputFileInfo = new(Prompt.Input<string>("Pass in the path where the updated mod should get saved to"));
 
         ModUpdater.UpdateMod(modFileInfo.FullName, outputFileInfo.FullName);
+    }
+
+    private static void ListEbx()
+    {
+        foreach (EbxAssetEntry entry in AssetManager.EnumerateEbxAssetEntries())
+        {
+            Console.WriteLine(entry.Name);
+        }
+    }
+
+    private static void ListRes()
+    {
+        foreach (ResAssetEntry entry in AssetManager.EnumerateResAssetEntries())
+        {
+            Console.WriteLine(entry.Name);
+        }
+    }
+
+    private static void ListChunks()
+    {
+        foreach (ChunkAssetEntry entry in AssetManager.EnumerateChunkAssetEntries())
+        {
+            Console.WriteLine(entry.Name);
+        }
     }
 
     private static void GetEbx()
@@ -289,7 +355,7 @@ internal static class Program
             description: "The path to a file containing a key for the initfs if needed.");
 
         Option<int?> sdkOption = new(
-            name: "--sdk",
+            name: "--pid",
             description: "The pid of the game if a sdk should get generated for the game.");
 
         Command loadCommand = new("load", "Load a games data from the cache or create it.")
@@ -323,7 +389,7 @@ internal static class Program
             return;
         }
 
-        if (ProfilesLibrary.RequiresKey)
+        if (ProfilesLibrary.RequiresInitFsKey)
         {
             if (inKeyFileInfo is null || !inKeyFileInfo.Exists)
             {

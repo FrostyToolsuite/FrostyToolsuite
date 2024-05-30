@@ -7,7 +7,7 @@
   "FrostbiteVersion": "2013.2",
   "HasStrippedTypeNames": false,
   "EbxVersion": 2,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

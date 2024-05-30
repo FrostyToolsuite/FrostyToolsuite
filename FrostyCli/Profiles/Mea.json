@@ -7,7 +7,7 @@
   "DataVersion": 20170320,
   "FrostbiteVersion": "2015.4.6",
   "EbxVersion": 2,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

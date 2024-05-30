@@ -25,7 +25,7 @@ public static class Cas
         return outBuffer;
     }
 
-    public static Block<byte> DecompressData(DataStream inDeltaStream, DataStream inBaseStream, int inOriginalSize)
+    public static Block<byte> DecompressData(DataStream inDeltaStream, DataStream? inBaseStream, int inOriginalSize)
     {
         Block<byte> outBuffer = new(inOriginalSize);
         while (inDeltaStream.Position < inDeltaStream.Length)
@@ -38,6 +38,7 @@ public static class Cas
             {
                 case 0:
                 {
+                    Debug.Assert(inBaseStream is not null);
                     // read base blocks
                     while (instructionSize-- > 0)
                     {
@@ -47,6 +48,7 @@ public static class Cas
                 }
                 case 1:
                 {
+                    Debug.Assert(inBaseStream is not null);
                     // make large fixes in base block
                     using (Block<byte> toPatch = ReadBlock(inBaseStream))
                     {
@@ -84,6 +86,8 @@ public static class Cas
                 }
                 case 2:
                 {
+                    Debug.Assert(inBaseStream is not null);
+
                     // make small fixes in base block
                     int newBlockSize = inDeltaStream.ReadUInt16(Endian.Big) + 1;
                     int currentOffset = outBuffer.ShiftAmount;
@@ -143,6 +147,8 @@ public static class Cas
                 }
                 case 4:
                 {
+                    Debug.Assert(inBaseStream is not null);
+
                     // skip base blocks
                     while (instructionSize-- > 0)
                     {
@@ -155,7 +161,7 @@ public static class Cas
             }
         }
 
-        Debug.Assert(inBaseStream.Position == inBaseStream.Length);
+        Debug.Assert(inBaseStream?.Position == inBaseStream?.Length);
         Debug.Assert(outBuffer.Size == 0);
 
         outBuffer.ResetShift();

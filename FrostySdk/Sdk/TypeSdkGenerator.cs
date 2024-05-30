@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -23,18 +24,35 @@ public class TypeSdkGenerator
 {
     private long FindTypeInfoOffset(Process process)
     {
-        // TODO: remove this once all games have their correct pattern
-        // string[] patterns =
-        // {
-        //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
-        //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? C3",
-        //     "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ??",
-        //     "48 8b 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? 48 8d 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E9",
-        //     "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10", // new games
-        // };
-
         MemoryReader reader = new(process);
-        nint offset = reader.ScanPatter(ProfilesLibrary.TypeInfoSignature);
+
+        nint offset = nint.Zero;
+
+        if (!string.IsNullOrEmpty(ProfilesLibrary.TypeInfoSignature))
+        {
+            offset = reader.ScanPatter(ProfilesLibrary.TypeInfoSignature);
+        }
+        else
+        {
+            // TODO: remove this once all games have their correct pattern
+            string[] patterns =
+            {
+                "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? C3",
+                "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ??",
+                "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
+                "48 8b 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? 48 8d 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E9",
+                "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10", // new games
+            };
+            foreach (string sig in patterns)
+            {
+                offset = reader.ScanPatter(sig);
+                if (offset != nint.Zero)
+                {
+                    FrostyLogger.Logger?.LogInfo($"No TypeInfoSig set, found offset for \"{sig}\"");
+                    break;
+                }
+            }
+        }
 
         if (offset == nint.Zero)
         {
@@ -288,7 +306,7 @@ public class TypeSdkGenerator
         sb.AppendLine("using Frosty.Sdk.Managers;");
         sb.AppendLine("using Frosty.Sdk;");
         sb.AppendLine();
-        sb.AppendLine("[assembly: SdkVersion(" + FileSystemManager.Head + ")]");
+        sb.AppendLine($"[assembly: SdkVersion({FileSystemManager.Head})]");
         sb.AppendLine();
 
         foreach (TypeInfo typeInfo in TypeInfo.TypeInfoMapping.Values)
@@ -332,7 +350,7 @@ public class TypeSdkGenerator
 
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);
 
-        List<MetadataReference> references = GetMetadataReferences();
+        IEnumerable<MetadataReference> references = GetMetadataReferences();
 
 #if EBX_TYPE_SDK_DEBUG
         OptimizationLevel level = OptimizationLevel.Debug;
@@ -397,10 +415,12 @@ public class TypeSdkGenerator
         return true;
     }
 
-    private List<MetadataReference> GetMetadataReferences()
+    private IEnumerable<MetadataReference> GetMetadataReferences()
     {
+        // use observable collection here, so System.ObjectModel gets loaded
+        ObservableCollection<MetadataReference> metadataReferenceList = new();
+
         Assembly[] domainAssemblies = AppDomain.CurrentDomain.GetAssemblies();
-        List<MetadataReference> metadataReferenceList = new();
 
         foreach (Assembly assembly in domainAssemblies)
         {

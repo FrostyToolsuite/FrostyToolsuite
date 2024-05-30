@@ -1,31 +1,27 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using CommunityToolkit.Mvvm.ComponentModel;
-using Dock.Model.Core;
+using FrostyEditor.ViewModels;
 
 namespace FrostyEditor;
 
 public class ViewLocator : IDataTemplate
 {
-    public Control Build(object? data)
+    public Control? Build(object? data)
     {
-        string? name = data?.GetType().FullName?.Replace("ViewModel", "View");
-        if (name is null)
+        if (data is null)
         {
-            return new TextBlock { Text = "Invalid Data Type" };
+            return null;
         }
-        
+
+        string name = data.GetType().FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
         Type? type = Type.GetType(name);
+
         if (type is not null)
         {
-            object? instance = Activator.CreateInstance(type);
-            if (instance is not null)
-            {
-                return (Control)instance;
-            }
-
-            return new TextBlock { Text = "Create Instance Failed: " + type.FullName };
+            Control control = (Control)Activator.CreateInstance(type)!;
+            control.DataContext = data;
+            return control;
         }
 
         return new TextBlock { Text = "Not Found: " + name };
@@ -33,6 +29,6 @@ public class ViewLocator : IDataTemplate
 
     public bool Match(object? data)
     {
-        return data is ObservableObject || data is IDockable;
+        return data is ViewModelBase;
     }
 }

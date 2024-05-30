@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Frosty.Sdk.Attributes;
+using Frosty.Sdk.Managers;
 
 namespace Frosty.Sdk;
 
@@ -30,6 +31,11 @@ public static class TypeLibrary
 
         Assembly sdk = Assembly.LoadFile(fileInfo.FullName);
 
+        if ((sdk.GetCustomAttribute<SdkVersionAttribute>()?.Head ?? 0) != FileSystemManager.Head)
+        {
+            FrostyLogger.Logger?.LogInfo("Outdated Type Sdk, please regenerate it to avoid issues");
+        }
+
         s_types = sdk.GetExportedTypes();
 
         for (int i = 0; i < s_types.Length; i++)
@@ -43,7 +49,7 @@ public static class TypeLibrary
                 continue;
             }
             uint nameHash = nameHashAttribute.Hash;
-            string name = type.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name;
+            string name = type.GetName();
             Guid? guid = type.GetCustomAttribute<GuidAttribute>()?.Guid;
 
             s_nameMapping.Add(name, i);
@@ -57,6 +63,8 @@ public static class TypeLibrary
         IsInitialized = true;
         return true;
     }
+
+    public static IEnumerable<Type> EnumerateTypes() => s_types;
 
     public static Type? GetType(string name)
     {
@@ -131,5 +139,10 @@ public static class TypeLibrary
         Type? sourceType = GetType(type);
 
         return sourceType != null && IsSubClassOf(sourceType, name);
+    }
+
+    public static string GetName(this MemberInfo type)
+    {
+        return type.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name;
     }
 }

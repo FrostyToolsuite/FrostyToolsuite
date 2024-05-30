@@ -111,13 +111,13 @@ public class BinaryBundle
             string name = stream.ReadNullTerminatedString();
 
             stream.Position = resTypeOffset + i * sizeof(uint);
-            uint resType = stream.ReadUInt32();
+            uint resType = stream.ReadUInt32(endian);
 
             stream.Position = resMetaOffset + i * 0x10;
             byte[] resMeta = stream.ReadBytes(0x10);
 
             stream.Position = resRidOffset + i * sizeof(ulong);
-            ulong resRid = stream.ReadUInt64();
+            ulong resRid = stream.ReadUInt64(endian);
 
             ResList[i] = new ResAssetEntry(name, sha1[j], originalSize, resRid, resType, resMeta);
 

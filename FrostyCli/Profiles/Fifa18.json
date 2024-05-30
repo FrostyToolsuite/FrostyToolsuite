@@ -7,7 +7,7 @@
   "FrostbiteVersion": "2016.4.1",
   "HasStrippedTypeNames": false,
   "EbxVersion": 4,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

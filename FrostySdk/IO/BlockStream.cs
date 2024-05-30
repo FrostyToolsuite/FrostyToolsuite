@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.Managers;
@@ -12,6 +15,12 @@ public class BlockStream : DataStream
 {
     private readonly Block<byte> m_block;
     private readonly bool m_leaveOpen;
+
+    public BlockStream()
+    {
+        m_block = new Block<byte>(0);
+        m_stream = m_block.ToStream();
+    }
 
     public BlockStream(int inSize)
     {
@@ -44,19 +53,36 @@ public class BlockStream : DataStream
         base.WriteByte(value);
     }
 
-    public unsafe void CopyTo(BlockStream destination, int bufferSize)
+    public override unsafe void CopyTo(DataStream destination, int bufferSize)
     {
-        destination.ResizeStream(destination.Position + bufferSize);
+        if (destination is not BlockStream stream)
+        {
+            base.CopyTo(destination, bufferSize);
+            return;
+        }
+
+        if (bufferSize <= 0)
+        {
+            return;
+        }
+
+        stream.ResizeStream(stream.Position + bufferSize);
+
+        if (stream.Length < stream.Position + bufferSize)
+        {
+            stream.m_stream.SetLength((int)stream.Position + bufferSize);
+        }
 
         using (Block<byte> a = new(m_block.BasePtr + Position, bufferSize))
-        using (Block<byte> b = new(destination.m_block.BasePtr + destination.Position, bufferSize))
+        using (Block<byte> b = new(stream.m_block.BasePtr + stream.Position, bufferSize))
         {
             a.MarkMemoryAsFragile();
             b.MarkMemoryAsFragile();
             a.CopyTo(b);
         }
 
-        destination.Position += bufferSize;
+        stream.Position += bufferSize;
+
         Position += bufferSize;
     }
 
@@ -65,6 +91,13 @@ public class BlockStream : DataStream
         string retVal = new((sbyte*)(m_block.Ptr + Position));
         Position += retVal.Length + 1;
         return retVal;
+    }
+
+    public override unsafe DataStream CreateSubStream(long inStartOffset, int inSize)
+    {
+        Block<byte> sub = new(m_block.BasePtr + inStartOffset, inSize);
+        sub.MarkMemoryAsFragile();
+        return new BlockStream(sub);
     }
 
     /// <summary>
@@ -247,14 +280,23 @@ public class BlockStream : DataStream
         return true;
     }
 
-    private void ResizeStream(long inDesiredMinLength)
+    private unsafe void ResizeStream(long inDesiredMinLength)
     {
         if (inDesiredMinLength > m_block.Size)
         {
             long position = Position;
+            int oldSize = m_block.Size;
             int neededLength = (int)Math.Max(inDesiredMinLength, Environment.SystemPageSize + position);
             neededLength = neededLength + 15 & ~15;
             m_block.Resize(neededLength);
+
+            // make sure resized memory is 0
+            uint size = (uint)(neededLength - oldSize);
+            if (size > 0)
+            {
+                NativeMemory.Clear(m_block.BasePtr + oldSize, size);
+            }
+
             m_stream = m_block.ToStream();
             m_stream.SetLength(inDesiredMinLength);
             m_stream.Position = position;

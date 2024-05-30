@@ -34,8 +34,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 if (!FileSystemManager.TryResolvePath(sbIc.InstallChunk.InstallBundle, out _))
                 {
                     // InstallBundle does not exist, so skip it
-                    Debug.Assert(sbIc.InstallChunk.OptionalDlc);
-
                     FrostyLogger.Logger?.LogWarning($"Skipping SuperBundle \"{sbIc.Name}\", InstallBundle \"{sbIc.InstallChunk.InstallBundle}\" does not exist");
 
                     continue;
@@ -162,7 +160,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
                                 BlockStream.FromFile(baseSbPath, false);
                         }
 
-                        LoadDeltaBundle(sbStream, offset, size, baseSbStream, helper.Offset, helper.Size, ref bundle, sbPath, baseSbPath ?? string.Empty);
+                        LoadDeltaBundle(sbStream, offset, size, baseSbStream, helper.Offset, helper.Size, ref bundle,
+                            Path.GetRelativePath(FileSystemManager.BasePath, sbPath), baseSbPath is not null ? Path.GetRelativePath(FileSystemManager.BasePath, baseSbPath) : string.Empty);
                     }
                     else
                     {

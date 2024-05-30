@@ -7,7 +7,7 @@
   "DataVersion": 20200819,
   "FrostbiteVersion": "2019.0",
   "EbxVersion": 5,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

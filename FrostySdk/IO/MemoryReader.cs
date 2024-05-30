@@ -19,8 +19,7 @@ public sealed unsafe partial class MemoryReader
 
     private enum SystemErrorCode
     {
-        InvalidParameter = 0x57,
-        PartialCopy = 0x12B
+        InvalidParameter = 0x57
     }
 
     [Flags]
@@ -58,14 +57,14 @@ public sealed unsafe partial class MemoryReader
     }
 
     [LibraryImport("libc")]
-    private static unsafe partial nint process_vm_readv(int pid, iovec* local_iov, nuint liovcnt, iovec* remote_iov,
-        nuint riovcnt, nuint flags);
+    private static unsafe partial nint process_vm_readv(int pid, iovec* localIov, nuint localIovCount, iovec* remoteIov,
+        nuint remoteIovCount, nuint flags);
 
     #endregion
 
     public long Position { get; set; }
 
-    private Process m_process;
+    private readonly Process m_process;
 
     public MemoryReader(Process inProcess)
     {
@@ -293,7 +292,7 @@ public sealed unsafe partial class MemoryReader
                 nint end = nint.Parse(arr[0][(index + 1)..], NumberStyles.HexNumber);
 
                 string perm = arr[1];
-                if (perm[0] == '-' || perm[1] == '-' || perm[2] != 'x')
+                if (perm[0] == '-' /*|| perm[1] == '-'*/ || perm[2] != 'x')
                 {
                     continue;
                 }

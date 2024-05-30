@@ -2,23 +2,13 @@
   "Name": "starwarsbattlefrontii",
   "DisplayName": "STAR WARS™ Battlefront™ II",
   "InternalName": "starwarsii",
-  "TypeInfoSignature" : "",
+  "TypeInfoSignature" : "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
   "HasStrippedTypeNames": false,
   "DataVersion": 20171116,
   "_comment": "Actual version 2019-PR5, but the engine version is based on 2016.4.4",
   "FrostbiteVersion": "2016.4.4",
-  "Sources": [
-    {
-      "Path": "Patch",
-      "SubDirs": false
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 4,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

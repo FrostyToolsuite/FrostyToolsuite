@@ -1,48 +1,31 @@
-﻿using System;
+using System;
+using System.IO;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using FrostyEditor.Interfaces;
-using FrostyEditor.Themes;
 using FrostyEditor.Utils;
 using FrostyEditor.ViewModels;
-using FrostyEditor.ViewModels.Windows;
-using FrostyEditor.Views.Windows;
+using FrostyEditor.Windows;
 
 namespace FrostyEditor;
 
-public class App : Application
+public partial class App : Application
 {
-    public static string ConfigPath =
-        $"{Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)}/Frosty/editor_config.json";
-    
-    public static IThemeManager? ThemeManager;
-    
+    public static string ConfigPath = Path.Combine(AppContext.BaseDirectory, "editor_config.json");
+
+    public static MainViewModel? MainViewModel = null;
+
     public override void Initialize()
     {
-        ThemeManager = new FluentThemeManager();
-        ThemeManager.Initialize(this);
-        
-        Config.Load(ConfigPath);
-
         AvaloniaXamlLoader.Load(this);
+        Config.Load(ConfigPath);
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
-        switch (ApplicationLifetime)
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            case IClassicDesktopStyleApplicationLifetime desktopLifetime:
-            {
-                ProfileSelectWindow selectWindow = new()
-                {
-                    DataContext = new ProfileSelectWindowViewModel()
-                };
-
-                desktopLifetime.MainWindow = selectWindow;
-
-                break;
-            }
+            desktop.MainWindow = ViewWindow.Create<ProfileSelectViewModel>();
         }
 
         base.OnFrameworkInitializationCompleted();

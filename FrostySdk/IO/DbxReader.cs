@@ -143,12 +143,9 @@ public sealed class DbxReader
                     return ValueToPrimitive(new FileRef(propValue), propType);
                 }
                 case TypeEnum.String:
-                {
-                    return ValueToPrimitive(propValue, propType);
-                }
                 case TypeEnum.CString:
                 {
-                    return ValueToPrimitive((CString)propValue, propType);
+                    return ValueToPrimitive(propValue, propType);
                 }
                 case TypeEnum.Class:
                 {

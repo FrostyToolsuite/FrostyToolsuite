@@ -2,22 +2,12 @@
   "Name": "MassEffectAndromeda",
   "DisplayName": "Mass Effect: Andromeda",
   "InternalName": "masseffect",
-  "TypeInfoSignature" : "",
+  "TypeInfoSignature" : "48 8b 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? 48 8d 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E9",
   "HasStrippedTypeNames": false,
   "DataVersion": 20170320,
   "FrostbiteVersion": "2015.4.6",
-  "Sources": [
-    {
-      "Path": "Patch",
-      "SubDirs": false
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 2,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,

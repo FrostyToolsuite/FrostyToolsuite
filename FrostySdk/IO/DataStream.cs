@@ -45,6 +45,9 @@ public unsafe class DataStream : IDisposable
     /// <inheritdoc cref="Stream.CopyTo(Stream, int)"/>
     public virtual void CopyTo(Stream destination, int bufferSize) => m_stream.CopyTo(destination, bufferSize);
 
+    public void CopyTo(DataStream destination) => CopyTo(destination, (int)(Length - Position));
+    public virtual void CopyTo(DataStream destination, int bufferSize) => CopyTo((Stream)destination, bufferSize);
+
     /// <inheritdoc cref="Stream.SetLength"/>
     public void SetLength(int value) => m_stream.SetLength(value);
 
@@ -538,5 +541,16 @@ public unsafe class DataStream : IDisposable
     public virtual void Dispose()
     {
         m_stream.Dispose();
+    }
+
+    public virtual DataStream CreateSubStream(long inStartOffset, int inSize)
+    {
+        StepIn(inStartOffset);
+
+        DataStream retVal = new(new MemoryStream(ReadBytes(inSize)));
+
+        StepOut();
+
+        return retVal;
     }
 }

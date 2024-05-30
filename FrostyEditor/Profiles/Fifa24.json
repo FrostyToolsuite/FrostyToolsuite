@@ -2,22 +2,12 @@
   "Name": "FC24",
   "DisplayName": "FIFA 24",
   "InternalName": "fifa24",
-  "TypeInfoSignature": "",
+  "TypeInfoSignature": "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10",
   "DataVersion": 20230929,
   "FrostbiteVersion": "2022.2.1",
   "HasStrippedTypeNames": false,
-  "Sources": [
-    {
-      "Path": "Patch",
-      "SubDirs": false
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 6,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": false,
   "HasAntiCheat": true,

@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:FrostyEditor.ViewModels"
+             xmlns:models="clr-namespace:FrostyEditor.Models"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="FrostyEditor.Views.DataExplorerView"
+             x:DataType="viewModels:DataExplorerViewModel"
+             x:CompileBindings="True">
+  <Grid RowDefinitions="2*,*">
+    <TreeDataGrid Grid.Row="0" Source="{Binding FolderSource}">
+      <TreeDataGrid.Resources>
+        <DataTemplate x:Key="FolderNameCell"
+                      DataType="models:FolderTreeNodeModel">
+          <StackPanel Orientation="Horizontal">
+            <Image Margin="0 0 6 0"
+                   HorizontalAlignment="Left"
+                   VerticalAlignment="Center">
+              <Image.Source>
+                <MultiBinding Converter="{x:Static viewModels:DataExplorerViewModel.FolderIconConverter}">
+                  <Binding Path="IsExpanded"/>
+                </MultiBinding>
+              </Image.Source>
+            </Image>
+            <TextBlock Text="{Binding Name}"
+                       VerticalAlignment="Center"/>
+          </StackPanel>
+        </DataTemplate> 
+      </TreeDataGrid.Resources>
+    </TreeDataGrid>
+    <TreeDataGrid Grid.Row="1"
+                  Source="{Binding AssetsSource}"
+                  ContextFlyout="{Binding ContextMenu, Mode=OneWay}">
+    </TreeDataGrid>
+  </Grid>
+</UserControl>

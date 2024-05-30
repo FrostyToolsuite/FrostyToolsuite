@@ -5,5 +5,5 @@ public partial class Asset
     [OverrideAttribute]
     [IsReadOnlyAttribute()]
     [CategoryAttribute("Annotations")]
-    public CString Name { get; set; }
+    public string Name { get; set; }
 }

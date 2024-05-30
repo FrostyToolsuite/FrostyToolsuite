@@ -2,13 +2,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using Frosty.Sdk.IO;
+using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.DbObjectElements;
 
 public class DbObjectList : DbObject, IEnumerable<DbObject>
 {
     public int Count => m_items.Count;
-    
+
     private readonly List<DbObject> m_items;
 
     protected internal DbObjectList(Type inType)
@@ -22,7 +23,7 @@ public class DbObjectList : DbObject, IEnumerable<DbObject>
     {
         m_items = new List<DbObject>(inCapacity);
     }
-    
+
     protected internal  DbObjectList(string inName, int inCapacity)
         : base(Type.List, inName)
     {
@@ -35,7 +36,7 @@ public class DbObjectList : DbObject, IEnumerable<DbObject>
     {
         return this;
     }
-    
+
     public void Add(DbObjectDict value)
     {
         m_items.Add(value);
@@ -45,7 +46,7 @@ public class DbObjectList : DbObject, IEnumerable<DbObject>
     {
         m_items.Add(value);
     }
-    
+
     public void Add(bool value)
     {
         m_items.Add(new DbObjectBool(value));
@@ -105,20 +106,21 @@ public class DbObjectList : DbObject, IEnumerable<DbObject>
 
     protected override void InternalSerialize(DataStream stream)
     {
-        long curPos = stream.Position;
-        
-        foreach (DbObject value in m_items)
+        Block<byte> sub = new(0);
+        using (BlockStream subStream = new(sub, true))
         {
-            Serialize(stream, value);
-        }
-        
-        // write terminator
-        stream.WriteByte((byte)Type.Null);
+            foreach (DbObject value in m_items)
+            {
+                Serialize(subStream, value);
+            }
 
-        long size = stream.Position - curPos;
-        stream.Position = curPos;
-        stream.Write7BitEncodedInt64(size);
-        stream.Position = curPos + size;
+            // write terminator
+            subStream.WriteByte((byte)Type.Null);
+        }
+
+        stream.Write7BitEncodedInt64(sub.Size);
+        stream.Write(sub);
+        sub.Dispose();
     }
 
     protected override void InternalDeserialize(DataStream stream)
@@ -132,11 +134,11 @@ public class DbObjectList : DbObject, IEnumerable<DbObject>
             {
                 break;
             }
-            
+
             m_items.Add(obj);
         }
     }
-    
+
     private class DbObjectListEnum : IEnumerator<DbObject>
     {
         private List<DbObject> m_items;

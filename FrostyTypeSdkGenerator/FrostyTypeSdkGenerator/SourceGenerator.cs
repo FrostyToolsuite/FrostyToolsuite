@@ -17,11 +17,6 @@ public sealed partial class SourceGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        if (!Debugger.IsAttached)
-        {
-            Debugger.Launch();
-        }
-
         // Equals and GetHashCode overrides for structs
         {
             IncrementalValuesProvider<TypeContext> syntaxProvider = context.SyntaxProvider
@@ -300,12 +295,12 @@ public partial class {classContext.Name}
     [CategoryAttribute(""Annotations"")]
     [EbxFieldMetaAttribute(Frosty.Sdk.Sdk.TypeFlags.TypeEnum.CString, 8u)]
     [FieldIndexAttribute(-2)]
-    public global::Frosty.Sdk.Ebx.CString __Id
+    public string __Id
     {{
         get => GetId();
         set => __id = value;
     }}
-    protected global::Frosty.Sdk.Ebx.CString __id = new global::Frosty.Sdk.Ebx.CString();
+    protected string __id = string.Empty;
 }}";
         if (classContext.Name != "Asset")
         {
@@ -316,18 +311,18 @@ public partial class {classContext.Name}
         foreach (FieldContext field in classContext.Fields)
         {
             if (classContext.Name != "Asset" && field.Name.Equals("_Name", StringComparison.OrdinalIgnoreCase) &&
-                field.Type.Equals("global::Frostbite.Core.CString"))
+                field.Type.Contains("CString"))
             {
                 source = source.Remove(source.Length - 1) + @$"
-    protected virtual global::Frosty.Sdk.Ebx.CString GetId()
+    protected virtual string GetId()
     {{
         if (!string.IsNullOrEmpty(__id))
         {{
             return __id;
         }}
-        if (!string.IsNullOrEmpty((global::Frosty.Sdk.Ebx.CString){field.Name}.ToActualType()))
+        if (!string.IsNullOrEmpty((string){field.Name}.ToActualType()))
         {{
-            return ((global::Frosty.Sdk.Ebx.CString){field.Name}.ToActualType()).Sanitize();
+            return ((string){field.Name}.ToActualType());
         }}
 
         if (GlobalAttributes.DisplayModuleInClassId)
@@ -350,7 +345,7 @@ public partial class {classContext.Name}
         if (!added)
         {
             source = source.Remove(source.Length - 1) + @$"
-    protected virtual global::Frosty.Sdk.Ebx.CString GetId()
+    protected virtual string GetId()
     {{
         if (!string.IsNullOrEmpty(__id))
         {{
@@ -378,7 +373,7 @@ public partial class {classContext.Name}
     {
         FieldContext field = classContext.Fields.First(f => f.Name == "_Name");
 
-        if (!field.Type.Equals("global::Frostbite.Core.CString"))
+        if (!field.Type.Contains("CString"))
         {
             return;
         }
@@ -391,16 +386,16 @@ using System.Reflection;
 {(classContext.Namespace is null ? string.Empty : $"namespace {classContext.Namespace}; \n")}
 public partial class {classContext.Name}
 {{
-    protected override global::Frosty.Sdk.Ebx.CString GetId()
+    protected override string GetId()
     {{
         if (!string.IsNullOrEmpty(__id))
         {{
             return __id;
         }}
 
-        if (!string.IsNullOrEmpty((global::Frosty.Sdk.Ebx.CString){field.Name}.ToActualType()))
+        if (!string.IsNullOrEmpty((string){field.Name}.ToActualType()))
         {{
-            return ((global::Frosty.Sdk.Ebx.CString){field.Name}.ToActualType()).Sanitize();
+            return ((string){field.Name}.ToActualType());
         }}
 
         return base.GetId();

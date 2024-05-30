@@ -6,16 +6,16 @@ namespace FrostyEditor.Models;
 
 public class AssetModel
 {
-    public string? Name => m_entry?.Filename;
-    public string? Type => m_entry?.Type;
-    
-    private readonly AssetEntry? m_entry;
+    public string? Name => Entry?.Filename;
+    public string? Type => Entry?.Type;
+
+    public AssetEntry? Entry { get; }
 
     public AssetModel(AssetEntry inEntry)
     {
-        m_entry = inEntry;
+        Entry = inEntry;
     }
-    
+
     public static Comparison<AssetModel?> SortAscending<T>(Func<AssetModel, T> selector)
     {
         return (x, y) =>

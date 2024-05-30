@@ -2,26 +2,12 @@
   "Name": "DragonAgeInquisition",
   "DisplayName": "Dragon Age™: Inquisition",
   "InternalName": "dragonage",
-  "TypeInfoSignature": "",
+  "TypeInfoSignature": "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? C3",
   "HasStrippedTypeNames": false,
   "DataVersion": 20140304,
   "FrostbiteVersion": "2014.1",
-  "Sources": [
-    {
-      "Path": "Update/Patch/Data",
-      "SubDirs": false
-    },
-    {
-      "Path": "Update",
-      "SubDirs": true
-    },
-    {
-      "Path": "Data",
-      "SubDirs": false
-    }
-  ],
   "EbxVersion": 2,
-  "RequiresKey": false,
+  "RequiresInitFsKey": false,
   "MustAddChunks": true,
   "EnableExecution": true,
   "HasAntiCheat": false,

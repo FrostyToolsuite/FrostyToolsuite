@@ -19,10 +19,10 @@ public partial class FolderTreeNodeModel : ObservableObject
 
     [ObservableProperty]
     private string m_name;
-    
+
     [ObservableProperty]
     private bool m_hasChildren;
-    
+
     [ObservableProperty]
     private bool m_isExpanded;
 
@@ -30,7 +30,7 @@ public partial class FolderTreeNodeModel : ObservableObject
     {
         Name = inName;
     }
-    
+
     public static FolderTreeNodeModel Create()
     {
         FolderTreeNodeModel root = new("ROOT") { IsExpanded = true };
@@ -64,7 +64,7 @@ public partial class FolderTreeNodeModel : ObservableObject
 
             current.Assets.Add(asset);
         }
-        
+
         return root;
     }
 
@@ -72,7 +72,7 @@ public partial class FolderTreeNodeModel : ObservableObject
     {
         return Name.Equals(other.Name, StringComparison.OrdinalIgnoreCase);
     }
-    
+
     public override bool Equals(object? obj)
     {
         if (obj is FolderTreeNodeModel b)

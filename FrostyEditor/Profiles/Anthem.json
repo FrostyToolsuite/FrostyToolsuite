@@ -2,7 +2,8 @@
   "Name": "Anthem",
   "DisplayName": "Anthem™",
   "InternalName": "anthem",
-  "TypeInfoSignature" : "",
+  "TypeInfoSignature" : "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ??",
+  "TypeHashSeed" : "1032",
   "HasStrippedTypeNames": true,
   "DataVersion": 20190221,
   "FrostbiteVersion": "2017.7",
@@ -17,7 +18,7 @@
     }
   ],
   "EbxVersion": 5,
-  "RequiresKey": true,
+  "RequiresInitFsKey": true,
   "MustAddChunks": false,
   "EnableExecution": true,
   "HasAntiCheat": false,
