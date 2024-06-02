@@ -35,8 +35,9 @@ public class InstallChunkWriter
         {
             foreach (string file in Directory.EnumerateFiles(dir, "*.cas"))
             {
-                m_casIndex = Math.Max(int.Parse(Path.GetFileName(file).AsSpan()[4..][..^4]), m_casIndex);
-                File.CreateSymbolicLink(Path.Combine(m_dir, $"cas_{m_casIndex:D2}.cas"), file);
+                int index = int.Parse(Path.GetFileName(file).AsSpan()[4..][..^4]);
+                m_casIndex = Math.Max(index, m_casIndex);
+                File.CreateSymbolicLink(Path.Combine(m_dir, $"cas_{index:D2}.cas"), file);
             }
         }
 
