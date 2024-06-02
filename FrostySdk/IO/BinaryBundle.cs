@@ -175,7 +175,7 @@ public class BinaryBundle
         }
     }
 
-    private static bool IsValidMagic(Magic magic) =>
+    public static bool IsValidMagic(Magic magic) =>
         magic == Magic.Standard || magic == Magic.Kelvin || magic == Magic.Encrypted;
 
     /// <summary>

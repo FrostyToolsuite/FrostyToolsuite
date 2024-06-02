@@ -131,29 +131,24 @@ internal class Manifest2019 : IDisposable
 
         stringHelper.Fixup();
 
-        uint currentOffset = stringHelper.EncodeStrings ? 0x3Cu : 0x30u;
         TocData = new Block<byte>(44 + (stringHelper.EncodeStrings ? 12 : 0) + bundles.Count * 20 + chunks.Count * (36) + (bundleLoadFlag == 1 ? modifiedSuperBundle.Size : 0));
         TocData.Clear();
         using (BlockStream stream = new(TocData, true))
         {
-            stream.WriteUInt32(currentOffset, Endian.Big);
-            currentOffset += (uint)bundles.Count * sizeof(int) + 7u & ~7u;
-            stream.WriteUInt32(currentOffset, Endian.Big);
-            currentOffset += (uint)bundles.Count * (sizeof(int) + sizeof(uint) + sizeof(long)) + 7u & ~7u;
+            stream.WriteUInt32(stringHelper.EncodeStrings ? 0x3Cu : 0x30u, Endian.Big); // bundleHashMap
+            stream.WriteUInt32(0xdeadbeef); // bundles
             stream.WriteInt32(bundles.Count, Endian.Big);
 
-            stream.WriteUInt32(currentOffset, Endian.Big);
-            currentOffset += (uint)chunks.Count * sizeof(int) + 7u & ~7u;
-            stream.WriteUInt32(currentOffset, Endian.Big);
-            currentOffset += (uint)chunks.Count * (16 + sizeof(int)) + 7u & ~7u;
+            stream.WriteUInt32(0xdeadbeef); // chunkHashMap
+            stream.WriteUInt32(0xdeadbeef); // chunks
             stream.WriteInt32(chunks.Count, Endian.Big);
 
-            stream.WriteUInt32(currentOffset, Endian.Big);
-            stream.WriteUInt32(currentOffset, Endian.Big);
+            stream.WriteUInt32(0xdeadbeef); // unused
+            stream.WriteUInt32(0xdeadbeef); // unused
 
             stream.WriteUInt32(0xdeadbeef); // stringsOffset
 
-            stream.WriteUInt32(currentOffset, Endian.Big);
+            stream.WriteUInt32(0xdeadbeef); // chunkData
             stream.WriteUInt32(0xdeadbeef); // dataCount
 
             Manifest2019AssetLoader.Flags flags = Manifest2019AssetLoader.Flags.HasBaseBundles | Manifest2019AssetLoader.Flags.HasBaseChunks;
@@ -185,7 +180,7 @@ internal class Manifest2019 : IDisposable
 
             stream.Pad(8);
 
-            long bundlesOffset = stream.Position;
+            uint bundlesOffset = (uint)stream.Position;
             foreach ((StringHelper.String, uint, long) bundle in bundles)
             {
                 stream.WriteUInt32(bundle.Item1.Offset, Endian.Big);
@@ -194,6 +189,7 @@ internal class Manifest2019 : IDisposable
             }
 
             stream.Pad(8);
+            uint chunkHashMapOffset = (uint)stream.Position;
 
             hashMap = HashMap.CreateHashMapV2(ref chunks, (chunk, count, initial) =>
             {
@@ -207,6 +203,7 @@ internal class Manifest2019 : IDisposable
             }
 
             stream.Pad(8);
+            uint chunksOffset = (uint)stream.Position;
 
             List<uint> chunkData = new(chunks.Count * 4);
             foreach ((Guid Id, CasFileIdentifier Identifier, uint Offset, uint Size) chunk in chunks)
@@ -240,20 +237,21 @@ internal class Manifest2019 : IDisposable
             }
 
             stream.Pad(8);
+            uint chunkDataOffset = (uint)stream.Position;
 
             foreach (uint data in chunkData)
             {
                 stream.WriteUInt32(data, Endian.Big);
             }
 
-            long stringsOffset = stream.Position;
+            uint stringsOffset = (uint)stream.Position;
             if (stringHelper.EncodeStrings)
             {
                 stream.Write(stringHelper.Data);
 
                 if ((stringHelper.Data!.Length & 3) != 0)
                 {
-                    stream.Position += stringHelper.Data!.Length & 3;
+                    stream.Position += 4 - stringHelper.Data!.Length & 3;
                 }
 
                 foreach (uint node in stringHelper.Tree!)
@@ -283,15 +281,22 @@ internal class Manifest2019 : IDisposable
             }
 
             // fixup offsets
-            stream.Position = 8 * 4;
-            stream.WriteUInt32((uint)stringsOffset, Endian.Big);
-            stream.Position += 4;
+            stream.Position = 4; // bundleHashMap
+            stream.WriteUInt32(bundlesOffset, Endian.Big);
+            stream.Position += 4; // bundleCount
+            stream.WriteUInt32(chunkHashMapOffset, Endian.Big);
+            stream.WriteUInt32(chunksOffset, Endian.Big);
+            stream.Position += 4; // chunkCount
+            stream.WriteUInt32(chunkDataOffset, Endian.Big); // unused
+            stream.WriteUInt32(chunkDataOffset, Endian.Big); // unused
+            stream.WriteUInt32(stringsOffset, Endian.Big);
+            stream.WriteUInt32(chunkDataOffset, Endian.Big); // unused
             stream.WriteInt32(chunkData.Count, Endian.Big);
 
             if (stringHelper.EncodeStrings)
             {
                 stream.Position += 4;
-                stream.WriteInt32((stringHelper.Data!.Length / 4 + 3 & ~3) / 4, Endian.Big);
+                stream.WriteInt32((stringHelper.Data!.Length + 3 & ~3) / 4, Endian.Big);
                 stream.WriteInt32(stringHelper.Tree!.Count, Endian.Big);
                 stream.WriteUInt32((uint)stringsOffset + ((uint)stringHelper.Data!.Length + 3u & ~3u), Endian.Big);
             }
@@ -331,7 +336,8 @@ internal class Manifest2019 : IDisposable
 
             if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
             {
-                inStringHelper.EncodeStrings = true;
+                // TODO: encoding broken atm fix it then add this again
+                // inStringHelper.EncodeStrings = true;
                 huffmanDecoder = new HuffmanDecoder();
                 namesCount = stream.ReadUInt32(Endian.Big);
                 tableCount = stream.ReadUInt32(Endian.Big);
@@ -651,17 +657,18 @@ internal class Manifest2019 : IDisposable
         }
         else
         {
-            string path = FileSystemManager.GetFilePath(files[0].Item1);
+            var bundleFile = files[0];
+            string path = FileSystemManager.GetFilePath(bundleFile.Item1);
             if (string.IsNullOrEmpty(path))
             {
                 throw new Exception("Corrupted data. File for bundle does not exist.");
             }
-            using (BlockStream bundleStream = BlockStream.FromFile(path, files[0].Item2, (int)files[0].Item3))
+            using (BlockStream bundleStream = BlockStream.FromFile(path, bundleFile.Item2, (int)bundleFile.Item3))
             {
                 // remove bundle file
                 files.RemoveAt(0);
 
-                bundleMeta = BinaryBundle.Modify(stream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
+                bundleMeta = BinaryBundle.Modify(bundleStream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
                     (entry, i, isAdded) =>
                     {
                         if (isAdded)

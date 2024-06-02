@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
@@ -24,6 +24,19 @@ public static class BinaryBundle
 
         Sdk.IO.BinaryBundle.Magic magic = (Sdk.IO.BinaryBundle.Magic)(inStream.ReadUInt32(endian) ^ Sdk.IO.BinaryBundle.GetSalt());
 
+        // check what endian its written in
+        if (!Sdk.IO.BinaryBundle.IsValidMagic(magic))
+        {
+            endian = Endian.Little;
+            uint value = (uint)magic ^ Sdk.IO.BinaryBundle.GetSalt();
+            magic = (Sdk.IO.BinaryBundle.Magic)(BinaryPrimitives.ReverseEndianness(value) ^ Sdk.IO.BinaryBundle.GetSalt());
+
+            if (!Sdk.IO.BinaryBundle.IsValidMagic(magic))
+            {
+                throw new InvalidDataException("magic");
+            }
+        }
+
         bool containsSha1 = magic == Sdk.IO.BinaryBundle.Magic.Standard;
 
         uint totalCount = inStream.ReadUInt32(endian);
@@ -32,7 +45,7 @@ public static class BinaryBundle
         int chunkCount = inStream.ReadInt32(endian);
         long stringsOffset = inStream.ReadUInt32(endian) + startPos;
         long metaOffset = inStream.ReadUInt32(endian) + startPos;
-        inStream.Position += sizeof(int); // metaSize
+        uint metaSize = inStream.ReadUInt32(endian);
 
         // decrypt the data
         if (magic == Sdk.IO.BinaryBundle.Magic.Encrypted)
@@ -164,9 +177,13 @@ public static class BinaryBundle
             }
         }
 
-        // TODO: how to handle the meta stuff
-        inStream.Position = metaOffset;
-        DbObjectList chunkMeta = DbObject.Deserialize(inStream)!.AsList();
+        DbObjectList? chunkMeta = null;
+        if (metaSize > 0)
+        {
+            inStream.Position = metaOffset;
+            chunkMeta = DbObject.Deserialize(inStream)!.AsList();
+        }
+
 
         inStream.Position = resRidOffset + resCount * sizeof(ulong);
         for (int i = 0; i < chunkCount; i++, j++)
@@ -204,7 +221,7 @@ public static class BinaryBundle
                 firstMip.Add("firstMip", modEntry.FirstMip);
                 meta.Add("meta", firstMip);
             }
-            chunkMeta.Add(meta);
+            chunkMeta!.Add(meta);
         }
 
         inStream.Position = startPos + size;
@@ -270,7 +287,10 @@ public static class BinaryBundle
             }
 
             uint chunkMetaOffset = (uint)stream.Position - 4;
-            DbObject.Serialize(stream, chunkMeta);
+            if (chunkMeta is not null)
+            {
+                DbObject.Serialize(stream, chunkMeta);
+            }
             uint chunkMetaSize = (uint)(stream.Position - 4 - chunkMetaOffset);
 
             stringsOffset = stream.Position - 4;
