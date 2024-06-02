@@ -41,20 +41,20 @@ public partial class FrostyModExecutor
     /// <summary>
     /// Generates a directory containing the modded games data.
     /// </summary>
-    /// <param name="modPackName">The name of the directory where the data is stored in the games ModData folder.</param>
-    /// <param name="modPaths">The full paths of the mods.</param>
-    public Errors GenerateMods(string modPackName, params string[] modPaths)
+    /// <param name="inModPackPath">The full path of the directory where the modified data is going to be stored.</param>
+    /// <param name="inModPaths">The full paths of the mods.</param>
+    public Errors GenerateMods(string inModPackPath, params string[] inModPaths)
     {
         // define some paths we are going to need
         m_patchPath = FileSystemManager.Sources.Count == 1
             ? FileSystemSource.Base.Path
             : FileSystemSource.Patch.Path;
-        m_modDataPath = Path.Combine(FileSystemManager.BasePath, "ModData", modPackName, m_patchPath);
+        m_modDataPath = Path.Combine(inModPackPath, m_patchPath);
         m_gamePatchPath = Path.Combine(FileSystemManager.BasePath, m_patchPath);
 
         // check if we need to generate new data
         string modInfosPath = Path.Combine(m_modDataPath, "mods.json");
-        List<ModInfo> modInfos = GenerateModInfoList(modPaths);
+        List<ModInfo> modInfos = GenerateModInfoList(inModPaths);
         if (File.Exists(modInfosPath))
         {
             List<ModInfo>? oldModInfos = JsonSerializer.Deserialize<List<ModInfo>>(File.ReadAllText(modInfosPath));
@@ -72,7 +72,7 @@ public partial class FrostyModExecutor
         LoadHandlers();
 
         // process all mods
-        foreach (string path in modPaths)
+        foreach (string path in inModPaths)
         {
             string extension = Path.GetExtension(path);
             if (extension == ".fbmod")
@@ -116,9 +116,9 @@ public partial class FrostyModExecutor
         }
 
         // clear old generated mod data
-        if (Directory.Exists(m_modDataPath))
+        if (Directory.Exists(inModPackPath))
         {
-            Directory.Delete(m_modDataPath, true);
+            Directory.Delete(inModPackPath, true);
         }
         Directory.CreateDirectory(m_modDataPath);
 
@@ -150,9 +150,33 @@ public partial class FrostyModExecutor
             string modPath = Path.Combine(m_modDataPath, Path.GetRelativePath(m_gamePatchPath, file));
             if (!File.Exists(modPath))
             {
-                // TODO: check if we need to create the directory first
+                Directory.CreateDirectory(Directory.GetParent(modPath)!.FullName);
                 File.CreateSymbolicLink(modPath, file);
             }
+        }
+
+        if (FileSystemManager.Sources.Count > 1)
+        {
+            // symlink all other sources
+            foreach (FileSystemSource source in FileSystemManager.Sources)
+            {
+                if (source.Path == FileSystemSource.Patch.Path)
+                {
+                    continue;
+                }
+
+                string destPath = Path.Combine(inModPackPath, source.Path);
+                Directory.CreateDirectory(Directory.GetParent(destPath)!.FullName);
+                Directory.CreateSymbolicLink(destPath,
+                    Path.Combine(FileSystemManager.BasePath, source.Path));
+            }
+        }
+
+        string chunkManifest = Path.Combine(m_patchPath, "chunkmanifest");
+        if (File.Exists(chunkManifest))
+        {
+            // symlink chunkmanifest for games that have it
+            File.CreateSymbolicLink(Path.Combine(m_modDataPath, "chunkmanifest"), chunkManifest);
         }
 
         return Errors.Success;
@@ -180,7 +204,7 @@ public partial class FrostyModExecutor
 
     private void LoadHandlers()
     {
-        string handlersDir = Path.Combine(Utils.BaseDirectory, "Handlers");
+        string handlersDir = Path.Combine(Frosty.Sdk.Utils.Utils.BaseDirectory, "Handlers");
         Directory.CreateDirectory(handlersDir);
 
         foreach (string handler in Directory.EnumerateFiles(handlersDir))
@@ -566,7 +590,7 @@ public partial class FrostyModExecutor
         }
         else
         {
-            superBundle = Utils.HashString(bundle.Parent.Name, true);
+            superBundle = Frosty.Sdk.Utils.Utils.HashString(bundle.Parent.Name, true);
         }
 
         return GetSuperBundleModInfo(superBundle);

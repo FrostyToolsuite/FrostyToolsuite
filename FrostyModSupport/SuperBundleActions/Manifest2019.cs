@@ -1,12 +1,17 @@
+using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Text;
 using Frosty.ModSupport.Archive;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
+using Frosty.ModSupport.Utils;
 using Frosty.Sdk;
 using Frosty.Sdk.Exceptions;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
+using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
+using Frosty.Sdk.Managers.Infos.FileInfos;
 using Frosty.Sdk.Managers.Loaders;
 using Frosty.Sdk.Utils;
 
@@ -19,17 +24,19 @@ internal class Manifest2019 : IDisposable
         public class String
         {
             public uint Offset { get; set; }
+            public string Value { get; }
+
+            public String(string inValue)
+            {
+                Value = inValue;
+            }
         }
 
-        private bool m_encodeStrings;
+        public bool EncodeStrings;
         private uint m_currentOffset;
         private Dictionary<string, String> m_mapping = new();
-        private Dictionary<int, string> m_ids = new();
-
-        public StringHelper(bool inEncodeStrings)
-        {
-            m_encodeStrings = inEncodeStrings;
-        }
+        public IList<uint>? Tree;
+        public byte[]? Data;
 
         public String AddString(string inString)
         {
@@ -38,12 +45,8 @@ internal class Manifest2019 : IDisposable
                 return retVal;
             }
 
-            retVal = new String();
-            if (!m_encodeStrings)
-            {
-                retVal.Offset = m_currentOffset;
-                m_currentOffset += (uint)(inString.Length + 1);
-            }
+            retVal = new String(inString) { Offset = m_currentOffset };
+            m_currentOffset += (uint)(inString.Length + 1);
 
             m_mapping.Add(inString, retVal);
 
@@ -52,13 +55,31 @@ internal class Manifest2019 : IDisposable
 
         public void Fixup()
         {
-            if (!m_encodeStrings)
+            if (!EncodeStrings)
             {
                 return;
             }
 
             HuffmanEncoder encoder = new();
-            // TODO: encode strings
+
+            Tree = encoder.BuildHuffmanEncodingTree(m_mapping.Keys);
+            HuffmanEncodedTextArray<string> result = encoder.EncodeTexts(m_mapping.Keys.Select(x => new Tuple<string, string>(x, x)));
+            foreach (IdentifierPositionTuple<string> position in result.EncodedTextPositions)
+            {
+                m_mapping[position.Identifier].Offset = (uint)position.Position;
+            }
+
+            Data = result.EncodedTexts;
+        }
+
+        public void Write(DataStream inStream)
+        {
+            List<String> sorted = new(m_mapping.Values);
+            sorted.Sort(((a, b) => a.Offset.CompareTo(b.Offset)));
+            foreach (String s in sorted)
+            {
+                inStream.WriteNullTerminatedString(s.Value);
+            }
         }
     }
 
@@ -80,281 +101,26 @@ internal class Manifest2019 : IDisposable
     public void ModSuperBundle(string inPath, bool inCreateNewPatch, SuperBundleInstallChunk inSbIc, SuperBundleModInfo inModInfo, InstallChunkWriter inInstallChunkWriter)
     {
         List<(StringHelper.String, uint, long)> bundles = new();
-        List<(Guid, int, CasFileIdentifier, uint, uint)> chunks = new();
+        List<(Guid, CasFileIdentifier, uint, uint)> chunks = new();
         StringHelper stringHelper;
 
-        bool encodeStrings = false;
-        byte bundleLoadFlag = 0;
+        byte bundleLoadFlag;
 
-        Block<byte> modifiedSuperBundle = new(100); // TODO: estimate size
+        stringHelper = new StringHelper();
+
+        //inModInfo.Modified.Bundles.Clear();
+        //inModInfo.Modified.Chunks.Clear();
+
+        Block<byte> modifiedSuperBundle = new(0);
         using (BlockStream modifiedStream = new(modifiedSuperBundle, true))
         {
-            using (BlockStream stream = BlockStream.FromFile(inPath, true))
-            {
-                stream.Position += sizeof(uint); // bundleHashMapOffset
-                uint bundleDataOffset = stream.ReadUInt32(Endian.Big);
-                int bundlesCount = stream.ReadInt32(Endian.Big);
+            bundleLoadFlag = ProcessBundles(inPath, inCreateNewPatch, inSbIc, inModInfo, inInstallChunkWriter, stringHelper, modifiedStream, bundles, chunks);
 
-                stream.Position += sizeof(uint); // chunkHashMapOffset
-                uint chunkGuidOffset = stream.ReadUInt32(Endian.Big);
-                int chunksCount = stream.ReadInt32(Endian.Big);
-
-                // not used by any game rn, maybe crypto stuff
-                stream.Position += sizeof(uint);
-                stream.Position += sizeof(uint);
-
-                uint namesOffset = stream.ReadUInt32(Endian.Big);
-
-                uint chunkDataOffset = stream.ReadUInt32(Endian.Big);
-                int dataCount = stream.ReadInt32(Endian.Big);
-
-                Manifest2019AssetLoader.Flags flags = (Manifest2019AssetLoader.Flags)stream.ReadInt32(Endian.Big);
-
-                uint namesCount = 0;
-                uint tableCount = 0;
-                uint tableOffset = uint.MaxValue;
-                HuffmanDecoder? huffmanDecoder = null;
-
-                if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
-                {
-                    encodeStrings = true;
-                    huffmanDecoder = new HuffmanDecoder();
-                    namesCount = stream.ReadUInt32(Endian.Big);
-                    tableCount = stream.ReadUInt32(Endian.Big);
-                    tableOffset = stream.ReadUInt32(Endian.Big);
-                }
-
-                stringHelper = new StringHelper(encodeStrings);
-
-                if (bundlesCount != 0)
-                {
-                    if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
-                    {
-                        stream.Position = namesOffset;
-                        huffmanDecoder!.ReadEncodedData(stream, namesCount, Endian.Big);
-
-                        stream.Position = tableOffset;
-                        huffmanDecoder.ReadHuffmanTable(stream, tableCount, Endian.Big);
-                    }
-
-                    stream.Position = bundleDataOffset;
-                    BlockStream? sbStream = null;
-                    for (int i = 0; i < bundlesCount; i++)
-                    {
-                        int nameOffset = stream.ReadInt32(Endian.Big);
-                        uint bundleSize = stream.ReadUInt32(Endian.Big);
-                        long bundleOffset = stream.ReadInt64(Endian.Big);
-
-                        // get name either from huffman table or raw string table at the end
-                        string name;
-                        if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
-                        {
-                            name = huffmanDecoder!.ReadHuffmanEncodedString(nameOffset);
-                        }
-                        else
-                        {
-                            long curPos = stream.Position;
-                            stream.Position = namesOffset + nameOffset;
-                            name = stream.ReadNullTerminatedString();
-                            stream.Position = curPos;
-                        }
-
-                        int id = Utils.HashString(name + inSbIc.Name, true);
-                        bundleLoadFlag = (byte)(bundleSize >> 30);
-                        bundleSize &= 0x3FFFFFFFU;
-
-                        uint newOffset = (uint)modifiedStream.Position;
-                        long newBundleSize;
-
-                        if (!inModInfo.Modified.Bundles.TryGetValue(id, out BundleModInfo? bundleModInfo))
-                        {
-                            if (inCreateNewPatch)
-                            {
-                                // we create a new patch to a base superbundle, so we only need modified bundles
-                                continue;
-                            }
-
-                            // load and write unmodified bundle
-                            newBundleSize = bundleSize;
-                            switch (bundleLoadFlag)
-                            {
-                                case 0:
-                                    sbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
-                                    sbStream.Position = bundleOffset;
-                                    sbStream.CopyTo(modifiedStream, (int)bundleSize);
-                                    break;
-                                case 1:
-                                    long curPos = stream.Position;
-                                    stream.Position = bundleOffset;
-                                    stream.CopyTo(modifiedStream, (int)bundleSize);
-                                    stream.Position = curPos;
-                                    break;
-                                default:
-                                    throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
-                            }
-                        }
-                        else
-                        {
-                            // load, modify and write bundle
-                            BlockStream bundleStream;
-                            switch (bundleLoadFlag)
-                            {
-                                case 0:
-                                    sbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
-                                    bundleStream = sbStream;
-                                    break;
-                                case 1:
-                                    bundleStream = stream;
-                                    break;
-                                default:
-                                    throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
-                            }
-
-                            (Block<byte> BundleMeta, List<(CasFileIdentifier, uint, uint)> Files, bool IsInline)
-                                bundle = ModifyBundle(bundleStream, bundleOffset, bundleModInfo,
-                                    inInstallChunkWriter);
-
-                            Block<byte> data = WriteModifiedBundle(bundle, inInstallChunkWriter);
-                            modifiedStream.Write(data);
-                            newBundleSize = data.Size;
-                            data.Dispose();
-
-                            // remove bundle so we can check if the base superbundle needs to be loaded to modify a base bundle
-                            inModInfo.Modified.Bundles.Remove(id);
-                        }
-
-                        bundles.Add((stringHelper.AddString(name), newOffset, newBundleSize));
-                    }
-                    huffmanDecoder?.Dispose();
-                }
-
-                if (chunksCount != 0)
-                {
-                    // TODO
-                }
-            }
-
+            // if we modify some bundles that are not in the patch we need to parse the base superbundle as well
             if (inModInfo.Modified.Bundles.Count > 0 || inModInfo.Modified.Chunks.Count > 0)
             {
                 string basePath = FileSystemManager.ResolvePath(false, $"{inSbIc.Name}.toc");
-                using (BlockStream stream = BlockStream.FromFile(basePath, true))
-                {
-                    stream.Position += sizeof(uint); // bundleHashMapOffset
-                    uint bundleDataOffset = stream.ReadUInt32(Endian.Big);
-                    int bundlesCount = stream.ReadInt32(Endian.Big);
-
-                    stream.Position += sizeof(uint); // chunkHashMapOffset
-                    uint chunkGuidOffset = stream.ReadUInt32(Endian.Big);
-                    int chunksCount = stream.ReadInt32(Endian.Big);
-
-                    // not used by any game rn, maybe crypto stuff
-                    stream.Position += sizeof(uint);
-                    stream.Position += sizeof(uint);
-
-                    uint namesOffset = stream.ReadUInt32(Endian.Big);
-
-                    uint chunkDataOffset = stream.ReadUInt32(Endian.Big);
-                    int dataCount = stream.ReadInt32(Endian.Big);
-
-                    Manifest2019AssetLoader.Flags flags = (Manifest2019AssetLoader.Flags)stream.ReadInt32(Endian.Big);
-
-                    uint namesCount = 0;
-                    uint tableCount = 0;
-                    uint tableOffset = uint.MaxValue;
-                    HuffmanDecoder? huffmanDecoder = null;
-
-                    if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
-                    {
-                        huffmanDecoder = new HuffmanDecoder();
-                        namesCount = stream.ReadUInt32(Endian.Big);
-                        tableCount = stream.ReadUInt32(Endian.Big);
-                        tableOffset = stream.ReadUInt32(Endian.Big);
-                    }
-
-                    if (bundlesCount != 0)
-                    {
-                        if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
-                        {
-                            stream.Position = namesOffset;
-                            huffmanDecoder!.ReadEncodedData(stream, namesCount, Endian.Big);
-
-                            stream.Position = tableOffset;
-                            huffmanDecoder.ReadHuffmanTable(stream, tableCount, Endian.Big);
-                        }
-
-                        stream.Position = bundleDataOffset;
-                        BlockStream? sbStream = null;
-                        for (int i = 0; i < bundlesCount; i++)
-                        {
-                            int nameOffset = stream.ReadInt32(Endian.Big);
-                            uint bundleSize = stream.ReadUInt32(Endian.Big);
-                            long bundleOffset = stream.ReadInt64(Endian.Big);
-
-                            // get name either from huffman table or raw string table at the end
-                            string name;
-                            if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
-                            {
-                                name = huffmanDecoder!.ReadHuffmanEncodedString(nameOffset);
-                            }
-                            else
-                            {
-                                long curPos = stream.Position;
-                                stream.Position = namesOffset + nameOffset;
-                                name = stream.ReadNullTerminatedString();
-                                stream.Position = curPos;
-                            }
-
-                            int id = Utils.HashString(name + inSbIc.Name, true);
-                            byte bundleLoadFlag2 = (byte)(bundleSize >> 30);
-                            bundleSize &= 0x3FFFFFFFU;
-
-                            uint newOffset = (uint)modifiedStream.Position;
-                            long newBundleSize;
-
-                            if (inModInfo.Modified.Bundles.TryGetValue(id, out BundleModInfo? bundleModInfo))
-                            {
-                                // load, modify and write bundle
-                                BlockStream bundleStream;
-                                switch (bundleLoadFlag2)
-                                {
-                                    case 0:
-                                        sbStream ??= BlockStream.FromFile(basePath.Replace(".toc", ".sb"), false);
-                                        bundleStream = sbStream;
-                                        break;
-                                    case 1:
-                                        bundleStream = stream;
-                                        break;
-                                    default:
-                                        throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
-                                }
-
-                                (Block<byte> BundleMeta, List<(CasFileIdentifier, uint, uint)> Files, bool IsInline)
-                                    bundle = ModifyBundle(bundleStream, bundleOffset, bundleModInfo,
-                                        inInstallChunkWriter);
-
-                                Block<byte> data = WriteModifiedBundle(bundle, inInstallChunkWriter);
-                                modifiedStream.Write(data);
-                                newBundleSize = data.Size;
-                                data.Dispose();
-
-                                // remove bundle so we can check if the base superbundle needs to be loaded to modify a base bundle
-                                inModInfo.Modified.Bundles.Remove(id);
-                            }
-                            else
-                            {
-                                continue;
-                            }
-
-                            bundles.Add((stringHelper.AddString(name), newOffset, newBundleSize));
-                        }
-                        huffmanDecoder?.Dispose();
-                    }
-
-                    if (chunksCount != 0)
-                    {
-                        // TODO
-                    }
-                }
+                ProcessBundles(basePath, true, inSbIc, inModInfo, inInstallChunkWriter, stringHelper, modifiedStream, bundles, chunks);
             }
 
             Debug.Assert(inModInfo.Modified.Bundles.Count == 0 && inModInfo.Modified.Chunks.Count == 0);
@@ -367,54 +133,143 @@ internal class Manifest2019 : IDisposable
 
         stringHelper.Fixup();
 
-        uint offset = encodeStrings ? 0x3Cu : 0x30u;
-        TocData = new Block<byte>(100); // TODO: size
+        uint currentOffset = stringHelper.EncodeStrings ? 0x3Cu : 0x30u;
+        TocData = new Block<byte>(44 + (stringHelper.EncodeStrings ? 12 : 0) + bundles.Count * 20 + chunks.Count * (36) + (bundleLoadFlag == 1 ? modifiedSuperBundle.Size : 0));
+        TocData.Clear();
         using (BlockStream stream = new(TocData, true))
         {
-            stream.WriteUInt32(offset, Endian.Big);
-            offset += (uint)bundles.Count * sizeof(int);
-            stream.WriteUInt32(offset, Endian.Big);
-            offset += (uint)bundles.Count * (sizeof(int) + sizeof(uint) + sizeof(long));
+            stream.WriteUInt32(currentOffset, Endian.Big);
+            currentOffset += (uint)bundles.Count * sizeof(int) + 7u & ~7u;
+            stream.WriteUInt32(currentOffset, Endian.Big);
+            currentOffset += (uint)bundles.Count * (sizeof(int) + sizeof(uint) + sizeof(long)) + 7u & ~7u;
             stream.WriteInt32(bundles.Count, Endian.Big);
 
-            stream.WriteUInt32(offset, Endian.Big);
-            offset += (uint)chunks.Count * sizeof(int);
-            stream.WriteUInt32(offset, Endian.Big);
-            offset += (uint)chunks.Count * (16 + sizeof(int));
+            stream.WriteUInt32(currentOffset, Endian.Big);
+            currentOffset += (uint)chunks.Count * sizeof(int) + 7u & ~7u;
+            stream.WriteUInt32(currentOffset, Endian.Big);
+            currentOffset += (uint)chunks.Count * (16 + sizeof(int)) + 7u & ~7u;
             stream.WriteInt32(chunks.Count, Endian.Big);
 
-            stream.WriteUInt32(offset, Endian.Big);
-            stream.WriteUInt32(offset, Endian.Big);
+            stream.WriteUInt32(currentOffset, Endian.Big);
+            stream.WriteUInt32(currentOffset, Endian.Big);
 
             stream.WriteUInt32(0xdeadbeef); // stringsOffset
 
-            stream.WriteUInt32(offset, Endian.Big);
+            stream.WriteUInt32(currentOffset, Endian.Big);
             stream.WriteUInt32(0xdeadbeef); // dataCount
 
-            if (encodeStrings)
+            uint f = 6388U;
+            uint f2 = 6392U;
+
+            Manifest2019AssetLoader.Flags flags = Manifest2019AssetLoader.Flags.HasBaseBundles | Manifest2019AssetLoader.Flags.HasBaseChunks;
+            if (stringHelper.EncodeStrings)
+            {
+                flags |= Manifest2019AssetLoader.Flags.HasCompressedNames;
+            }
+
+            stream.WriteInt32((int)flags, Endian.Big);
+
+            if (stringHelper.EncodeStrings)
             {
                 stream.WriteUInt32(0xdeadbeef); // stringCount
                 stream.WriteUInt32(0xdeadbeef); // tableCount
                 stream.WriteUInt32(0xdeadbeef); // tableOffset
             }
 
-            // TODO: bundle hashmap
-            for (int i = 0; i < bundles.Count; i++)
+            List<int> hashMap = HashMap.CreateHashMapV2(ref bundles, (bundle, count, initial) =>
             {
-                
+                Span<byte> b = stackalloc byte[bundle.Item1.Value.Length];
+                Encoding.ASCII.GetBytes(bundle.Item1.Value.ToLower(), b);
+                return HashMap.GetIndex(b, count, initial);
+            });
+
+            foreach (int hash in hashMap)
+            {
+                stream.WriteInt32(hash, Endian.Big);
             }
+
+            stream.Pad(8);
 
             long bundlesOffset = stream.Position;
             foreach ((StringHelper.String, uint, long) bundle in bundles)
             {
                 stream.WriteUInt32(bundle.Item1.Offset, Endian.Big);
                 stream.WriteUInt32(bundle.Item2 | (uint)(bundleLoadFlag << 30), Endian.Big);
-                stream.WriteInt64(bundle.Item3, Endian.Big); // TODO: add size of toc if bundleLoadFlag == 1
+                stream.WriteInt64(bundle.Item3, Endian.Big);
             }
 
-            // TODO: chunks
+            stream.Pad(8);
 
-            // TODO: strings
+            hashMap = HashMap.CreateHashMapV2(ref chunks, (chunk, count, initial) =>
+            {
+                Span<byte> b = chunk.Item1.ToByteArray();
+                return HashMap.GetIndex(b, count, initial);
+            });
+
+            foreach (int hash in hashMap)
+            {
+                stream.WriteInt32(hash, Endian.Big);
+            }
+
+            stream.Pad(8);
+
+            List<uint> chunkData = new(chunks.Count * 4);
+            foreach ((Guid Id, CasFileIdentifier Identifier, uint Offset, uint Size) chunk in chunks)
+            {
+                // TODO: maybe write some helper that does this better
+                Span<byte> buffer = chunk.Id.ToByteArray();
+                buffer.Reverse();
+                stream.Write(buffer);
+
+                int index = chunkData.Count;
+
+                int flag;
+                if (chunk.Identifier.InstallChunkIndex > 0xFF)
+                {
+                    ulong b = CasFileIdentifier.ToFileIdentifierLong(chunk.Identifier);
+                    chunkData.Add((uint)(b >> sizeof(uint)));
+                    chunkData.Add((uint)(b & uint.MaxValue));
+                    flag = 0x80;
+                }
+                else
+                {
+                    chunkData.Add(CasFileIdentifier.ToFileIdentifier(chunk.Identifier));
+                    flag = 1;
+                }
+
+                stream.WriteInt32(index | (flag << 24), Endian.Big);
+
+                chunkData.Add(chunk.Offset);
+                chunkData.Add(chunk.Size);
+
+            }
+
+            stream.Pad(8);
+
+            foreach (uint data in chunkData)
+            {
+                stream.WriteUInt32(data, Endian.Big);
+            }
+
+            long stringsOffset = stream.Position;
+            if (stringHelper.EncodeStrings)
+            {
+                stream.Write(stringHelper.Data);
+
+                if ((stringHelper.Data!.Length & 3) != 0)
+                {
+                    stream.Position += stringHelper.Data!.Length & 3;
+                }
+
+                foreach (uint node in stringHelper.Tree!)
+                {
+                    stream.WriteUInt32(node, Endian.Big);
+                }
+            }
+            else
+            {
+                stringHelper.Write(stream);
+            }
 
             if (bundleLoadFlag == 1)
             {
@@ -423,6 +278,7 @@ internal class Manifest2019 : IDisposable
                 long sbOffset = stream.Position;
                 stream.Write(modifiedSuperBundle);
 
+                // fixup bundle offset if its inline
                 stream.Position = bundlesOffset;
                 foreach ((StringHelper.String, uint, long) bundle in bundles)
                 {
@@ -430,12 +286,246 @@ internal class Manifest2019 : IDisposable
                     stream.WriteInt64(bundle.Item3 + sbOffset, Endian.Big);
                 }
             }
+
+            // fixup offsets
+            stream.Position = 8 * 4;
+            stream.WriteUInt32((uint)stringsOffset, Endian.Big);
+            stream.Position += 4;
+            stream.WriteInt32(chunkData.Count, Endian.Big);
+
+            if (stringHelper.EncodeStrings)
+            {
+                stream.Position += 4;
+                stream.WriteInt32((stringHelper.Data!.Length / 4 + 3 & ~3) / 4, Endian.Big);
+                stream.WriteInt32(stringHelper.Tree!.Count, Endian.Big);
+                stream.WriteUInt32((uint)stringsOffset + ((uint)stringHelper.Data!.Length + 3u & ~3u), Endian.Big);
+            }
         }
+    }
+
+    private byte ProcessBundles(string inPath, bool inOnlyUseModifiedBundles, SuperBundleInstallChunk inSbIc,
+        SuperBundleModInfo inModInfo, InstallChunkWriter inInstallChunkWriter, StringHelper inStringHelper,
+        BlockStream inModifiedStream, List<(StringHelper.String, uint, long)> inBundles, List<(Guid, CasFileIdentifier, uint, uint)> inChunks)
+    {
+        byte bundleLoadFlag = 0;
+        using (BlockStream stream = BlockStream.FromFile(inPath, true))
+        {
+            stream.Position += sizeof(uint); // bundleHashMapOffset
+            uint bundleDataOffset = stream.ReadUInt32(Endian.Big);
+            int bundlesCount = stream.ReadInt32(Endian.Big);
+
+            stream.Position += sizeof(uint); // chunkHashMapOffset
+            uint chunkGuidOffset = stream.ReadUInt32(Endian.Big);
+            int chunksCount = stream.ReadInt32(Endian.Big);
+
+            // not used by any game rn, maybe crypto stuff
+            stream.Position += sizeof(uint);
+            stream.Position += sizeof(uint);
+
+            uint namesOffset = stream.ReadUInt32(Endian.Big);
+
+            uint chunkDataOffset = stream.ReadUInt32(Endian.Big);
+            int dataCount = stream.ReadInt32(Endian.Big);
+
+            Manifest2019AssetLoader.Flags flags = (Manifest2019AssetLoader.Flags)stream.ReadInt32(Endian.Big);
+
+            uint namesCount = 0;
+            uint tableCount = 0;
+            uint tableOffset = uint.MaxValue;
+            HuffmanDecoder? huffmanDecoder = null;
+
+            if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
+            {
+                inStringHelper.EncodeStrings = true;
+                huffmanDecoder = new HuffmanDecoder();
+                namesCount = stream.ReadUInt32(Endian.Big);
+                tableCount = stream.ReadUInt32(Endian.Big);
+                tableOffset = stream.ReadUInt32(Endian.Big);
+            }
+
+            if (bundlesCount != 0)
+            {
+                if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
+                {
+                    stream.Position = namesOffset;
+                    huffmanDecoder!.ReadEncodedData(stream, namesCount, Endian.Big);
+
+                    stream.Position = tableOffset;
+                    huffmanDecoder.ReadHuffmanTable(stream, tableCount, Endian.Big);
+                }
+
+                stream.Position = bundleDataOffset;
+                BlockStream? sbStream = null;
+                for (int i = 0; i < bundlesCount; i++)
+                {
+                    int nameOffset = stream.ReadInt32(Endian.Big);
+                    uint bundleSize = stream.ReadUInt32(Endian.Big);
+                    long bundleOffset = stream.ReadInt64(Endian.Big);
+
+                    // get name either from huffman table or raw string table at the end
+                    string name;
+                    if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
+                    {
+                        name = huffmanDecoder!.ReadHuffmanEncodedString(nameOffset);
+                    }
+                    else
+                    {
+                        long curPos = stream.Position;
+                        stream.Position = namesOffset + nameOffset;
+                        name = stream.ReadNullTerminatedString();
+                        stream.Position = curPos;
+                    }
+
+                    int id = Frosty.Sdk.Utils.Utils.HashString(name + inSbIc.Name, true);
+                    bundleLoadFlag = (byte)(bundleSize >> 30);
+                    bundleSize &= 0x3FFFFFFFU;
+
+                    long newOffset = inModifiedStream.Position;
+                    uint newBundleSize;
+
+                    if (!inModInfo.Modified.Bundles.TryGetValue(id, out BundleModInfo? bundleModInfo))
+                    {
+                        if (inOnlyUseModifiedBundles)
+                        {
+                            // we create a new patch to a base superbundle, so we only need modified bundles
+                            continue;
+                        }
+
+                        // load and write unmodified bundle
+                        newBundleSize = bundleSize;
+                        switch (bundleLoadFlag)
+                        {
+                            case 0:
+                                sbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
+                                sbStream.Position = bundleOffset;
+                                sbStream.CopyTo(inModifiedStream, (int)bundleSize);
+                                break;
+                            case 1:
+                                long curPos = stream.Position;
+                                stream.Position = bundleOffset;
+                                stream.CopyTo(inModifiedStream, (int)bundleSize);
+                                stream.Position = curPos;
+                                break;
+                            default:
+                                throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
+                        }
+                        inModifiedStream.Pad(4);
+                    }
+                    else
+                    {
+                        // load, modify and write bundle
+                        BlockStream bundleStream;
+                        switch (bundleLoadFlag)
+                        {
+                            case 0:
+                                sbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
+                                bundleStream = sbStream;
+                                break;
+                            case 1:
+                                bundleStream = stream;
+                                break;
+                            default:
+                                throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
+                        }
+
+                        (Block<byte> BundleMeta, List<(CasFileIdentifier, uint, uint)> Files, bool IsInline)
+                            bundle = ModifyBundle(bundleStream, bundleOffset, bundleModInfo,
+                                inInstallChunkWriter);
+
+                        Block<byte> data = WriteModifiedBundle(bundle, inInstallChunkWriter);
+                        inModifiedStream.Write(data);
+                        inModifiedStream.Pad(4);
+                        newBundleSize = (uint)data.Size;
+                        data.Dispose();
+
+                        // remove bundle so we can check if the base superbundle needs to be loaded to modify a base bundle
+                        inModInfo.Modified.Bundles.Remove(id);
+                    }
+
+                    inBundles.Add((inStringHelper.AddString(name), newBundleSize, newOffset));
+                }
+                huffmanDecoder?.Dispose();
+            }
+
+            if (chunksCount != 0)
+            {
+                stream.Position = chunkDataOffset;
+                Block<uint> chunkData = new(dataCount);
+                stream.ReadExactly(chunkData.ToBlock<byte>());
+
+                stream.Position = chunkGuidOffset;
+                Span<byte> b = stackalloc byte[16];
+                for (int i = 0; i < chunksCount; i++)
+                {
+                    stream.ReadExactly(b);
+                    b.Reverse();
+
+                    Guid id = new(b);
+
+                    int index = stream.ReadInt32(Endian.Big);
+
+                    if (index == -1)
+                    {
+                        // removed chunk
+                        continue;
+                    }
+
+                    byte fileIdentifierFlag = (byte)(index >> 24);
+
+                    index &= 0x00FFFFFF;
+
+                    CasFileIdentifier casFileIdentifier;
+                    if (fileIdentifierFlag == 1)
+                    {
+                        casFileIdentifier = CasFileIdentifier.FromFileIdentifier(BinaryPrimitives.ReverseEndianness(chunkData[index++]));
+                    }
+                    else if (fileIdentifierFlag == 0x80)
+                    {
+                        casFileIdentifier = CasFileIdentifier.FromFileIdentifier(BinaryPrimitives.ReverseEndianness(chunkData[index++]), BinaryPrimitives.ReverseEndianness(chunkData[index++]));
+                    }
+                    else
+                    {
+                        throw new UnknownValueException<byte>("file identifier flag", fileIdentifierFlag);
+                    }
+
+                    uint offset = BinaryPrimitives.ReverseEndianness(chunkData[index++]);
+                    uint size = BinaryPrimitives.ReverseEndianness(chunkData[index]);
+
+                    if (!inModInfo.Modified.Chunks.Contains(id))
+                    {
+                        if (inOnlyUseModifiedBundles)
+                        {
+                            // we create a new patch to a base superbundle, so we only need modified chunks
+                            continue;
+                        }
+
+                        // use the original info
+                    }
+                    else
+                    {
+                        // modify chunk
+                        (CasFileIdentifier, uint, uint) info = inInstallChunkWriter.GetFileInfo(m_modifiedChunks[id].Sha1);
+
+                        casFileIdentifier = info.Item1;
+                        offset = info.Item2;
+                        size = info.Item3;
+
+                        // remove chunk so we can check if the base superbundle needs to be loaded to modify a base chunk
+                        inModInfo.Modified.Chunks.Remove(id);
+                    }
+
+                    inChunks.Add((id, casFileIdentifier, offset, size));
+                }
+
+                chunkData.Dispose();
+            }
+        }
+        return bundleLoadFlag;
     }
 
     private static Block<byte> WriteModifiedBundle((Block<byte> BundleMeta, List<(CasFileIdentifier, uint, uint)> Files, bool IsInline) inBundle, InstallChunkWriter inInstallChunkWriter)
     {
-        Block<byte> retVal = new(100); // TODO: size
+        Block<byte> retVal = new(0);
         using (BlockStream bundleWriter = new(retVal, true))
         {
             bundleWriter.WriteInt32(inBundle.IsInline ? 0x20 : 0, Endian.Big);
@@ -454,7 +544,7 @@ internal class Manifest2019 : IDisposable
             else
             {
                 inBundle.Files[0] =
-                    inInstallChunkWriter.WriteData(Utils.GenerateSha1(inBundle.BundleMeta), inBundle.BundleMeta);
+                    inInstallChunkWriter.WriteData(Frosty.Sdk.Utils.Utils.GenerateSha1(inBundle.BundleMeta), inBundle.BundleMeta);
             }
 
             inBundle.BundleMeta.Dispose();
@@ -483,6 +573,8 @@ internal class Manifest2019 : IDisposable
                         fileFlags[j] = 1;
                         bundleWriter.WriteUInt32(CasFileIdentifier.ToFileIdentifier(file.Item1), Endian.Big);
                     }
+
+                    current = file.Item1;
                 }
 
                 bundleWriter.WriteUInt32(file.Item2, Endian.Big);
@@ -496,9 +588,11 @@ internal class Manifest2019 : IDisposable
             }
 
             bundleWriter.Position = 8;
-            bundleWriter.WriteUInt32((uint)fileFlagOffset);
+            bundleWriter.WriteUInt32((uint)fileFlagOffset, Endian.Big);
             bundleWriter.Position = 16;
-            bundleWriter.WriteUInt32((uint)fileIdentifierOffset);
+            bundleWriter.WriteUInt32((uint)fileIdentifierOffset, Endian.Big);
+            bundleWriter.WriteUInt32((uint)fileIdentifierOffset, Endian.Big);
+            bundleWriter.WriteUInt32((uint)fileIdentifierOffset, Endian.Big);
         }
 
         return retVal;
@@ -530,6 +624,8 @@ internal class Manifest2019 : IDisposable
         Block<byte> fileIdentifierFlags = new(totalCount);
         stream.ReadExactly(fileIdentifierFlags);
 
+        stream.Position = inOffset + dataOffset;
+
         CasFileIdentifier file = default;
         int currentIndex = 0;
 
@@ -557,23 +653,19 @@ internal class Manifest2019 : IDisposable
                         files[i] = inInstallChunkWriter.GetFileInfo(entry.Sha1);
                     }
                 });
-
-            // go to the start of the data
-            stream.Position = inOffset + dataOffset;
         }
         else
         {
-            stream.Position = inOffset + dataOffset;
-            file = ReadCasFileIdentifier(stream, fileIdentifierFlags[0], file);
-            uint offset = stream.ReadUInt32(Endian.Big);
-            int size = stream.ReadInt32(Endian.Big);
-            string path = FileSystemManager.GetFilePath(file);
+            string path = FileSystemManager.GetFilePath(files[0].Item1);
             if (string.IsNullOrEmpty(path))
             {
                 throw new Exception("Corrupted data. File for bundle does not exist.");
             }
-            using (BlockStream bundleStream = BlockStream.FromFile(path, offset, size))
+            using (BlockStream bundleStream = BlockStream.FromFile(path, files[0].Item2, (int)files[0].Item3))
             {
+                // remove bundle file
+                files.RemoveAt(0);
+
                 bundleMeta = BinaryBundle.Modify(stream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
                     (entry, i, isAdded) =>
                     {
@@ -645,6 +737,7 @@ public partial class FrostyModExecutor
 
             using (FileStream stream = new(modifiedToc.FullName, FileMode.Create, FileAccess.Write))
             {
+                ObfuscationHeader.Write(stream);
                 stream.Write(action.TocData!);
                 action.TocData!.Dispose();
             }

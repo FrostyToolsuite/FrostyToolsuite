@@ -123,13 +123,13 @@ public static class BinaryBundle
             string name = inStream.ReadNullTerminatedString();
 
             inStream.Position = resTypeOffset + i * sizeof(uint);
-            uint resType = inStream.ReadUInt32();
+            uint resType = inStream.ReadUInt32(endian);
 
             inStream.Position = resMetaOffset + i * 0x10;
             byte[] resMeta = inStream.ReadBytes(0x10);
 
             inStream.Position = resRidOffset + i * sizeof(ulong);
-            ulong resRid = inStream.ReadUInt64();
+            ulong resRid = inStream.ReadUInt64(endian);
 
             if (inModInfo.Modified.Res.Contains(name))
             {
@@ -174,9 +174,13 @@ public static class BinaryBundle
             Guid id = inStream.ReadGuid(endian);
             if (inModInfo.Modified.Chunks.Contains(id))
             {
-                var modEntry = inModifiedChunks[id];
+                // skip logicalOffset and size
+                inStream.Position += 8;
+                ChunkModEntry modEntry = inModifiedChunks[id];
                 chunks[i] = modEntry;
                 Modify(modEntry, j, false);
+
+                // TODO: modify firstMip
             }
             else
             {
@@ -192,14 +196,22 @@ public static class BinaryBundle
             Modify(modEntry, j , true);
             sha1[j++] = modEntry.Sha1;
 
-            // TODO: add new chunk meta
+            DbObjectDict meta = DbObject.CreateDict(2);
+            meta.Add("h32", modEntry.H32);
+            if (modEntry.FirstMip != -1)
+            {
+                DbObjectDict firstMip = DbObject.CreateDict(1);
+                firstMip.Add("firstMip", modEntry.FirstMip);
+                meta.Add("meta", firstMip);
+            }
+            chunkMeta.Add(meta);
         }
 
         inStream.Position = startPos + size;
 
         // write new bundle
         stringsOffset = 32 + (containsSha1 ? sha1.Length * 20 : 0) + ebx.Length * 8 + res.Length * 36 +
-                        chunks.Length * 24; // TODO: meta first?
+                        chunks.Length * 24;
         Block<byte> retVal = new((int)(stringsOffset + offset));
         using (BlockStream stream = new(retVal, true))
         {
@@ -238,13 +250,13 @@ public static class BinaryBundle
 
                 long currentPos = stream.Position;
                 stream.Position = resTypeOffset + i * sizeof(uint);
-                stream.WriteUInt32(entry.ResType);
+                stream.WriteUInt32(entry.ResType, endian);
 
                 stream.Position = resMetaOffset + i * 0x10;
                 stream.Write(entry.ResMeta);
 
                 stream.Position = resRidOffset + i * sizeof(ulong);
-                stream.WriteUInt64(entry.ResRid);
+                stream.WriteUInt64(entry.ResRid, endian);
                 stream.Position = currentPos;
             }
 
@@ -261,15 +273,18 @@ public static class BinaryBundle
             DbObject.Serialize(stream, chunkMeta);
             uint chunkMetaSize = (uint)(stream.Position - 4 - chunkMetaOffset);
 
-            // Debug.Assert(stream.Position == stringsOffset + 4);
+            stringsOffset = stream.Position - 4;
             foreach (KeyValuePair<string,uint> pair in strings)
             {
                 stream.Position = stringsOffset + 4 + pair.Value;
                 stream.WriteNullTerminatedString(pair.Key);
             }
 
+            stream.Position = 0;
+            stream.WriteUInt32((uint)stream.Length, Endian.Big);
+
             stream.Position = 24;
-            stream.WriteUInt32(chunkMetaOffset + chunkMetaSize);
+            stream.WriteUInt32(chunkMetaOffset + chunkMetaSize, endian);
             stream.WriteUInt32(chunkMetaOffset, endian);
             stream.WriteUInt32(chunkMetaSize, endian);
         }
