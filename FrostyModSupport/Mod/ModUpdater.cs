@@ -185,6 +185,12 @@ public class ModUpdater
                     int h32 = inStream.ReadInt32();
                     int firstMip = inStream.ReadInt32();
 
+                    if (version > 5)
+                    {
+                        int count = inStream.ReadInt32();
+                        inStream.Position += count * 4;
+                    }
+
                     flags = FixChunk(baseResource.ResourceIndex, baseResource.HasBundleToAdd, Guid.Parse(baseResource.Name),
                         ref logicalOffset, ref logicalSize, ref rangeStart, ref rangeEnd, ref firstMip,
                         out IEnumerable<int> superBundlesToAdd);
