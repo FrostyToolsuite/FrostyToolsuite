@@ -160,7 +160,7 @@ public partial class FrostyModExecutor
             // symlink all other sources
             foreach (FileSystemSource source in FileSystemManager.Sources)
             {
-                if (source.Path == FileSystemSource.Patch.Path)
+                if (source.Path == m_patchPath)
                 {
                     continue;
                 }
@@ -172,7 +172,7 @@ public partial class FrostyModExecutor
             }
         }
 
-        string chunkManifest = Path.Combine(m_patchPath, "chunkmanifest");
+        string chunkManifest = Path.Combine(m_gamePatchPath, "chunkmanifest");
         if (File.Exists(chunkManifest))
         {
             // symlink chunkmanifest for games that have it

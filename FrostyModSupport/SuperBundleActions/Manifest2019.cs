@@ -9,9 +9,7 @@ using Frosty.Sdk;
 using Frosty.Sdk.Exceptions;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
-using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
-using Frosty.Sdk.Managers.Infos.FileInfos;
 using Frosty.Sdk.Managers.Loaders;
 using Frosty.Sdk.Utils;
 
@@ -157,9 +155,6 @@ internal class Manifest2019 : IDisposable
 
             stream.WriteUInt32(currentOffset, Endian.Big);
             stream.WriteUInt32(0xdeadbeef); // dataCount
-
-            uint f = 6388U;
-            uint f2 = 6392U;
 
             Manifest2019AssetLoader.Flags flags = Manifest2019AssetLoader.Flags.HasBaseBundles | Manifest2019AssetLoader.Flags.HasBaseChunks;
             if (stringHelper.EncodeStrings)
