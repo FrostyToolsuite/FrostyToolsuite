@@ -37,31 +37,37 @@ public class ModUpdater
             return false;
         }
 
-        foreach (BundleInfo bundle in AssetManager.EnumerateBundleInfos())
+        if (s_bundleMapping.Count == 0)
         {
-            int hash = Frosty.Sdk.Utils.Utils.HashString(bundle.Name, true);
-            s_bundleMapping.TryAdd(hash, new HashSet<int>());
-            s_bundleMapping[hash].Add(bundle.Id);
-        }
-
-        // v1 used a chunks bundle to add chunks to the superbundle we dont need that, so just add an empty collection
-        s_bundleMapping.Add(Frosty.Sdk.Utils.Utils.HashString("chunks"), new HashSet<int>());
-
-        if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
-        {
-            s_superBundleMapping.Add(Frosty.Sdk.Utils.Utils.HashStringA("<none>"),
-                FileSystemManager.GetSuperBundle(FileSystemManager.DefaultInstallChunk!.SuperBundles.First())
-                    .InstallChunks[0].Name);
-        }
-        else
-        {
-            foreach (SuperBundleInfo superBundle in FileSystemManager.EnumerateSuperBundles())
+            foreach (BundleInfo bundle in AssetManager.EnumerateBundleInfos())
             {
-                int hash = Frosty.Sdk.Utils.Utils.HashStringA(superBundle.Name, true);
-                foreach (SuperBundleInstallChunk sbIc in superBundle.InstallChunks)
+                int hash = Frosty.Sdk.Utils.Utils.HashString(bundle.Name, true);
+                s_bundleMapping.TryAdd(hash, new HashSet<int>());
+                s_bundleMapping[hash].Add(bundle.Id);
+            }
+
+            // v1 used a chunks bundle to add chunks to the superbundle we dont need that, so just add an empty collection
+            s_bundleMapping.Add(Frosty.Sdk.Utils.Utils.HashString("chunks"), new HashSet<int>());
+        }
+
+        if (s_superBundleMapping.Count == 0)
+        {
+            if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
+            {
+                s_superBundleMapping.Add(Frosty.Sdk.Utils.Utils.HashStringA("<none>"),
+                    FileSystemManager.GetSuperBundle(FileSystemManager.DefaultInstallChunk!.SuperBundles.First())
+                        .InstallChunks[0].Name);
+            }
+            else
+            {
+                foreach (SuperBundleInfo superBundle in FileSystemManager.EnumerateSuperBundles())
                 {
-                    s_superBundleMapping.Add(hash, sbIc.Name);
-                    break;
+                    int hash = Frosty.Sdk.Utils.Utils.HashStringA(superBundle.Name, true);
+                    foreach (SuperBundleInstallChunk sbIc in superBundle.InstallChunks)
+                    {
+                        s_superBundleMapping.Add(hash, sbIc.Name);
+                        break;
+                    }
                 }
             }
         }
