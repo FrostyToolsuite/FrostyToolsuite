@@ -151,10 +151,14 @@ internal class Manifest2019 : IDisposable
             stream.WriteUInt32(0xdeadbeef); // chunkData
             stream.WriteUInt32(0xdeadbeef); // dataCount
 
-            Manifest2019AssetLoader.Flags flags = Manifest2019AssetLoader.Flags.HasBaseBundles | Manifest2019AssetLoader.Flags.HasBaseChunks;
+            Manifest2019AssetLoader.Flags flags = 0;
             if (stringHelper.EncodeStrings)
             {
                 flags |= Manifest2019AssetLoader.Flags.HasCompressedNames;
+            }
+            if (FileSystemManager.Sources.Count > 1)
+            {
+                flags |= Manifest2019AssetLoader.Flags.HasBaseBundles | Manifest2019AssetLoader.Flags.HasBaseChunks;
             }
 
             stream.WriteInt32((int)flags, Endian.Big);
@@ -410,7 +414,6 @@ internal class Manifest2019 : IDisposable
                             default:
                                 throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
                         }
-                        inModifiedStream.Pad(4);
                     }
                     else
                     {
@@ -435,7 +438,6 @@ internal class Manifest2019 : IDisposable
 
                         Block<byte> data = WriteModifiedBundle(bundle, inInstallChunkWriter);
                         inModifiedStream.Write(data);
-                        inModifiedStream.Pad(4);
                         newBundleSize = (uint)data.Size;
                         data.Dispose();
 
@@ -541,6 +543,7 @@ internal class Manifest2019 : IDisposable
             if (inBundle.IsInline)
             {
                 bundleWriter.Write(inBundle.BundleMeta);
+                bundleWriter.Pad(4);
             }
             else
             {
@@ -549,8 +552,6 @@ internal class Manifest2019 : IDisposable
             }
 
             inBundle.BundleMeta.Dispose();
-
-            bundleWriter.Pad(4);
 
             byte[] fileFlags = new byte[inBundle.Files.Count];
             long fileIdentifierOffset = bundleWriter.Position;
@@ -645,39 +646,49 @@ internal class Manifest2019 : IDisposable
             bundleMeta = BinaryBundle.Modify(stream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
                 (entry, i, isAdded) =>
                 {
+                    (CasFileIdentifier, uint, uint) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
+                    if (entry is ChunkModEntry chunk)
+                    {
+                        info.Item2 += chunk.RangeStart;
+                        info.Item3 = chunk.RangeEnd - chunk.RangeStart;
+                    }
+
                     if (isAdded)
                     {
-                        files.Insert(i, inInstallChunkWriter.GetFileInfo(entry.Sha1));
+                        files.Insert(i, info);
                     }
                     else
                     {
-                        files[i] = inInstallChunkWriter.GetFileInfo(entry.Sha1);
+                        files[i] = info;
                     }
                 });
         }
         else
         {
-            var bundleFile = files[0];
-            string path = FileSystemManager.GetFilePath(bundleFile.Item1);
+            string path = FileSystemManager.GetFilePath(files[0].Item1);
             if (string.IsNullOrEmpty(path))
             {
                 throw new Exception("Corrupted data. File for bundle does not exist.");
             }
-            using (BlockStream bundleStream = BlockStream.FromFile(path, bundleFile.Item2, (int)bundleFile.Item3))
+            using (BlockStream bundleStream = BlockStream.FromFile(path, files[0].Item2, (int)files[0].Item3))
             {
-                // remove bundle file
-                files.RemoveAt(0);
-
                 bundleMeta = BinaryBundle.Modify(bundleStream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
                     (entry, i, isAdded) =>
                     {
+                        (CasFileIdentifier, uint, uint) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
+                        if (entry is ChunkModEntry chunk)
+                        {
+                            info.Item2 += chunk.RangeStart;
+                            info.Item3 = chunk.RangeEnd - chunk.RangeStart;
+                        }
+
                         if (isAdded)
                         {
-                            files.Insert(i + 1, inInstallChunkWriter.GetFileInfo(entry.Sha1));
+                            files.Insert(i + 1, info);
                         }
                         else
                         {
-                            files[i + 1] = inInstallChunkWriter.GetFileInfo(entry.Sha1);
+                            files[i + 1] = info;
                         }
                     });
                 Debug.Assert(bundleStream.Position == bundleStream.Length, "We did not read the bundle meta completely");

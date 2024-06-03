@@ -133,14 +133,26 @@ public partial class FrostyModExecutor
             switch (FileSystemManager.BundleFormat)
             {
                 case BundleFormat.Dynamic2018:
+                    throw new NotImplementedException();
                     break;
                 case BundleFormat.Manifest2019:
                     ModManifest2019(sbIc, sb.Value, installChunkWriter);
                     break;
                 case BundleFormat.SuperBundleManifest:
+                    throw new NotImplementedException();
                     break;
                 case BundleFormat.Kelvin:
+                    throw new NotImplementedException();
                     break;
+            }
+        }
+
+        // write
+        if (FileSystemManager.BundleFormat == BundleFormat.Dynamic2018 || FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
+        {
+            foreach (InstallChunkWriter writer in m_installChunkWriters.Values)
+            {
+                writer.WriteCatalog();
             }
         }
 
@@ -170,13 +182,6 @@ public partial class FrostyModExecutor
                 Directory.CreateSymbolicLink(destPath,
                     Path.Combine(FileSystemManager.BasePath, source.Path));
             }
-        }
-
-        string chunkManifest = Path.Combine(m_gamePatchPath, "chunkmanifest");
-        if (File.Exists(chunkManifest))
-        {
-            // symlink chunkmanifest for games that have it
-            File.CreateSymbolicLink(Path.Combine(m_modDataPath, "chunkmanifest"), chunkManifest);
         }
 
         return Errors.Success;
@@ -295,6 +300,7 @@ public partial class FrostyModExecutor
                         Block<byte> data = AssetManager.GetRawAsset(entry);
                         Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
                         modEntry = new EbxModEntry(ebx, data.Size);
+                        resource.Sha1 = entry.Sha1;
                     }
                     else
                     {
@@ -369,6 +375,7 @@ public partial class FrostyModExecutor
                         Block<byte> data = AssetManager.GetRawAsset(entry);
                         Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
                         modEntry = new ResModEntry(res, data.Size);
+                        resource.Sha1 = entry.Sha1;
                     }
                     else
                     {
@@ -444,6 +451,7 @@ public partial class FrostyModExecutor
                         Block<byte> data = AssetManager.GetRawAsset(entry);
                         Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
                         modEntry = new ChunkModEntry(chunk, data.Size);
+                        resource.Sha1 = entry.Sha1;
                     }
                     else
                     {

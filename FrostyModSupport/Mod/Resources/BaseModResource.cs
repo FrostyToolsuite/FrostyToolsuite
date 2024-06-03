@@ -30,7 +30,7 @@ public abstract class BaseModResource
     /// <summary>
     /// The <see cref="Sha1"/> hash of the data of this <see cref="BaseModResource"/>.
     /// </summary>
-    public Sha1 Sha1 { get; }
+    public Sha1 Sha1 { get; internal set; }
 
     /// <summary>
     /// The uncompressed size of the data of this <see cref="BaseModResource"/>.
