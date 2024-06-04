@@ -78,6 +78,14 @@ public class InstallChunkWriter
 
     public void WriteCatalog()
     {
+        string fileName = Path.Combine(m_dir, "cas.cat");
+        using (BlockStream stream = new())
+        {
+            if (ProfilesLibrary.FrostbiteVersion > "2014.4.11")
+            {
+                ObfuscationHeader.Write(stream);
+            }
+        }
     }
 
     private DataStream GetCurrentWriter(int size)
