@@ -202,6 +202,7 @@ public partial class FrostyModExecutor
             {
                 data.Block.Dispose();
             }
+            // TODO: dispose memorydata after all bundle actions
         }
 
         return installChunkWriter;

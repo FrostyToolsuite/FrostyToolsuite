@@ -414,6 +414,7 @@ internal class Manifest2019 : IDisposable
                             default:
                                 throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
                         }
+                        inModifiedStream.Pad(4);
                     }
                     else
                     {
@@ -438,6 +439,7 @@ internal class Manifest2019 : IDisposable
 
                         Block<byte> data = WriteModifiedBundle(bundle, inInstallChunkWriter);
                         inModifiedStream.Write(data);
+                        inModifiedStream.Pad(4);
                         newBundleSize = (uint)data.Size;
                         data.Dispose();
 
@@ -629,12 +631,12 @@ internal class Manifest2019 : IDisposable
         stream.Position = inOffset + dataOffset;
 
         CasFileIdentifier file = default;
-        int currentIndex = 0;
+
 
         List<(CasFileIdentifier, uint, uint)> files = new(totalCount);
-        for (; currentIndex < totalCount; currentIndex++)
+        for (int i = 0; i < totalCount; i++)
         {
-            file = ReadCasFileIdentifier(stream, fileIdentifierFlags[currentIndex], file);
+            file = ReadCasFileIdentifier(stream, fileIdentifierFlags[i], file);
 
             files.Add((file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big)));
         }
@@ -646,11 +648,11 @@ internal class Manifest2019 : IDisposable
             bundleMeta = BinaryBundle.Modify(stream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
                 (entry, i, isAdded) =>
                 {
-                    (CasFileIdentifier, uint, uint) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
-                    if (entry is ChunkModEntry chunk)
+                    (CasFileIdentifier File, uint Offset, uint Size) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
+                    if (entry is ChunkModEntry chunk && chunk.FirstMip > 0)
                     {
-                        info.Item2 += chunk.RangeStart;
-                        info.Item3 = chunk.RangeEnd - chunk.RangeStart;
+                        info.Offset += chunk.RangeStart;
+                        info.Size = chunk.RangeEnd - chunk.RangeStart;
                     }
 
                     if (isAdded)
@@ -675,11 +677,11 @@ internal class Manifest2019 : IDisposable
                 bundleMeta = BinaryBundle.Modify(bundleStream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
                     (entry, i, isAdded) =>
                     {
-                        (CasFileIdentifier, uint, uint) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
-                        if (entry is ChunkModEntry chunk)
+                        (CasFileIdentifier File, uint Offset, uint Size) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
+                        if (entry is ChunkModEntry chunk && chunk.FirstMip > 0)
                         {
-                            info.Item2 += chunk.RangeStart;
-                            info.Item3 = chunk.RangeEnd - chunk.RangeStart;
+                            info.Offset += chunk.RangeStart;
+                            info.Size = chunk.RangeEnd - chunk.RangeStart;
                         }
 
                         if (isAdded)

@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
@@ -95,6 +96,7 @@ public static class BinaryBundle
             {
                 EbxModEntry modEntry = inModifiedEbx[name];
                 ebx[i] = modEntry;
+                sha1[i] = modEntry.Sha1;
                 Modify(modEntry, j, false);
             }
             else
@@ -148,6 +150,7 @@ public static class BinaryBundle
             {
                 ResModEntry modEntry = inModifiedRes[name];
                 res[i] = modEntry;
+                sha1[i] = modEntry.Sha1;
                 Modify(modEntry, j, false);
             }
             else
@@ -195,9 +198,15 @@ public static class BinaryBundle
                 inStream.Position += 8;
                 ChunkModEntry modEntry = inModifiedChunks[id];
                 chunks[i] = modEntry;
+                sha1[i] = modEntry.Sha1;
                 Modify(modEntry, j, false);
 
-                // TODO: modify firstMip
+                if (modEntry.FirstMip != -1)
+                {
+                    DbObjectDict? meta = chunkMeta?.FirstOrDefault(m => m.AsDict().AsInt("h32") == modEntry.H32)?.AsDict();
+                    Debug.Assert((meta?.AsDict("meta").AsInt("firstMip") ?? -1) == modEntry.FirstMip);
+                    // TODO: modify firstMip, need to implement changing shit in DbObject
+                }
             }
             else
             {
@@ -293,17 +302,20 @@ public static class BinaryBundle
             }
             uint chunkMetaSize = (uint)(stream.Position - 4 - chunkMetaOffset);
 
-            stringsOffset = stream.Position - 4;
             foreach (KeyValuePair<string,uint> pair in strings)
             {
-                stream.Position = stringsOffset + 4 + pair.Value;
                 stream.WriteNullTerminatedString(pair.Key);
             }
 
-            stream.Position = 0;
-            stream.WriteUInt32((uint)stream.Length, Endian.Big);
+            while ((stream.Position & 15) != 0)
+            {
+                stream.WriteByte(0);
+            }
 
-            stream.Position = 24;
+            stream.Position = 0;
+            stream.WriteUInt32((uint)stream.Length - 4, Endian.Big);
+
+            stream.Position = 0x18;
             stream.WriteUInt32(chunkMetaOffset + chunkMetaSize, endian);
             stream.WriteUInt32(chunkMetaOffset, endian);
             stream.WriteUInt32(chunkMetaSize, endian);
