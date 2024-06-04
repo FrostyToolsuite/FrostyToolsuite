@@ -433,9 +433,9 @@ public static class AssetManager
             if (existing.LogicalSize == 0)
             {
                 // this chunk was first added as a superbundle chunk, so add logical offset/size and sha1
-                existing.Sha1 = existing.Sha1;
-                existing.LogicalOffset = existing.LogicalOffset;
-                existing.LogicalSize = existing.LogicalSize;
+                existing.Sha1 = entry.Sha1;
+                existing.LogicalOffset = entry.LogicalOffset;
+                existing.LogicalSize = entry.LogicalSize;
                 existing.OriginalSize = entry.OriginalSize;
             }
 
@@ -478,6 +478,9 @@ public static class AssetManager
             entry.LogicalOffset = existing.LogicalOffset;
             entry.LogicalSize = existing.LogicalSize;
             entry.OriginalSize = existing.OriginalSize;
+
+            // add Sha1, since its only stored in bundles for some formats
+            entry.Sha1 = existing.Sha1;
 
             // merge SuperBundleInstallChunks
             entry.SuperBundleInstallChunks.UnionWith(existing.SuperBundleInstallChunks);
