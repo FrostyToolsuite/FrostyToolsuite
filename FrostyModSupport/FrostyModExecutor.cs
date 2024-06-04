@@ -112,7 +112,7 @@ public partial class FrostyModExecutor
         {
             // entry.Handler will never be null, since the assets added to m_handlerAssets always have a handler set
             entry.Handler!.Modify(entry, out Block<byte> data);
-            Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
+            m_memoryData.TryAdd(entry.Sha1, data);
         }
 
         // clear old generated mod data
@@ -299,14 +299,14 @@ public partial class FrostyModExecutor
 
                         // only add asset to bundles, use base games data
                         Block<byte> data = AssetManager.GetRawAsset(entry);
-                        Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
+                        m_memoryData.TryAdd(entry.Sha1, data);
                         modEntry = new EbxModEntry(ebx, data.Size);
                         resource.Sha1 = entry.Sha1;
                     }
                     else
                     {
                         ResourceData data = container.GetData(resource.ResourceIndex);
-                        Debug.Assert(m_data.TryAdd(resource.Sha1, data));
+                        m_data.TryAdd(resource.Sha1, data);
                         modEntry = new EbxModEntry(ebx, data.Size);
 
                         if (entry is not null)
@@ -374,14 +374,14 @@ public partial class FrostyModExecutor
 
                         // only add asset to bundles, use base games data
                         Block<byte> data = AssetManager.GetRawAsset(entry);
-                        Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
+                        m_memoryData.TryAdd(entry.Sha1, data);
                         modEntry = new ResModEntry(res, data.Size);
                         resource.Sha1 = entry.Sha1;
                     }
                     else
                     {
                         ResourceData data = container.GetData(resource.ResourceIndex);
-                        Debug.Assert(m_data.TryAdd(resource.Sha1, data));
+                        m_data.TryAdd(resource.Sha1, data);
                         modEntry = new ResModEntry(res, data.Size);
 
                         if (entry is not null)
@@ -450,14 +450,14 @@ public partial class FrostyModExecutor
 
                         // only add asset to bundles, use base games data
                         Block<byte> data = AssetManager.GetRawAsset(entry);
-                        Debug.Assert(m_memoryData.TryAdd(entry.Sha1, data));
+                        m_memoryData.TryAdd(entry.Sha1, data);
                         modEntry = new ChunkModEntry(chunk, data.Size);
                         resource.Sha1 = entry.Sha1;
                     }
                     else
                     {
                         ResourceData data = container.GetData(resource.ResourceIndex);
-                        Debug.Assert(m_data.TryAdd(resource.Sha1, data));
+                        m_data.TryAdd(resource.Sha1, data);
                         modEntry = new ChunkModEntry(chunk, data.Size);
 
                         if (entry is not null)
