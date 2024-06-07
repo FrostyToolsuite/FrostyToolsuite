@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -88,9 +89,20 @@ public class IdentifierPositionTuple<T>
 
 /// <summary>
 /// Return value of the encoding function. This contains the encoded texts as byte array, as well as the list of <see cref="IdentifierPositionTuple{T}"/> that detail which text is at what bit offset inside the array.
+/// <list type="bullet">
+/// <item>
+/// <description><c>HuffmanEncodedTextArray.EncodedTexts</c> returns the given strings encoded to a byte array..</description>
+/// </item>
+/// <item>
+/// <description><c>HuffmanEncodedTextArray.EncodedTextPositions</c> returns the text keys an their bit offsets in the <c>EncodedTexts</c> in the form of a list of tuples for use in iterations.</description>
+/// </item>
+/// <item>
+/// <description><c>HuffmanEncodedTextArray.GetTextPositionsDictionary()</c> returns a dictionary with the the same data as above.</description>
+/// </item>
+/// </list>
 /// </summary>
 /// <typeparam name="T">The type of identifier used for the texts.</typeparam>
-public class HuffmanEncodedTextArray<T>
+public class HuffmanEncodedTextArray<T> where T : notnull
 {
     /// <summary>
     /// The list of string identifiers, and the bit position of the text for the identifier inside the <see cref="EncodedTexts"/> byte array.
@@ -108,13 +120,94 @@ public class HuffmanEncodedTextArray<T>
         EncodedTexts = inEncodedTexts;
     }
 
+    /// <summary>
+    /// Returns the values of the <see cref="EncodedTextPositions"/> as dictionary for easier lookup outside of loop queries.
+    /// </summary>
+    /// <returns>Dictionary with string identifiers and their bit offset in the <see cref="EncodedTexts"/></returns>
+    public Dictionary<T, int> GetTextPositionsDictionary()
+    {
+        return new Dictionary<T, int>( this.EncodedTextPositions.Select(entry => KeyValuePair.Create(entry.Identifier, entry.Position)).ToList() );
+    }
+}
+
+/// <summary>
+/// <list type="bullet">
+/// <item>
+/// <description><c>EncodingResult.EncodingTree</c> returns the huffman tree used for encoding in the form of an integer list.</description>
+/// </item>
+/// <item>
+/// <description><c>EncodingResult.EncodedTexts</c> returns the given strings encoded to a byte array..</description>
+/// </item>
+/// <item>
+/// <description><c>EncodingResult.GetTextPositionsDictionary()</c> returns a dictionary with the given strings as keys and their bit offsets in the <c>EncodedTexts</c>.</description>
+/// </item>
+/// <item>
+/// <description><c>EncodingResult.EncodedTextPositions</c> returns the same data as above in the form of a list of tuples for use in iterations.</description>
+/// </item>
+/// </list>
+/// </summary>
+public class EncodingResult : HuffmanEncodedTextArray<string>
+{
+    /// <summary>
+    /// The encoding tree in the form of an integer list.
+    /// </summary>
+    public IList<uint> EncodingTree { get; private set; }
+
+    public EncodingResult(HuffmanEncodedTextArray<string> inEncodedTextArray, IList<uint> inEncodingTree)
+        : base(inEncodedTextArray.EncodedTextPositions, inEncodedTextArray.EncodedTexts)
+    {
+        EncodingTree = inEncodingTree;
+    }
 }
 
 #endregion
 
+/// <summary>
+/// HuffmanEncoder can be used to encode given strings into a byte array.
+/// Usage:
+/// Either call <see cref="HuffmanEncoder.Encode(IEnumerable{string})"/> directly with the strings to encode.
+/// Or if more control is required, call <see cref="HuffmanEncoder.BuildHuffmanEncodingTree(IEnumerable{string})"> with a representation of the strings to encode to build the encoding tree. After that call <see cref="HuffmanEncoder.EncodeTexts{T}(IEnumerable{Tuple{T, string}}, bool)"/> to get the encoding result.
+/// </summary>
 public class HuffmanEncoder
 {
+    /// <summary>
+    /// the character encoding in dictionary form.
+    /// </summary>
     private IDictionary<char, IList<bool>>? m_characterEncoding;
+
+    /// <summary>
+    /// Helper method to get the encoded texts and the encoding tree all in one go.
+    /// The encoded texts, the encoding, and the individual texts offsets can be retrieved from the <see cref="EncodingResult"/>.
+    /// <list type="bullet">
+    /// <item>
+    /// <description><c>EncodingResult.EncodingTree</c> returns the huffman tree used for encoding in the form of an integer list.</description>
+    /// </item>
+    /// <item>
+    /// <description><c>EncodingResult.EncodedTexts</c> returns the given strings encoded to a byte array..</description>
+    /// </item>
+    /// <item>
+    /// <description><c>EncodingResult.GetTextPositionsDictionary()</c> returns a dictionary with the given strings as keys and their bit offsets in the <c>EncodedTexts</c>.</description>
+    /// </item>
+    /// <item>
+    /// <description><c>EncodingResult.EncodedTextPositions</c> returns the same data as above in the form of a list of tuples for use in iterations.</description>
+    /// </item>
+    /// </list>
+    /// </summary>
+    /// <param name="texts"></param>
+    /// <returns></returns>
+    public static EncodingResult Encode(IEnumerable<string> texts)
+    {
+
+        ISet<String> nonNullUniqueStrings = new HashSet<String>(texts);
+
+        HuffmanEncoder encoder = new();
+            IList<uint> tree = encoder.BuildHuffmanEncodingTree(nonNullUniqueStrings);
+
+        var encodedTexts = encoder.EncodeTexts(nonNullUniqueStrings.Select(
+            x => new Tuple<string, string>(x, x)).ToList(), false);
+
+            return new EncodingResult(encodedTexts, tree);
+    }
 
     /// <summary>
     /// Uses the given input to construct the huffman encoding table (or tree). The created encoding includes end delimiter character (char 0x0) with a number of occurrences of the number of given strings.
@@ -151,13 +244,13 @@ public class HuffmanEncoder
     /// <summary>
     /// Encodes the given String using the previously created Huffman Encoding from <see cref="HuffmanEncoder.BuildHuffmanEncodingTree(IEnumerable{string})"/> and returns the created byte array together with the list of text identifiers and their bit offsets in the byte array.
     /// </summary>
-    /// <typeparam name="T">The type of identifier to use for the texts. Might be a uint id/counter/hashvalue or complex type.</typeparam>
+    /// <typeparam name="T">The type of identifier to use for the texts. Might be a uint id/counter/hashvalue or complex type. Has to be unique per string and not null</typeparam>
     /// <param name="textsPerIdentifier">The tuples of string identifiers and the strings to encode.</param>
     /// <param name="compressResults">If true, then this method tries to reuse already compiled string encodings and produced bit segments, so the returned byte array might be shorter. Defaults to false.</param>
     /// <returns>An instance of <see cref="HuffmanEncodedTextArray{T}"/> with the byte array of the encoded texts, and a list of the given text identifiers and their bit position inside the byte array. The list has the same ordering as the given input to this method. </returns>
     /// <exception cref="System.Collections.Generic.KeyNotFoundException">If a character or symbol to encode was not found in the dictionary</exception>
     /// <exception cref="System.InvalidOperationException">If no encoding has been created yet.</exception>
-    public HuffmanEncodedTextArray<T> EncodeTexts<T>(IEnumerable<Tuple<T, string>> textsPerIdentifier, bool compressResults = false)
+    public HuffmanEncodedTextArray<T> EncodeTexts<T>(IEnumerable<Tuple<T, string>> textsPerIdentifier, bool compressResults = false) where T : notnull
     {
         CheckEncodingExists();
 
@@ -239,7 +332,7 @@ public class HuffmanEncoder
 
         // add the text delimiter:
         char delimiter = (char)0x0;
-        charNumbers[delimiter] = texts.Count();
+        charNumbers[delimiter] = texts.Count;
 
         List<HuffManConstructionNode> nodeList = new();
         foreach (var entry in charNumbers)
