@@ -106,7 +106,7 @@ public class HuffmanDecoder
     /// Parses a Huffman Table.
     /// </summary>
     /// <param name="stream">The <see cref="DataStream"/> the Huffman Table gets read from.</param>
-    /// <param name="count">The number of Huffman Nodes the Table contains.</param>
+    /// <param name="count">The number of Huffman Nodes the Table contains. This is the number of 32 bit Integers contained in the table or tree.</param>
     /// <param name="endian">The Endianess in which the Huffman Table gets read.</param>
     public void ReadHuffmanTable(DataStream stream, uint count, Endian endian = Endian.Little)
     {
