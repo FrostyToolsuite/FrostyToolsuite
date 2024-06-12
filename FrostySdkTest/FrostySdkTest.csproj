@@ -9,6 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="TestData\new_huffman" />
+    <None Remove="TestData\original_huffman" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FrostySdk\FrostySdk.csproj" />
   </ItemGroup>
 
@@ -16,6 +21,17 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
     <PackageReference Include="NUnit" Version="3.13.3" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="TestData\new_huffman">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CustomToolNamespace>FrostySdkTest</CustomToolNamespace>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TestData\original_huffman">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CustomToolNamespace>FrostySdkTest</CustomToolNamespace>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
