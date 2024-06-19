@@ -58,15 +58,14 @@ internal class Manifest2019 : IDisposable
                 return;
             }
 
-            HuffmanEncoder encoder = new();
+            EncodingResult result = HuffmanEncoder.Encode(m_mapping.Keys, Endian.Big);
 
-            Tree = encoder.BuildHuffmanEncodingTree(m_mapping.Keys);
-            HuffmanEncodedTextArray<string> result = encoder.EncodeTexts(m_mapping.Keys.Select(x => new Tuple<string, string>(x, x)));
             foreach (IdentifierPositionTuple<string> position in result.EncodedTextPositions)
             {
                 m_mapping[position.Identifier].Offset = (uint)position.Position;
             }
 
+            Tree = result.EncodingTree;
             Data = result.EncodedTexts;
         }
 
@@ -251,12 +250,9 @@ internal class Manifest2019 : IDisposable
             uint stringsOffset = (uint)stream.Position;
             if (stringHelper.EncodeStrings)
             {
-                stream.Write(stringHelper.Data);
+                stream.Write(stringHelper.Data!);
 
-                if ((stringHelper.Data!.Length & 3) != 0)
-                {
-                    stream.Position += 4 - stringHelper.Data!.Length & 3;
-                }
+                Debug.Assert((stringHelper.Data!.Length & 3) == 0, "Huffman not padded!");
 
                 foreach (uint node in stringHelper.Tree!)
                 {
@@ -341,7 +337,7 @@ internal class Manifest2019 : IDisposable
             if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
             {
                 // TODO: encoding broken atm fix it then add this again
-                // inStringHelper.EncodeStrings = true;
+                inStringHelper.EncodeStrings = true;
                 huffmanDecoder = new HuffmanDecoder();
                 namesCount = stream.ReadUInt32(Endian.Big);
                 tableCount = stream.ReadUInt32(Endian.Big);

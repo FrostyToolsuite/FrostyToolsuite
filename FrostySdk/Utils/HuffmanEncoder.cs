@@ -240,8 +240,9 @@ public class HuffmanEncoder
     /// Note that this method always uses little endinan for the text data.
     /// </summary>
     /// <param name="texts">The texts to encode</param>
+    /// <param name="inEndian">The endian to use for the encoded texts</param>
     /// <returns>EncodingResult with the data.</returns>
-    public static EncodingResult Encode(IEnumerable<string> texts)
+    public static EncodingResult Encode(IEnumerable<string> texts, Endian inEndian = Endian.Little)
     {
 
         ISet<String> nonNullUniqueStrings = new HashSet<String>(texts);
@@ -250,7 +251,7 @@ public class HuffmanEncoder
         IList<uint> tree = encoder.BuildHuffmanEncodingTree(nonNullUniqueStrings);
 
         var encodedTexts = encoder.EncodeTexts(nonNullUniqueStrings.Select(
-            x => new Tuple<string, string>(x, x)).ToList(), Endian.Little, false);
+            x => new Tuple<string, string>(x, x)).ToList(), inEndian, false);
 
         return new EncodingResult(encodedTexts, tree);
     }
