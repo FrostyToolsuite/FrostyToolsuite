@@ -11,6 +11,7 @@ using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Profiles;
 using Frosty.Sdk.Utils;
+using Utils = Frosty.Sdk.Utils.Utils;
 
 namespace Frosty.ModSupport.Mod;
 
@@ -21,7 +22,7 @@ public class ModUpdater
 
     public static bool UpdateMod(string inPath, string inNewPath)
     {
-        (BaseModResource[], Block<byte>[], FrostyModDetails, uint)? mod;
+        (BaseModResource[], Frosty.Sdk.Utils.Block<byte>[], FrostyModDetails, uint)? mod;
 
         string extension = Path.GetExtension(inPath);
 
@@ -36,31 +37,37 @@ public class ModUpdater
             return false;
         }
 
-        foreach (BundleInfo bundle in AssetManager.EnumerateBundleInfos())
+        if (s_bundleMapping.Count == 0)
         {
-            int hash = Utils.HashString(bundle.Name, true);
-            s_bundleMapping.TryAdd(hash, new HashSet<int>());
-            s_bundleMapping[hash].Add(bundle.Id);
-        }
-
-        // v1 used a chunks bundle to add chunks to the superbundle we dont need that, so just add an empty collection
-        s_bundleMapping.Add(Utils.HashString("chunks"), new HashSet<int>());
-
-        if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
-        {
-            s_superBundleMapping.Add(Utils.HashStringA("<none>"),
-                FileSystemManager.GetSuperBundle(FileSystemManager.DefaultInstallChunk!.SuperBundles.First())
-                    .InstallChunks[0].Name);
-        }
-        else
-        {
-            foreach (SuperBundleInfo superBundle in FileSystemManager.EnumerateSuperBundles())
+            foreach (BundleInfo bundle in AssetManager.EnumerateBundleInfos())
             {
-                int hash = Utils.HashStringA(superBundle.Name, true);
-                foreach (SuperBundleInstallChunk sbIc in superBundle.InstallChunks)
+                int hash = Frosty.Sdk.Utils.Utils.HashString(bundle.Name, true);
+                s_bundleMapping.TryAdd(hash, new HashSet<int>());
+                s_bundleMapping[hash].Add(bundle.Id);
+            }
+
+            // v1 used a chunks bundle to add chunks to the superbundle we dont need that, so just add an empty collection
+            s_bundleMapping.Add(Frosty.Sdk.Utils.Utils.HashString("chunks"), new HashSet<int>());
+        }
+
+        if (s_superBundleMapping.Count == 0)
+        {
+            if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
+            {
+                s_superBundleMapping.Add(Frosty.Sdk.Utils.Utils.HashStringA("<none>"),
+                    FileSystemManager.GetSuperBundle(FileSystemManager.DefaultInstallChunk!.SuperBundles.First())
+                        .InstallChunks[0].Name);
+            }
+            else
+            {
+                foreach (SuperBundleInfo superBundle in FileSystemManager.EnumerateSuperBundles())
                 {
-                    s_superBundleMapping.Add(hash, sbIc.Name);
-                    break;
+                    int hash = Frosty.Sdk.Utils.Utils.HashStringA(superBundle.Name, true);
+                    foreach (SuperBundleInstallChunk sbIc in superBundle.InstallChunks)
+                    {
+                        s_superBundleMapping.Add(hash, sbIc.Name);
+                        break;
+                    }
                 }
             }
         }
@@ -142,12 +149,13 @@ public class ModUpdater
                     inStream.ReadNullTerminatedString();
                     int superBundleHash = inStream.ReadInt32();
                     string sbIcName = s_superBundleMapping[superBundleHash];
-                    s_bundleMapping.Add(Utils.HashString(baseResource.Name, true), new HashSet<int>
+                    int bundleHash = Frosty.Sdk.Utils.Utils.HashString(baseResource.Name + sbIcName, true);
+                    s_bundleMapping.Add(Frosty.Sdk.Utils.Utils.HashString(baseResource.Name, true), new HashSet<int>
                     {
-                        Utils.HashString(baseResource.Name + sbIcName, true)
+                        bundleHash
                     });
 
-                    resources[i] = new BundleModResource(baseResource.Name, superBundleHash);
+                    resources[i] = new BundleModResource(baseResource.Name, bundleHash, superBundleHash);
                     break;
                 case ModResourceType.Ebx:
                     baseResource = ReadBaseModResource(inStream, version);
@@ -182,6 +190,12 @@ public class ModUpdater
                     uint logicalSize = inStream.ReadUInt32();
                     int h32 = inStream.ReadInt32();
                     int firstMip = inStream.ReadInt32();
+
+                    if (version > 5)
+                    {
+                        int count = inStream.ReadInt32();
+                        inStream.Position += count * 4;
+                    }
 
                     flags = FixChunk(baseResource.ResourceIndex, baseResource.HasBundleToAdd, Guid.Parse(baseResource.Name),
                         ref logicalOffset, ref logicalSize, ref rangeStart, ref rangeEnd, ref firstMip,
@@ -266,7 +280,7 @@ public class ModUpdater
                 continue;
             }
 
-            int bundleHash = Utils.HashString(bundleName, true);
+            int bundleHash = Frosty.Sdk.Utils.Utils.HashString(bundleName, true);
             string type = action.AsString("type");
             int resourceId = action.AsInt("resourceId");
 
@@ -358,14 +372,15 @@ public class ModUpdater
                     break;
                 case "bundle":
                 {
-                    int superBundleHash = Utils.HashString(resource.AsString("sb"), true);
+                    int superBundleHash = Frosty.Sdk.Utils.Utils.HashString(resource.AsString("sb"), true);
                     string sbIcName = s_superBundleMapping[superBundleHash];
-                    s_bundleMapping.Add(Utils.HashString(name, true), new HashSet<int>
+                    int bundleHash = Frosty.Sdk.Utils.Utils.HashString(name + sbIcName, true);
+                    s_bundleMapping.Add(Frosty.Sdk.Utils.Utils.HashString(name, true), new HashSet<int>
                     {
-                        Utils.HashString(name + sbIcName, true)
+                        bundleHash
                     });
 
-                    resources.Add(new BundleModResource(name, superBundleHash));
+                    resources.Add(new BundleModResource(name, bundleHash, superBundleHash));
                     break;
                 }
                 case "ebx":
@@ -479,7 +494,7 @@ public class ModUpdater
             foreach (XmlElement bundle in bundlesElem)
             {
                 string bundleName = bundle.GetAttribute("name");
-                int bundleHash = Utils.HashString(bundleName, true);
+                int bundleHash = Frosty.Sdk.Utils.Utils.HashString(bundleName, true);
                 string action = bundle.GetAttribute("action");
 
                 XmlElement? entries = bundle["entries"];
@@ -730,7 +745,7 @@ public class ModUpdater
 
                 foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
                 {
-                    temp.Add(Utils.HashString(sbIc.Name, true));
+                    temp.Add(Frosty.Sdk.Utils.Utils.HashString(sbIc.Name, true));
                 }
 
                 Debug.Assert(temp.Count > 0);
