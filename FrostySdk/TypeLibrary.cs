@@ -52,7 +52,7 @@ public static class TypeLibrary
             string name = type.GetName();
             Guid? guid = type.GetCustomAttribute<GuidAttribute>()?.Guid;
 
-            s_nameMapping.Add(name, i);
+            s_nameMapping.Add(name.ToLower(), i);
             s_nameHashMapping.Add(nameHash, i);
             if (guid.HasValue)
             {

@@ -41,10 +41,10 @@ public struct TypeFlags
         None = 0,
         Class = 1,
         Struct = 2,
-        Primitive = 3,
+        Primitive = 3, // fb < 2016
         Array = 4,
         Enum = 5,
-        Function = 6,
+        Function = 6, // fb < 2018
         Interface = 7,
         Delegate = 8
     }
@@ -61,27 +61,37 @@ public struct TypeFlags
         Blittable = 1 << 5
     }
 
+    /// <summary>
+    /// This flag is built like this, where first bit is left and last bit is right:
+    /// Flags | TypeEnum | CategoryEnum | Unknown (always 1?)
+    /// </summary>
     private readonly ushort m_flags;
+
+    private static readonly int s_categoryShift = ProfilesLibrary.FrostbiteVersion >= "2018" ? 0x01 : 0x02;
+    private static readonly int s_categoryMask = ProfilesLibrary.FrostbiteVersion >= "2016" ? ProfilesLibrary.FrostbiteVersion >= "2018" ? 0x0F : 0x07 : 0x03;
+
+    private static readonly int s_typeShift = ProfilesLibrary.FrostbiteVersion >= "2016" ? 0x05 : 0x04;
+    private static readonly int s_typeMask = 0x1F;
+
+    private static readonly int s_flagsShift = ProfilesLibrary.FrostbiteVersion >= "2016" ? 0x09 : 0x0A;
+
 
     public TypeFlags(ushort inFlags)
     {
         m_flags = inFlags;
     }
 
-    public TypeFlags(TypeEnum type, CategoryEnum category = CategoryEnum.None)
+    public TypeFlags(TypeEnum type, CategoryEnum category = CategoryEnum.None, int flags = 0)
     {
-        m_flags = (ushort)((ushort)type << 4 | (ushort)category);
-        if (ProfilesLibrary.EbxVersion != 2)
-        {
-            m_flags <<= 1;
-        }
+        m_flags = (ushort)((flags << s_flagsShift) | (((ushort)type & s_typeMask) << s_typeShift) |
+                           (((ushort)category & s_categoryMask) << s_categoryShift) | 1);
     }
 
-    public TypeEnum GetTypeEnum() => (TypeEnum)((m_flags >> (ProfilesLibrary.EbxVersion == 2 ? 4 : 5)) & 0x1F);
+    public TypeEnum GetTypeEnum() => (TypeEnum)((m_flags >> s_typeShift) & s_typeMask);
 
-    public CategoryEnum GetCategoryEnum() => (CategoryEnum)((m_flags >> (ProfilesLibrary.EbxVersion == 2 ? 0 : 1)) & 0xF);
+    public CategoryEnum GetCategoryEnum() => (CategoryEnum)((m_flags >> s_categoryShift) & s_categoryMask);
 
-    public Flags GetFlags() => (Flags)(m_flags >> (ProfilesLibrary.EbxVersion == 2 ? 9 : 10));
+    public Flags GetFlags() => (Flags)(m_flags >> s_flagsShift);
 
     public static implicit operator ushort(TypeFlags value) => value.m_flags;
 
