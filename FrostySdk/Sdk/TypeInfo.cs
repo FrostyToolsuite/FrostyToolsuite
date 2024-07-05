@@ -21,7 +21,7 @@ internal class TypeInfo
             if (ProfilesLibrary.FrostbiteVersion <= "2014.4.18")
             {
                 // ushort FieldCount
-                // 2014.4.11, 2014.4.17
+                // 2014.4.11, 2014.4.17, 2014.4.18
                 return 2;
             }
             if (ProfilesLibrary.FrostbiteVersion <= "2015.4.6")

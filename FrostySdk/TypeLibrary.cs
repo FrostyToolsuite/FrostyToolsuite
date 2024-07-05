@@ -29,7 +29,7 @@ public static class TypeLibrary
             return false;
         }
 
-        Assembly sdk = Assembly.LoadFile(fileInfo.FullName);
+        Assembly sdk = Assembly.LoadFrom(fileInfo.FullName);
 
         if ((sdk.GetCustomAttribute<SdkVersionAttribute>()?.Head ?? 0) != FileSystemManager.Head)
         {
@@ -52,7 +52,7 @@ public static class TypeLibrary
             string name = type.GetName();
             Guid? guid = type.GetCustomAttribute<GuidAttribute>()?.Guid;
 
-            s_nameMapping.Add(name, i);
+            s_nameMapping.Add(name.ToLower(), i);
             s_nameHashMapping.Add(nameHash, i);
             if (guid.HasValue)
             {
