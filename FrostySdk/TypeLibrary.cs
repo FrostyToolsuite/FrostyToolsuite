@@ -29,7 +29,7 @@ public static class TypeLibrary
             return false;
         }
 
-        Assembly sdk = Assembly.LoadFile(fileInfo.FullName);
+        Assembly sdk = Assembly.LoadFrom(fileInfo.FullName);
 
         if ((sdk.GetCustomAttribute<SdkVersionAttribute>()?.Head ?? 0) != FileSystemManager.Head)
         {
