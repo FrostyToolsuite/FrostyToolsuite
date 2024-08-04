@@ -16,7 +16,7 @@ public class DbObjectInt : DbObject
     {
         m_value = inValue;
     }
-    
+
     public DbObjectInt(string inName, int inValue)
         : base(Type.Int, inName)
     {
@@ -51,5 +51,10 @@ public class DbObjectInt : DbObject
     protected override void InternalDeserialize(DataStream stream)
     {
         m_value = stream.ReadInt32();
+    }
+
+    public override string? ToString()
+    {
+        return m_value.ToString();
     }
 }

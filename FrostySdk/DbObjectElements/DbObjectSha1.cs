@@ -16,7 +16,7 @@ public class DbObjectSha1 : DbObject
     {
         m_value = inValue;
     }
-    
+
     public DbObjectSha1(string inName, Sha1 inValue)
         : base(Type.Sha1, inName)
     {
@@ -36,5 +36,10 @@ public class DbObjectSha1 : DbObject
     protected override void InternalDeserialize(DataStream stream)
     {
         m_value = stream.ReadSha1();
+    }
+
+    public override string? ToString()
+    {
+        return m_value.ToString();
     }
 }

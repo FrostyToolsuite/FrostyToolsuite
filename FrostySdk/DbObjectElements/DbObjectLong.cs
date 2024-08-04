@@ -16,7 +16,7 @@ public class DbObjectLong : DbObject
     {
         m_value = inValue;
     }
-    
+
     public DbObjectLong(string inName, long inValue)
         : base(Type.Long, inName)
     {
@@ -51,5 +51,10 @@ public class DbObjectLong : DbObject
     protected override void InternalDeserialize(DataStream stream)
     {
         m_value = stream.ReadInt64();
+    }
+
+    public override string? ToString()
+    {
+        return m_value.ToString();
     }
 }

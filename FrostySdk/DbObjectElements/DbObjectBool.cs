@@ -16,7 +16,7 @@ public class DbObjectBool : DbObject
     {
         m_value = inValue;
     }
-    
+
     public DbObjectBool(string inName, bool inValue)
         : base(Type.Boolean, inName)
     {
@@ -36,5 +36,10 @@ public class DbObjectBool : DbObject
     protected override void InternalDeserialize(DataStream stream)
     {
         m_value = stream.ReadByte() != 0;
+    }
+
+    public override string? ToString()
+    {
+        return m_value.ToString();
     }
 }

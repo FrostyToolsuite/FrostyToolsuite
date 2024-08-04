@@ -102,7 +102,11 @@ public class DbObjectList : DbObject, IEnumerable<DbObject>
         m_items.Add(new DbObjectBlob(value));
     }
 
-    public DbObject this[int index] => m_items[index];
+    public DbObject this[int index]
+    {
+        get => m_items[index];
+        set => m_items[index] = value;
+    }
 
     protected override void InternalSerialize(DataStream stream)
     {
