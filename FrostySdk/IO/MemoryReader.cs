@@ -140,6 +140,32 @@ public sealed unsafe partial class MemoryReader
         return (ulong)ReadLong(pad);
     }
 
+    public float ReadSingle(bool pad = true)
+    {
+        if (pad)
+        {
+            Pad(sizeof(float));
+        }
+
+        Span<byte> buffer = stackalloc byte[sizeof(float)];
+        ReadExactly(buffer);
+
+        return BinaryPrimitives.ReadSingleLittleEndian(buffer);
+    }
+
+    public double ReadDouble(bool pad = true)
+    {
+        if (pad)
+        {
+            Pad(sizeof(double));
+        }
+
+        Span<byte> buffer = stackalloc byte[sizeof(double)];
+        ReadExactly(buffer);
+
+        return BinaryPrimitives.ReadDoubleLittleEndian(buffer);
+    }
+
     public Guid ReadGuid(bool pad = true)
     {
         if (pad)
@@ -151,6 +177,14 @@ public sealed unsafe partial class MemoryReader
         ReadExactly(span);
 
         return new Guid(span);
+    }
+
+    public Sha1 ReadSha1()
+    {
+        Span<byte> span = stackalloc byte[sizeof(Sha1)];
+        ReadExactly(span);
+
+        return new Sha1(span);
     }
 
     public string ReadNullTerminatedString(bool pad = true)

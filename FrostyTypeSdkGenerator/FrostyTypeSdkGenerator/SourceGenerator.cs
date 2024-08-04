@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -128,11 +127,10 @@ public sealed partial class SourceGenerator : IIncrementalGenerator
 
         string name = field.Name;
         string type = field.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        bool needsConstructor = field.Type.IsValueType || type.Contains("global::System.Collections.ObjectModel.ObservableCollection<");
         ImmutableArray<string> attributes =
             field.GetAttributes().Select(static attr => attr.ToString()!).ToImmutableArray();
 
-        return new FieldContext(name, type, attributes, needsConstructor);
+        return new FieldContext(name, type, attributes);
     }
 
     private static void CreateINotifyPropertyChanged(SourceProductionContext context, TypeContext typeContext)
@@ -418,23 +416,9 @@ using Frosty.Sdk.Sdk;
 {(typeContext.Namespace is null ? string.Empty : $"namespace {typeContext.Namespace}; \n")}
 public partial {(typeContext.IsValueType ? "struct" : "class")} {typeContext.Name}
 {{";
-        bool needsConstructor =
-            typeContext.Fields.Any(static f => f.NeedsConstructor);
         string constructor = string.Empty;
         foreach (FieldContext field in typeContext.Fields)
         {
-            if (needsConstructor)
-            {
-                if (field.NeedsConstructor)
-                {
-                    constructor += $"\n        {field.Name} = new();";
-                }
-                else
-                {
-                    constructor += $"\n        {field.Name} = default;";
-                }
-            }
-
             string prop, name = field.Name.Remove(0, 1);
             if (meta is not null && meta.TryGetValue(name, out MetaProperty metaProp) && metaProp.IsOverride)
             {
@@ -484,15 +468,6 @@ public partial {(typeContext.IsValueType ? "struct" : "class")} {typeContext.Nam
             }
         }
 
-        if (needsConstructor)
-        {
-            source += $@"
-
-    public {typeContext.Name}()
-    {{{constructor}
-    }}";
-        }
-
         source += "\n}";
 
         context.AddSource($"{GetQualifiedName(typeContext)}.Properties.g.cs", source);
@@ -510,7 +485,7 @@ public partial {(typeContext.IsValueType ? "struct" : "class")} {typeContext.Nam
         string hash = QuickHash(context.Name).ToString("x8");
         return context.Namespace is null
             ? $"{context.Name}.{hash}"
-            : $"{context.Namespace}.{context.Name}.{hash}";
+            : $"{context.Namespace.Replace('.', '/')}/{context.Name}.{hash}";
     }
 
     private static uint QuickHash(string value)

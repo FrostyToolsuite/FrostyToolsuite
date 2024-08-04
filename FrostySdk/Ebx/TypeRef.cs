@@ -1,6 +1,5 @@
 using System;
-using System.Reflection;
-using Frosty.Sdk.Attributes;
+using System.Collections.Generic;
 
 namespace Frosty.Sdk.Ebx;
 
@@ -8,47 +7,36 @@ public struct TypeRef
 {
     public string Name => m_typeName ?? string.Empty;
     public Guid Guid => m_typeGuid;
+    public Type? Type => m_type;
 
     private readonly Guid m_typeGuid;
     private readonly string? m_typeName;
+    private readonly Type? m_type;
 
     public TypeRef()
     {
         m_typeName = string.Empty;
     }
 
-    public TypeRef(string value)
+    public TypeRef(string inName)
     {
-        m_typeName = value;
+        m_type = TypeLibrary.GetType(inName);
+        m_typeName = inName;
+        m_typeGuid = m_type?.GetGuid() ?? Guid.Empty;
     }
 
-    public TypeRef(Guid guid)
+    public TypeRef(Guid inGuid)
     {
-        m_typeGuid = guid;
-        m_typeName = TypeLibrary.GetType(guid)?.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? m_typeGuid.ToString();
+        m_type = TypeLibrary.GetType(inGuid);
+        m_typeGuid = inGuid;
+        m_typeName = m_type?.GetName() ?? m_typeGuid.ToString();
     }
 
-    public Type GetReferencedType()
+    public TypeRef(Type inType)
     {
-        if (m_typeGuid == Guid.Empty)
-        {
-            Type? refType = TypeLibrary.GetType(m_typeName!);
-            if (refType == null)
-            {
-                throw new Exception($"Could not find the type {m_typeName}");
-            }
-            return refType;
-        }
-        else
-        {
-
-            Type? refType = TypeLibrary.GetType(m_typeGuid);
-            if (refType == null)
-            {
-                throw new Exception($"Could not find the type {m_typeName}");
-            }
-            return refType;
-        }
+        m_type = inType;
+        m_typeGuid = inType.GetGuid();
+        m_typeName = inType.GetName();
     }
 
     public static implicit operator string(TypeRef value) => value.m_typeName ?? "null";

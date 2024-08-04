@@ -60,6 +60,15 @@ internal class ClassInfoData : TypeInfoData
         }
     }
 
+    public void ReadDefaultValues(MemoryReader reader)
+    {
+        long curPos = reader.Position;
+        foreach (FieldInfo field in m_fieldInfos)
+        {
+            field.ReadDefaultValue(reader, curPos);
+        }
+    }
+
     public override void CreateType(StringBuilder sb)
     {
         if (m_name.Contains("::"))

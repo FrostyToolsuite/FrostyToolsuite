@@ -147,6 +147,11 @@ internal class TypeInfo
         m_flags = reader.ReadUShort();
     }
 
+    public virtual string ReadDefaultValue(MemoryReader reader)
+    {
+        return string.Empty;
+    }
+
     public TypeInfo? GetNextTypeInfo(MemoryReader reader)
     {
         if (p_next == 0)
