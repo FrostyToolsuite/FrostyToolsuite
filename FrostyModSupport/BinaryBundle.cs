@@ -204,8 +204,15 @@ public static class BinaryBundle
                 if (modEntry.FirstMip != -1)
                 {
                     DbObjectDict? meta = chunkMeta?.FirstOrDefault(m => m.AsDict().AsInt("h32") == modEntry.H32)?.AsDict();
-                    Debug.Assert((meta?.AsDict("meta").AsInt("firstMip") ?? -1) == modEntry.FirstMip);
-                    // TODO: modify firstMip, need to implement changing shit in DbObject
+                    if (meta is null)
+                    {
+                        meta = DbObject.CreateDict( 2);
+                        meta.Set("h32", modEntry.H32);
+                        meta.Set("meta", DbObject.CreateDict("meta", 1));
+                        chunkMeta ??= DbObject.CreateList(1);
+                        chunkMeta.Add(meta);
+                    }
+                    meta.AsDict("meta").Set("firstMip", modEntry.FirstMip);
                 }
             }
             else
@@ -223,12 +230,12 @@ public static class BinaryBundle
             sha1[j++] = modEntry.Sha1;
 
             DbObjectDict meta = DbObject.CreateDict(2);
-            meta.Add("h32", modEntry.H32);
+            meta.Set("h32", modEntry.H32);
             if (modEntry.FirstMip != -1)
             {
-                DbObjectDict firstMip = DbObject.CreateDict(1);
-                firstMip.Add("firstMip", modEntry.FirstMip);
-                meta.Add("meta", firstMip);
+                DbObjectDict firstMip = DbObject.CreateDict("meta", 1);
+                firstMip.Set("firstMip", modEntry.FirstMip);
+                meta.Set("meta", firstMip);
             }
             chunkMeta!.Add(meta);
         }

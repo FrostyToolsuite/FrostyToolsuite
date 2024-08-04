@@ -4,8 +4,8 @@ namespace Frosty.ModSupport;
 
 public static class ObfuscationHeader
 {
-    private static byte[] s_magic1 = { 0x00, 0xD1, 0xCE, 0x01 };
-    private static byte[] s_magic3 = { 0x00, 0xD1, 0xCE, 0x03 };
+    private static readonly byte[] s_magic1 = { 0x00, 0xD1, 0xCE, 0x01 };
+    private static readonly byte[] s_magic3 = { 0x00, 0xD1, 0xCE, 0x03 };
 
     public static void Write(Stream inStream)
     {

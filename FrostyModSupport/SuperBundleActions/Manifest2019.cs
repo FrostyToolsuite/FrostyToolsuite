@@ -105,9 +105,6 @@ internal class Manifest2019 : IDisposable
 
         stringHelper = new StringHelper();
 
-        //inModInfo.Modified.Bundles.Clear();
-        //inModInfo.Modified.Chunks.Clear();
-
         Block<byte> modifiedSuperBundle = new(0);
         using (BlockStream modifiedStream = new(modifiedSuperBundle, true))
         {
@@ -303,7 +300,7 @@ internal class Manifest2019 : IDisposable
         }
     }
 
-    private byte ProcessBundles(string inPath, bool inOnlyUseModifiedBundles, SuperBundleInstallChunk inSbIc,
+    private byte ProcessBundles(string inPath, bool inOnlyUseModified, SuperBundleInstallChunk inSbIc,
         SuperBundleModInfo inModInfo, InstallChunkWriter inInstallChunkWriter, StringHelper inStringHelper,
         BlockStream inModifiedStream, List<(StringHelper.String, uint, long)> inBundles, List<(Guid, CasFileIdentifier, uint, uint)> inChunks)
     {
@@ -386,7 +383,7 @@ internal class Manifest2019 : IDisposable
 
                     if (!inModInfo.Modified.Bundles.TryGetValue(id, out BundleModInfo? bundleModInfo))
                     {
-                        if (inOnlyUseModifiedBundles)
+                        if (inOnlyUseModified)
                         {
                             // we create a new patch to a base superbundle, so we only need modified bundles
                             continue;
@@ -443,6 +440,7 @@ internal class Manifest2019 : IDisposable
                         inModInfo.Modified.Bundles.Remove(id);
                     }
 
+                    // add new bundle to toc
                     inBundles.Add((inStringHelper.AddString(name), newBundleSize, newOffset));
                 }
                 huffmanDecoder?.Dispose();
@@ -494,7 +492,7 @@ internal class Manifest2019 : IDisposable
 
                     if (!inModInfo.Modified.Chunks.Contains(id))
                     {
-                        if (inOnlyUseModifiedBundles)
+                        if (inOnlyUseModified)
                         {
                             // we create a new patch to a base superbundle, so we only need modified chunks
                             continue;
