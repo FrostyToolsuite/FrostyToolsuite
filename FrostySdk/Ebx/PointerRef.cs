@@ -3,7 +3,7 @@ using Frosty.Sdk.IO.Ebx;
 
 namespace Frosty.Sdk.Ebx;
 
-public struct PointerRef
+public readonly struct PointerRef
 {
     public EbxImportReference External { get; }
     public object? Internal { get; }
