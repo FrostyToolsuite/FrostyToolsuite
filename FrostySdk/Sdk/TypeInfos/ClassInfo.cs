@@ -23,6 +23,28 @@ internal class ClassInfo : TypeInfo
         p_defaultInstance = reader.ReadLong();
     }
 
+    public override string ReadDefaultValue(MemoryReader reader)
+    {
+        long p = reader.ReadInt();
+        if (p != 0)
+        {
+            FrostyLogger.Logger?.LogWarning("Ignored default value for class in another struct/class");
+        }
+
+        return string.Empty;
+    }
+
+    public void ReadDefaultValues(MemoryReader reader)
+    {
+        if (p_defaultInstance == 0)
+        {
+            return;
+        }
+
+        reader.Position = p_defaultInstance;
+        (m_data as ClassInfoData)?.ReadDefaultValues(reader);
+    }
+
     public int GetFieldCount()
     {
         int fieldCount = (m_data as ClassInfoData)?.GetFieldCount() ?? 0;

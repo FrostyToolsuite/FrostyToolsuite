@@ -20,6 +20,8 @@ internal class FieldInfo : IComparable
     private ushort m_offset;
     private long p_typeInfo;
 
+    private string? m_defaultValue;
+
     public void Read(MemoryReader reader, uint inTypeHash, string inTypeName)
     {
         if (!ProfilesLibrary.HasStrippedTypeNames)
@@ -71,6 +73,32 @@ internal class FieldInfo : IComparable
         }
     }
 
+    public void ReadDefaultValue(MemoryReader reader, long pInstance)
+    {
+        if (p_typeInfo == 0)
+        {
+            return;
+        }
+
+        reader.Position = pInstance + m_offset;
+
+
+        m_defaultValue = GetTypeInfo().ReadDefaultValue(reader);
+    }
+
+    public string ReadValue(MemoryReader reader, long pInstance)
+    {
+        if (p_typeInfo == 0)
+        {
+            return string.Empty;
+        }
+
+        reader.Position = pInstance + m_offset;
+
+
+        return GetTypeInfo().ReadDefaultValue(reader);
+    }
+
     public void CreateField(StringBuilder sb)
     {
         TypeInfo type = GetTypeInfo();
@@ -98,11 +126,22 @@ internal class FieldInfo : IComparable
         sb.AppendLine($"[{nameof(EbxFieldMetaAttribute)}({(ushort)flags}, {m_offset}, {(isClass ? $"typeof({type.GetFullName()})" : "null")})]");
         sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
 
-        sb.AppendLine($"private {typeName} _{m_name};");
+        sb.AppendLine($"private {typeName} _{m_name}{(string.IsNullOrEmpty(m_defaultValue) ? string.Empty : $" = {m_defaultValue}")};");
     }
 
     public int CompareTo(object? obj)
     {
         return m_offset.CompareTo((obj as FieldInfo)!.m_offset);
     }
+}
+
+public struct TestStruct
+{
+    public int A;
+    public int B;
+}
+
+public class TestClass
+{
+    public TestStruct TestStruct = new() { A = 1, B = 2 };
 }

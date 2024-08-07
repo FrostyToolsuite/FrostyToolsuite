@@ -47,7 +47,7 @@ public struct BoxedValueRef
         Type type = m_value.GetType();
 
         return
-            $"BoxedValueRef '{(m_type == TypeFlags.TypeEnum.Array ? $"Array<{type.GenericTypeArguments[0].GetCustomAttribute<DisplayNameAttribute>()!.Name}>" : type.GetCustomAttribute<DisplayNameAttribute>()!.Name)}'";
+            $"BoxedValueRef '{(m_type == TypeFlags.TypeEnum.Array ? $"Array<{type.GenericTypeArguments[0].GetName()}>" : type.GetName())}'";
     }
 
     public override bool Equals(object? obj)

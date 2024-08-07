@@ -25,6 +25,14 @@ public class KelvinFileInfo : IFileInfo
 
     public bool IsComplete() => m_logicalOffset != 0;
 
+    public long GetOriginalSize()
+    {
+        using (BlockStream stream = BlockStream.FromFile(FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(m_casIndex)), m_offset, (int)m_size))
+        {
+            return Cas.GetUncompressedSize(stream);
+        }
+    }
+
     public Block<byte> GetRawData()
     {
         using (FileStream stream = new(FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(m_casIndex)), FileMode.Open, FileAccess.Read))

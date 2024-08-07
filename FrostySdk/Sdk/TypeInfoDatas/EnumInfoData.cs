@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Frosty.Sdk.IO;
 
@@ -25,6 +26,17 @@ internal class EnumInfoData : TypeInfoData
             m_fieldInfos.Add(new FieldInfo());
             m_fieldInfos[i].Read(reader, m_nameHash, m_name);
         }
+    }
+
+    public string ReadDefaultValue(MemoryReader reader)
+    {
+        int value = reader.ReadInt();
+        string? strValue = m_fieldInfos.FirstOrDefault(field => field.GetEnumValue() == value)?.GetName();
+        if (string.IsNullOrEmpty(strValue))
+        {
+            return $"({GetFullName()})({value})";
+        }
+        return $"{GetFullName()}.{strValue}";
     }
 
     public override void CreateType(StringBuilder sb)

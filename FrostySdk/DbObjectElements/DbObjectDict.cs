@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Utils;
 
@@ -39,6 +40,7 @@ public class DbObjectDict : DbObject
         return m_items[name].AsDict();
     }
 
+    [return: NotNullIfNotNull(nameof(defaultValue))]
     public DbObjectDict? AsDict(string name, DbObjectDict? defaultValue)
     {
         return m_items.TryGetValue(name, out DbObject? item) ? item.AsDict() : defaultValue;
@@ -49,6 +51,7 @@ public class DbObjectDict : DbObject
         return m_items[name].AsList();
     }
 
+    [return: NotNullIfNotNull(nameof(defaultValue))]
     public DbObjectList? AsList(string name, DbObjectList? defaultValue)
     {
         return m_items.TryGetValue(name, out DbObject? item) ? item.AsList() : defaultValue;
@@ -111,69 +114,74 @@ public class DbObjectDict : DbObject
 
     public bool ContainsKey(string name) => m_items.ContainsKey(name);
 
-    public void Add(string name, DbObjectDict value)
+    public void Set(string name, DbObjectDict value)
     {
-        m_items.Add(name, value);
+        m_items[name] = value;
     }
 
-    public void Add(string name, DbObjectList value)
+    public void Set(string name, DbObjectList value)
     {
-        m_items.Add(name, value);
+        m_items[name] = value;
     }
 
-    public void Add(string name, bool value)
+    public void Set(string name, bool value)
     {
-        m_items.Add(name, new DbObjectBool(name, value));
+        m_items[name] = new DbObjectBool(name, value);
     }
 
-    public void Add(string name, string value)
+    public void Set(string name, string value)
     {
-        m_items.Add(name, new DbObjectString(name, value));
+        m_items[name] = new DbObjectString(name, value);
     }
 
-    public void Add(string name, int value)
+    public void Set(string name, int value)
     {
-        m_items.Add(name, new DbObjectInt(name, value));
+        m_items[name] = new DbObjectInt(name, value);
     }
 
-    public void Add(string name, uint value)
+    public void Set(string name, uint value)
     {
-        m_items.Add(name, new DbObjectInt(name, (int)value));
+        m_items[name] = new DbObjectInt(name, (int)value);
     }
 
-    public void Add(string name, long value)
+    public void Set(string name, long value)
     {
-        m_items.Add(name, new DbObjectLong(name, value));
+        m_items[name] = new DbObjectLong(name, value);
     }
 
-    public void Add(string name, ulong value)
+    public void Set(string name, ulong value)
     {
-        m_items.Add(name, new DbObjectLong(name, (long)value));
+        m_items[name] = new DbObjectLong(name, (long)value);
     }
 
-    public void Add(string name, float value)
+    public void Set(string name, float value)
     {
-        m_items.Add(name, new DbObjectFloat(name, value));
+        m_items[name] = new DbObjectFloat(name, value);
     }
 
-    public void Add(string name, double value)
+    public void Set(string name, double value)
     {
-        m_items.Add(name, new DbObjectDouble(name, value));
+        m_items[name] = new DbObjectDouble(name, value);
     }
 
-    public void Add(string name, Guid value)
+    public void Set(string name, Guid value)
     {
-        m_items.Add(name, new DbObjectGuid(name, value));
+        m_items[name] = new DbObjectGuid(name, value);
     }
 
-    public void Add(string name, Sha1 value)
+    public void Set(string name, Sha1 value)
     {
-        m_items.Add(name, new DbObjectSha1(name, value));
+        m_items[name] = new DbObjectSha1(name, value);
     }
 
-    public void Add(string name, byte[] value)
+    public void Set(string name, byte[] value)
     {
-        m_items.Add(name, new DbObjectBlob(name, value));
+        m_items[name] = new DbObjectBlob(name, value);
+    }
+
+    public bool Remove(string inKey)
+    {
+        return m_items.Remove(inKey);
     }
 
     protected override void InternalSerialize(DataStream stream)

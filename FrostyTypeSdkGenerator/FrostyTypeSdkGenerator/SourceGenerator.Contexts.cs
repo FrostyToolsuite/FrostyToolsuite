@@ -9,7 +9,7 @@ public sealed partial class SourceGenerator
 {
     private readonly record struct TypeContext(string? Namespace, string Name, bool IsValueType, ImmutableArray<FieldContext> Fields);
 
-    private readonly record struct FieldContext(string Name, string Type, ImmutableArray<string> Attributes, bool NeedsConstructor);
+    private readonly record struct FieldContext(string Name, string Type, ImmutableArray<string> Attributes);
 
     private sealed class TypeContextEqualityComparer : IEqualityComparer<TypeContext>
     {

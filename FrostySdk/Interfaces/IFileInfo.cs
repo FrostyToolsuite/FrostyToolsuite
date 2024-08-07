@@ -12,6 +12,8 @@ public interface IFileInfo
 
     public bool IsComplete();
 
+    public long GetOriginalSize();
+
     public Block<byte> GetRawData();
 
     public Block<byte> GetData(int inOriginalSize);
@@ -36,6 +38,7 @@ public interface IFileInfo
         }
         fileInfo.SerializeInternal(stream);
     }
+
     public static IFileInfo Deserialize(DataStream stream)
     {
         byte type = stream.ReadByte();

@@ -1,4 +1,5 @@
-﻿using Frosty.Sdk.IO;
+﻿using System.Globalization;
+using Frosty.Sdk.IO;
 
 namespace Frosty.Sdk.DbObjectElements;
 
@@ -16,7 +17,7 @@ public class DbObjectDouble : DbObject
     {
         m_value = inValue;
     }
-    
+
     public DbObjectDouble(string inName, double inValue)
         : base(Type.Double, inName)
     {
@@ -41,5 +42,10 @@ public class DbObjectDouble : DbObject
     protected override void InternalDeserialize(DataStream stream)
     {
         m_value = stream.ReadDouble();
+    }
+
+    public override string? ToString()
+    {
+        return m_value.ToString(CultureInfo.CurrentCulture);
     }
 }

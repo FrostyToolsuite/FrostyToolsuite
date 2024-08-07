@@ -98,7 +98,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
             string? baseSbPath = null;
             Dictionary<int, BaseBundleHelper>? baseBundleMapping = null;
 
-            // is its a das superBundle it stores the bundle values in lists
+            // is it a das superBundle it stores the bundle values in lists
             if (isDas)
             {
                 DbObjectDict bundles = toc.AsDict("bundles");
@@ -204,12 +204,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     patchChunks.Add(entry.Id);
 
                     AssetManager.AddSuperBundleChunk(entry);
-
-                    if (entry.LogicalSize == 0)
-                    {
-                        // TODO: get original size
-                        // entry.OriginalSize = entry.FileInfo.GetOriginalSize();
-                    }
                 }
 
                 if (inSource.Path == FileSystemSource.Patch.Path)
@@ -251,12 +245,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
                             }
 
                             AssetManager.AddSuperBundleChunk(entry);
-
-                            if (entry.LogicalSize == 0)
-                            {
-                                // TODO: get original size
-                                // entry.OriginalSize = entry.FileInfo.GetOriginalSize();
-                            }
                         }
                     }
                 }
@@ -709,11 +697,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 Sha1 baseSha1 = ebx.AsSha1("baseSha1");
                 Sha1 deltaSha1 = ebx.AsSha1("deltaSha1");
 
-                if (ebx.ContainsKey("idelta"))
-                {
-
-                }
-
                 entry.AddFileInfo(ResourceManager.GetPatchFileInfo(entry.Sha1, deltaSha1, baseSha1));
             }
             else
@@ -737,11 +720,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 Sha1 baseSha1 = res.AsSha1("baseSha1");
                 Sha1 deltaSha1 = res.AsSha1("deltaSha1");
 
-                if (res.ContainsKey("idelta"))
-                {
-
-                }
-
                 entry.AddFileInfo(ResourceManager.GetPatchFileInfo(entry.Sha1, deltaSha1, baseSha1));
             }
             else
@@ -763,11 +741,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
             {
                 Sha1 baseSha1 = chunk.AsSha1("baseSha1");
                 Sha1 deltaSha1 = chunk.AsSha1("deltaSha1");
-
-                if (chunk.ContainsKey("idelta"))
-                {
-
-                }
 
                 entry.AddFileInfo(ResourceManager.GetPatchFileInfo(entry.Sha1, deltaSha1, baseSha1));
             }

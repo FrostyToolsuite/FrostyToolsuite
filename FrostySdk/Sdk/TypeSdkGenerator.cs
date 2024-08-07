@@ -13,6 +13,7 @@ using System.Text;
 using System.Text.Json;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
+using Frosty.Sdk.Sdk.TypeInfos;
 using FrostyTypeSdkGenerator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -283,6 +284,18 @@ public class TypeSdkGenerator
 
         if (TypeInfo.TypeInfoMapping.Count > 0)
         {
+            foreach (TypeInfo type in TypeInfo.TypeInfoMapping.Values)
+            {
+                if (type is ClassInfo c)
+                {
+                    c.ReadDefaultValues(reader);
+                }
+                else if (type is StructInfo s)
+                {
+                    s.ReadDefaultValues(reader);
+                }
+            }
+
             FrostyLogger.Logger?.LogInfo($"Found {TypeInfo.TypeInfoMapping.Count} types in the games memory");
             return true;
         }
@@ -387,6 +400,7 @@ public class TypeSdkGenerator
             {
                 File.WriteAllText("DumpedTypes.cs", tree.GetText().ToString());
                 continue;
+                //break;
             }
 
             FileInfo fileInfo = new(tree.FilePath);

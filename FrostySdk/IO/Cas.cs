@@ -419,6 +419,16 @@ public static class Cas
         return decompressedSize;
     }
 
+    public static long GetUncompressedSize(DataStream inDeltaStream, DataStream? inBaseStream)
+    {
+        throw new NotImplementedException();
+    }
+
+    public static long GetUncompressedSize(DataStream inDeltaStream, DataStream? inBaseStream, int inMidInstructionSize)
+    {
+        throw new NotImplementedException();
+    }
+
     public static long GetCompressedSize(DataStream inStream, long inUncompressedSize)
     {
         long compressedSize = 0;

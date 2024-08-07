@@ -1,11 +1,76 @@
 ﻿using System;
+using System.Globalization;
 using System.Text;
 using Frosty.Sdk.Interfaces;
+using Frosty.Sdk.IO;
 
 namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
 internal class PrimitiveInfoData : TypeInfoData
 {
+    public string ReadDefaultValue(MemoryReader reader)
+    {
+        switch (m_flags.GetTypeEnum())
+        {
+            case TypeFlags.TypeEnum.String:
+                break;
+            case TypeFlags.TypeEnum.CString:
+                return $"@\"{reader.ReadNullTerminatedString()}\"";
+            case TypeFlags.TypeEnum.FileRef:
+                return $"new Frosty.Sdk.Ebx.FileRef(\"{reader.ReadNullTerminatedString()}\")"; // TODO: not sure about this
+            case TypeFlags.TypeEnum.Boolean:
+                return (reader.ReadByte() != 0) ? "true" : "false";
+            case TypeFlags.TypeEnum.Int8:
+                return ((sbyte)reader.ReadByte()).ToString();
+            case TypeFlags.TypeEnum.UInt8:
+                return reader.ReadByte().ToString();
+            case TypeFlags.TypeEnum.Int16:
+                return reader.ReadShort().ToString();
+            case TypeFlags.TypeEnum.UInt16:
+                return reader.ReadUShort().ToString();
+            case TypeFlags.TypeEnum.Int32:
+                return reader.ReadInt().ToString();
+            case TypeFlags.TypeEnum.UInt32:
+                return reader.ReadUInt().ToString();
+            case TypeFlags.TypeEnum.Int64:
+                return reader.ReadLong().ToString();
+            case TypeFlags.TypeEnum.UInt64:
+                return reader.ReadULong().ToString();
+            case TypeFlags.TypeEnum.Float32:
+                return $"{reader.ReadSingle().ToString(CultureInfo.CurrentCulture)}f";
+            case TypeFlags.TypeEnum.Float64:
+                return reader.ReadDouble().ToString(CultureInfo.CurrentCulture);
+            case TypeFlags.TypeEnum.Guid:
+                return $"System.Guid.Parse(\"{reader.ReadGuid().ToString()}\")";
+            case TypeFlags.TypeEnum.Sha1:
+                return $"new Frosty.Sdk.Sha1(\"{reader.ReadSha1().ToString()}\")";
+            case TypeFlags.TypeEnum.ResourceRef:
+                return $"new Frosty.Sdk.Ebx.ResourceRef({reader.ReadULong().ToString()})";
+            case TypeFlags.TypeEnum.TypeRef:
+                long ptr = reader.ReadLong();
+                if (!TypeInfo.TypeInfoMapping.TryGetValue(ptr, out TypeInfo? type))
+                {
+                    return "default";
+                }
+
+                return $"new Frosty.Sdk.Ebx.TypeRef(typeof({type.GetFullName()}))";
+            case TypeFlags.TypeEnum.BoxedValueRef:
+                ptr = reader.ReadLong();
+                long valuePtr = reader.ReadLong();
+                if (!TypeInfo.TypeInfoMapping.TryGetValue(ptr, out type))
+                {
+                    return "default";
+                }
+
+                reader.Position = valuePtr;
+                string defaultValue = type.ReadDefaultValue(reader);
+
+                return $"new Frosty.Sdk.Ebx.BoxedValueRef()"; // TODO:
+        }
+
+        return string.Empty;
+    }
+
     public override void CreateType(StringBuilder sb)
     {
         base.CreateType(sb);

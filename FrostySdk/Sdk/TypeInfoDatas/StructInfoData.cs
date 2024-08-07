@@ -9,6 +9,7 @@ namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 internal class StructInfoData : TypeInfoData
 {
     private List<FieldInfo> m_fieldInfos = new List<FieldInfo>();
+    private long p_defaultValue;
 
     public override void Read(MemoryReader reader)
     {
@@ -34,7 +35,7 @@ internal class StructInfoData : TypeInfoData
             }
         }
 
-        long pDefaultValue = reader.ReadLong();
+        p_defaultValue = reader.ReadLong();
         long pFieldInfos = reader.ReadLong();
 
         reader.Position = pFieldInfos;
@@ -43,6 +44,39 @@ internal class StructInfoData : TypeInfoData
             m_fieldInfos.Add(new FieldInfo());
             m_fieldInfos[i].Read(reader, m_nameHash, m_name);
         }
+    }
+
+    public void ReadDefaultValues(MemoryReader reader)
+    {
+        if (p_defaultValue == 0)
+        {
+            return;
+        }
+
+        foreach (FieldInfo fieldInfo in m_fieldInfos)
+        {
+            fieldInfo.ReadDefaultValue(reader, p_defaultValue);
+        }
+    }
+
+    public string ReadDefaultValue(MemoryReader inReader)
+    {
+        StringBuilder sb = new();
+        sb.AppendLine("new()\n{");
+
+        long curPos = inReader.Position;
+        foreach (FieldInfo fieldInfo in m_fieldInfos)
+        {
+            string defaultValue = fieldInfo.ReadValue(inReader, curPos);
+            if (!string.IsNullOrEmpty(defaultValue))
+            {
+                sb.AppendLine($"{fieldInfo.GetName()} = {defaultValue},");
+            }
+        }
+
+        sb.Append('}');
+
+        return sb.ToString();
     }
 
     public override void CreateType(StringBuilder sb)
@@ -56,7 +90,9 @@ internal class StructInfoData : TypeInfoData
 
         base.CreateType(sb);
 
-        sb.AppendLine($"public partial struct {CleanUpName()}");
+        string name = CleanUpName();
+
+        sb.AppendLine($"public partial struct {name}");
 
         sb.AppendLine("{");
 
@@ -66,6 +102,8 @@ internal class StructInfoData : TypeInfoData
             sb.AppendLine($"[{nameof(FieldIndexAttribute)}({i})]");
             m_fieldInfos[i].CreateField(sb);
         }
+
+        sb.AppendLine($"public {name}() {{}}");
 
         sb.AppendLine("}");
 

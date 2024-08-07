@@ -10,12 +10,12 @@ public sealed partial class SourceGenerator
 {
     private static bool StructPredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
-        return node is StructDeclarationSyntax { Members.Count: > 0 } structDeclarationSyntax && structDeclarationSyntax.Members.Any(m => m is not TypeDeclarationSyntax) && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword);
+        return node is StructDeclarationSyntax { Members.Count: > 0 } structDeclarationSyntax && structDeclarationSyntax.Members.Any(m => m is not TypeDeclarationSyntax and not ConstructorDeclarationSyntax) && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword);
     }
 
     private static bool EmptyStructPredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
-        return node is StructDeclarationSyntax structDeclarationSyntax && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword) && (structDeclarationSyntax.Members.Count == 0 || !structDeclarationSyntax.Members.Any(m => m is not TypeDeclarationSyntax));
+        return node is StructDeclarationSyntax structDeclarationSyntax && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword) && (structDeclarationSyntax.Members.Count == 0 || !structDeclarationSyntax.Members.Any(m => m is not TypeDeclarationSyntax and not ConstructorDeclarationSyntax));
     }
 
     private static bool BaseClassPredicate(SyntaxNode node, CancellationToken cancellationToken)

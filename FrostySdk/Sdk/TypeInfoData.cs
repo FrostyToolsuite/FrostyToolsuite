@@ -153,6 +153,7 @@ internal class TypeInfoData
     public string GetName() => m_name;
 
     public TypeFlags GetFlags() => m_flags;
+    public ushort GetSize() => m_size;
 
     public void CreateNamespace(StringBuilder sb)
     {

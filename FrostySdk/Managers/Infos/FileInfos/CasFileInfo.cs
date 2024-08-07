@@ -48,7 +48,15 @@ public class CasFileInfo : IFileInfo
             }
         }
 
-        return -1;
+        using (BlockStream deltaStream = new(m_delta.GetRawData()))
+        {
+            BlockStream? baseStream = null;
+            if (m_base is not null)
+            {
+                baseStream = new BlockStream(m_base.GetRawData());
+            }
+            return Cas.GetUncompressedSize(deltaStream, baseStream);
+        }
     }
 
     public Block<byte> GetRawData()
@@ -83,7 +91,7 @@ public class CasFileInfo : IFileInfo
             BlockStream? baseStream = null;
             if (m_base is not null)
             {
-                baseStream = new(m_base.GetRawData());
+                baseStream = new BlockStream(m_base.GetRawData());
             }
             return Cas.DecompressData(deltaStream, baseStream, inOriginalSize);
         }

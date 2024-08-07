@@ -568,6 +568,11 @@ public static class AssetManager
                 s_chunkGuidMapping.Remove(entry.Id);
                 FrostyLogger.Logger?.LogWarning($"Skipping chunk {entry.Id}, bc it has no FileInfo!");
             }
+            else if (entry.LogicalSize == 0)
+            {
+                entry.OriginalSize = entry.FileInfo.GetOriginalSize();
+                entry.LogicalSize = (uint)entry.OriginalSize;
+            }
         }
     }
 

@@ -29,6 +29,18 @@ internal class ArrayInfo : TypeInfo
         base.Read(reader);
     }
 
+    public override string ReadDefaultValue(MemoryReader reader)
+    {
+        long p = reader.ReadLong();
+        reader.Position = p - 4;
+        int count = reader.ReadInt();
+        if (count != 0)
+        {
+            FrostyLogger.Logger?.LogInfo("Default value for array not an empty array");
+        }
+        return "new()";
+    }
+
     public new void CreateType(StringBuilder sb)
     {
         m_data.CreateType(sb);

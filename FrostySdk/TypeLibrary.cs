@@ -52,7 +52,7 @@ public static class TypeLibrary
             string name = type.GetName();
             Guid? guid = type.GetCustomAttribute<GuidAttribute>()?.Guid;
 
-            s_nameMapping.Add(name.ToLower(), i);
+            s_nameMapping.Add(name, i);
             s_nameHashMapping.Add(nameHash, i);
             if (guid.HasValue)
             {
@@ -144,5 +144,10 @@ public static class TypeLibrary
     public static string GetName(this MemberInfo type)
     {
         return type.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name;
+    }
+
+    public static Guid GetGuid(this MemberInfo type)
+    {
+        return type.GetCustomAttribute<GuidAttribute>()?.Guid ?? Guid.Empty;
     }
 }

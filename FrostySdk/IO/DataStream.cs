@@ -508,7 +508,7 @@ public unsafe class DataStream : IDisposable
         ulong num;
         for (num = (ulong) value; num > (ulong) sbyte.MaxValue; num >>= 7)
         {
-            WriteByte((byte)((uint)num | 0xFFFFFF80U));
+            WriteByte((byte)(num | 0xFFFFFFFFFFFFFF80UL));
         }
 
         WriteByte((byte)num);

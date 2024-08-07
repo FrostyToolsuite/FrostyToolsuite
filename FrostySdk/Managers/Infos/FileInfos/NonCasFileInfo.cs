@@ -48,9 +48,28 @@ public class NonCasFileInfo : IFileInfo
 
     public bool IsDelta() => m_isDelta;
 
-    public bool IsComplete()
+    public bool IsComplete() => m_logicalOffset == 0;
+
+    public long GetOriginalSize()
     {
-        return m_logicalOffset == 0;
+        if (m_isDelta)
+        {
+            BlockStream? baseStream = null;
+            if (m_baseSize > 0)
+            {
+                baseStream = BlockStream.FromFile(m_fullBasePath!, m_baseOffset, (int)m_baseSize);
+            }
+
+            using (BlockStream deltaStream = BlockStream.FromFile(m_fullPath, m_offset, (int)m_size))
+            {
+                return Cas.GetUncompressedSize(deltaStream, baseStream, m_midInstructionSize);
+            }
+        }
+
+        using (BlockStream stream = BlockStream.FromFile(m_fullPath, m_offset, (int)m_size))
+        {
+            return Cas.GetUncompressedSize(stream);
+        }
     }
 
     public Block<byte> GetRawData()

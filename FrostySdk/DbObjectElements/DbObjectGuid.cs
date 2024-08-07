@@ -17,7 +17,7 @@ public class DbObjectGuid : DbObject
     {
         m_value = inValue;
     }
-    
+
     public DbObjectGuid(string inName, Guid inValue)
         : base(Type.Guid, inName)
     {
@@ -37,5 +37,10 @@ public class DbObjectGuid : DbObject
     protected override void InternalDeserialize(DataStream stream)
     {
         m_value = stream.ReadGuid();
+    }
+
+    public override string? ToString()
+    {
+        return m_value.ToString();
     }
 }
