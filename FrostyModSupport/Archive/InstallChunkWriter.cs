@@ -1,6 +1,7 @@
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
+using Frosty.Sdk.Managers.CatResources;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Utils;
 
@@ -56,7 +57,7 @@ public class InstallChunkWriter
         if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
         {
             // write faceoff header
-            stream.WriteUInt32(0xFACE0FF, Endian.Big);
+            stream.WriteUInt32(0xFACE0FF0, Endian.Big);
             stream.WriteSha1(inSha1);
             stream.WriteInt64(inData.Size);
         }
@@ -78,13 +79,89 @@ public class InstallChunkWriter
 
     public void WriteCatalog()
     {
+        Block<byte> catalog = new(16);
+        if (!FileSystemManager.TryResolvePath(Path.Combine(m_installChunk.InstallBundle, "cas.cat"), out string? originalPath))
+        {
+            throw new Exception();
+        }
+
+        using (BlockStream stream = new(catalog, true))
+        {
+            stream.WriteFixedSizedString("NyanNyanNyanNyan", 16);
+            bool isNewFormat = ProfilesLibrary.FrostbiteVersion > "2014.4.11";
+            using (CatStream catStream = new(originalPath))
+            {
+                if (isNewFormat)
+                {
+                    stream.WriteUInt32(catStream.ResourceCount + (uint)m_data.Count);
+                    stream.WriteUInt32(catStream.PatchCount);
+                    if (ProfilesLibrary.FrostbiteVersion >= "2015")
+                    {
+                        stream.WriteUInt32(catStream.EncryptedCount);
+                        stream.Position += 12;
+                    }
+                }
+
+                for (int i = 0; i < catStream.ResourceCount; i++)
+                {
+                    CatResourceEntry entry = catStream.ReadResourceEntry();
+                    stream.WriteSha1(entry.Sha1);
+                    stream.WriteUInt32(entry.Offset);
+                    stream.WriteUInt32(entry.Size);
+
+                    if (isNewFormat)
+                    {
+                        stream.WriteUInt32(entry.LogicalOffset);
+                    }
+
+                    stream.WriteInt32(entry.ArchiveIndex);
+                }
+
+                foreach (KeyValuePair<Sha1,(CasFileIdentifier Identifier, uint Offset, uint Size)> data in m_data)
+                {
+                    stream.WriteSha1(data.Key);
+                    stream.WriteUInt32(data.Value.Offset);
+                    stream.WriteUInt32(data.Value.Size);
+
+                    if (isNewFormat)
+                    {
+                        stream.WriteUInt32(0);
+                    }
+
+                    stream.WriteInt32(data.Value.Identifier.CasIndex);
+                }
+
+                for (int i = 0; i < catStream.EncryptedCount; i++)
+                {
+                    CatResourceEntry entry = catStream.ReadEncryptedEntry();
+                    stream.WriteSha1(entry.Sha1);
+                    stream.WriteUInt32(entry.Offset);
+                    stream.WriteUInt32(entry.Size);
+                    stream.WriteUInt32(entry.LogicalOffset);
+                    stream.WriteInt32(entry.ArchiveIndex | (1 << 8));
+                    stream.WriteUInt32(entry.OriginalSize);
+                    stream.WriteFixedSizedString(entry.KeyId, 8);
+                    stream.Write(entry.Checksum);
+                }
+
+                for (int i = 0; i < catStream.PatchCount; i++)
+                {
+                    CatPatchEntry entry = catStream.ReadPatchEntry();
+                    stream.WriteSha1(entry.Sha1);
+                    stream.WriteSha1(entry.BaseSha1);
+                    stream.WriteSha1(entry.DeltaSha1);
+                }
+            }
+        }
+
         string fileName = Path.Combine(m_dir, "cas.cat");
-        using (BlockStream stream = new())
+        using (FileStream stream = new(fileName, FileMode.CreateNew))
         {
             if (ProfilesLibrary.FrostbiteVersion > "2014.4.11")
             {
                 ObfuscationHeader.Write(stream);
             }
+            stream.Write(catalog);
         }
     }
 

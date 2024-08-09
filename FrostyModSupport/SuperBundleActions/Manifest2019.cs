@@ -295,7 +295,7 @@ internal class Manifest2019 : IDisposable
                 stream.Position += 4;
                 stream.WriteInt32((stringHelper.Data!.Length + 3 & ~3) / 4, Endian.Big);
                 stream.WriteInt32(stringHelper.Tree!.Count, Endian.Big);
-                stream.WriteUInt32((uint)stringsOffset + ((uint)stringHelper.Data!.Length + 3u & ~3u), Endian.Big);
+                stream.WriteUInt32(stringsOffset + ((uint)stringHelper.Data!.Length + 3u & ~3u), Endian.Big);
             }
         }
     }
@@ -444,6 +444,7 @@ internal class Manifest2019 : IDisposable
                     inBundles.Add((inStringHelper.AddString(name), newBundleSize, newOffset));
                 }
                 huffmanDecoder?.Dispose();
+                sbStream?.Dispose();
             }
 
             if (chunksCount != 0)
@@ -640,8 +641,13 @@ internal class Manifest2019 : IDisposable
         {
             stream.Position = inOffset + bundleOffset;
             bundleMeta = BinaryBundle.Modify(stream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
-                (entry, i, isAdded) =>
+                (entry, i, isAdded, isModified, _) =>
                 {
+                    if (!isModified)
+                    {
+                        return;
+                    }
+
                     (CasFileIdentifier File, uint Offset, uint Size) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
                     if (entry is ChunkModEntry chunk && chunk.FirstMip > 0)
                     {
@@ -669,8 +675,12 @@ internal class Manifest2019 : IDisposable
             using (BlockStream bundleStream = BlockStream.FromFile(path, files[0].Item2, (int)files[0].Item3))
             {
                 bundleMeta = BinaryBundle.Modify(bundleStream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
-                    (entry, i, isAdded) =>
+                    (entry, i, isAdded, isModified, _) =>
                     {
+                        if (!isModified)
+                        {
+                            return;
+                        }
                         (CasFileIdentifier File, uint Offset, uint Size) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
                         if (entry is ChunkModEntry chunk && chunk.FirstMip > 0)
                         {

@@ -11,7 +11,6 @@ using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Profiles;
 using Frosty.Sdk.Utils;
-using Utils = Frosty.Sdk.Utils.Utils;
 
 namespace Frosty.ModSupport.Mod;
 
@@ -22,7 +21,7 @@ public class ModUpdater
 
     public static bool UpdateMod(string inPath, string inNewPath)
     {
-        (BaseModResource[], Frosty.Sdk.Utils.Block<byte>[], FrostyModDetails, uint)? mod;
+        (BaseModResource[], Block<byte>[], FrostyModDetails, uint)? mod;
 
         string extension = Path.GetExtension(inPath);
 
@@ -128,7 +127,7 @@ public class ModUpdater
             inStream.ReadNullTerminatedString(), version > 4 ? inStream.ReadNullTerminatedString() : string.Empty);
 
         FrostyLogger.Logger?.LogInfo(
-            $"Converting mod \"{modDetails.Title}\" from version {version} to {FrostyMod.Version}");
+            $"Converting fbmod (v{version}) \"{modDetails.Title}\" to fbmod (v{FrostyMod.Version})");
 
         int resourceCount = inStream.ReadInt32();
         BaseModResource[] resources = new BaseModResource[resourceCount];
@@ -259,7 +258,7 @@ public class ModUpdater
             mod.AsString("version"), mod.AsString("description"), string.Empty);
 
         FrostyLogger.Logger?.LogInfo(
-            $"Converting legacy mod \"{modDetails.Title}\" with version {version} to new binary format with version {FrostyMod.Version}");
+            $"Converting legacy fbmod (v{version}) \"{modDetails.Title}\" to fbmod (v{FrostyMod.Version})");
 
         if (modDetails.Description.Contains("(Converted from .daimod)"))
         {
@@ -484,7 +483,7 @@ public class ModUpdater
             "Converted from DAI Mod\n" + detailsElem?["description"]?.InnerText, string.Empty);
 
         FrostyLogger.Logger?.LogInfo(
-            $"Converting daimod \"{details.Title}\" to new binary fbmod format with version {FrostyMod.Version}");
+            $"Converting daimod \"{details.Title}\" to fbmod (v{FrostyMod.Version})");
 
         // get bundle actions
         Dictionary<int, (HashSet<int>, HashSet<int>)> bundles = new();
@@ -511,7 +510,7 @@ public class ModUpdater
                     }
                     switch (action)
                     {
-                        case "modify":
+                        case "add":
                             bundles.TryAdd(resourceId, (new HashSet<int>(), new HashSet<int>()));
                             bundles[resourceId].Item1.UnionWith(s_bundleMapping[bundleHash]);
                             break;
@@ -719,6 +718,11 @@ public class ModUpdater
         {
             // set the firstMip to 0 and hope not too many issues arise
             firstMip = 0;
+        }
+
+        if (firstMip == 0 && logicalOffset != 0)
+        {
+
         }
 
         ChunkAssetEntry? entry;

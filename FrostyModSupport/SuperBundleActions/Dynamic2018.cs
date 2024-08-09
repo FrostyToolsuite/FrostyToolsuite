@@ -20,12 +20,15 @@ internal class Dynamic2018 : IDisposable
     private readonly Dictionary<string, ResModEntry> m_modifiedRes;
     private readonly Dictionary<Guid, ChunkModEntry> m_modifiedChunks;
 
+    private readonly Func<Sha1, (Block<byte> Block, bool NeedsToDispose)> m_getDataFun;
+
     public Dynamic2018(Dictionary<string, EbxModEntry> inModifiedEbx,
-        Dictionary<string, ResModEntry> inModifiedRes, Dictionary<Guid, ChunkModEntry> inModifiedChunks)
+        Dictionary<string, ResModEntry> inModifiedRes, Dictionary<Guid, ChunkModEntry> inModifiedChunks, Func<Sha1, (Block<byte>, bool)> inGetDataFun)
     {
         m_modifiedEbx = inModifiedEbx;
         m_modifiedRes = inModifiedRes;
         m_modifiedChunks = inModifiedChunks;
+        m_getDataFun = inGetDataFun;
     }
 
     public void ModSuperBundle(string inPath, bool inCreateNewPatch, SuperBundleInstallChunk inSbIc,
@@ -49,20 +52,50 @@ internal class Dynamic2018 : IDisposable
         }
 
         // TODO: how to get the offset in the .sb file correct since we have the 7bit encoded int
-        SbData = new(modifiedSuperBundle.Size + 4);
+        SbData = new Block<byte>(modifiedSuperBundle.Size + 4);
+        long offset;
         using (BlockStream stream = new(SbData, true))
         {
+            int value = modifiedSuperBundle.Size;
+
+            int size = 0;
+            if (value == 0)
+            {
+                size = 1;
+            }
+            while (value > 0)
+            {
+                size++;
+                value >>= 7;
+            }
+
             // write anonymous dict type
             stream.WriteByte(2 | (1 << 7));
-            stream.Write7BitEncodedInt64(modifiedSuperBundle.Size);
-            long offset = stream.Position;
+            // type + name + size + data + null + null
+            stream.Write7BitEncodedInt64(1 + 8 + size + modifiedSuperBundle.Size + 1 + 1);
+
+            // write list type
+            stream.WriteByte(1);
+            stream.WriteNullTerminatedString("bundles");
+            stream.Write7BitEncodedInt64(modifiedSuperBundle.Size + 1);
+
+            offset = stream.Position;
             stream.Write(modifiedSuperBundle);
             modifiedSuperBundle.Dispose();
             stream.WriteByte(0);
+            stream.WriteByte(0);
+        }
+
+        foreach (DbObject obj in toc.AsList("bundles"))
+        {
+            obj.AsDict().Set("offset", obj.AsDict().AsLong("offset") + offset);
         }
 
         TocData = new Block<byte>(0);
-
+        using (BlockStream stream = new(TocData, true))
+        {
+            DbObject.Serialize(stream, toc);
+        }
     }
 
     private void ProcessBundles(string inPath, bool inOnlyUseModified, SuperBundleInstallChunk inSbIc,
@@ -79,10 +112,8 @@ internal class Dynamic2018 : IDisposable
         bool isCas = toc.AsBoolean("cas");
         bool isDas = toc.AsBoolean("das");
 
-        if (isCas)
-        {
-            inToc.Set("cas", true);
-        }
+        BlockStream? deltaSbStream = null;
+        BlockStream? baseSbStream = null;
 
         // load bundles
         if (toc.ContainsKey("bundles"))
@@ -102,6 +133,7 @@ internal class Dynamic2018 : IDisposable
                                 ? inModInfo.Modified.Bundles.Count + inModInfo.Added.Bundles.Count
                                 : bundles.Count + inModInfo.Added.Bundles.Count));
                 }
+
                 BlockStream? sbStream = null;
                 foreach (DbObject obj in bundles)
                 {
@@ -128,11 +160,6 @@ internal class Dynamic2018 : IDisposable
                             continue;
                         }
 
-                        if (!isCas)
-                        {
-                            throw new NotImplementedException();
-                        }
-
                         // load and write unmodified bundle
                         newOffset = inModifiedStream.Position;
                         newBundleSize = size;
@@ -145,13 +172,24 @@ internal class Dynamic2018 : IDisposable
                         else
                         {
                             needsOldBaseFlag = true;
+                            newOffset = offset;
                         }
                     }
                     else
                     {
                         // load, modify and write bundle
                         newOffset = inModifiedStream.Position;
-                        sbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
+                        if (isBase)
+                        {
+                            baseSbStream ??= BlockStream.FromFile(FileSystemManager.ResolvePath(false, $"{inSbIc.Name}.sb"), false);
+                            sbStream = baseSbStream;
+                        }
+                        else
+                        {
+                            deltaSbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
+                            sbStream = deltaSbStream;
+                        }
+
                         sbStream.Position = offset;
                         if (isCas)
                         {
@@ -192,6 +230,9 @@ internal class Dynamic2018 : IDisposable
                                 ebx.Set("originalSize", modEntry.OriginalSize);
                                 ebxBundleSize += modEntry.Size;
 
+                                // add sha1 to write cas files later
+                                inModInfo.Data.Add(modEntry.Sha1);
+
                                 ebxList[i] = ebx;
                             }
 
@@ -205,6 +246,9 @@ internal class Dynamic2018 : IDisposable
                                 ebx.Set("size", modEntry.Size);
                                 ebx.Set("originalSize", modEntry.OriginalSize);
                                 ebxBundleSize += modEntry.Size;
+
+                                // add sha1 to write cas files later
+                                inModInfo.Data.Add(modEntry.Sha1);
 
                                 ebxList ??= DbObject.CreateList("ebx", bundleModInfo.Added.Ebx.Count);
                                 ebxList.Add(ebx);
@@ -234,6 +278,9 @@ internal class Dynamic2018 : IDisposable
                                 res.Set("resRid", modEntry.ResRid);
                                 resBundleSize += modEntry.Size;
 
+                                // add sha1 to write cas files later
+                                inModInfo.Data.Add(modEntry.Sha1);
+
                                 resList[i] = res;
                             }
 
@@ -250,6 +297,9 @@ internal class Dynamic2018 : IDisposable
                                 res.Set("resMeta", modEntry.ResMeta);
                                 res.Set("resRid", modEntry.ResRid);
                                 resBundleSize += modEntry.Size;
+
+                                // add sha1 to write cas files later
+                                inModInfo.Data.Add(modEntry.Sha1);
 
                                 resList ??= DbObject.CreateList("res", bundleModInfo.Added.Res.Count);
                                 resList.Add(res);
@@ -277,6 +327,9 @@ internal class Dynamic2018 : IDisposable
                                 chunk.Set("logicalOffset", modEntry.LogicalOffset);
                                 chunk.Set("logicalSize", modEntry.LogicalSize);
                                 chunkBundleSize += modEntry.Size - modEntry.RangeStart;
+
+                                // add sha1 to write cas files later
+                                inModInfo.Data.Add(modEntry.Sha1);
 
                                 // i dont think the chunkMeta is sorted in any way for these games
                                 if (metaDict is null)
@@ -328,6 +381,9 @@ internal class Dynamic2018 : IDisposable
                                 chunk.Set("sha1", modEntry.Sha1);
                                 chunk.Set("size", modEntry.Size);
 
+                                // add sha1 to write cas files later
+                                inModInfo.Data.Add(modEntry.Sha1);
+
                                 // create meta
                                 DbObjectDict chunkMeta = DbObject.CreateDict(2);
                                 chunkMeta.Set("h32", modEntry.H32);
@@ -370,9 +426,12 @@ internal class Dynamic2018 : IDisposable
                                 bundle.Set("chunkMeta", chunkMetaList!);
                             }
 
-                            bundle.Set("ebxBundleSize", ebxBundleSize);
-                            bundle.Set("resBundleSize", resBundleSize);
-                            bundle.Set("chunkBundleSize", chunkBundleSize);
+                            if (ProfilesLibrary.FrostbiteVersion > "2014.4.11")
+                            {
+                                bundle.Set("ebxBundleSize", ebxBundleSize);
+                                bundle.Set("resBundleSize", resBundleSize);
+                                bundle.Set("chunkBundleSize", chunkBundleSize);
+                            }
                             bundle.Set("totalSize", ebxBundleSize + resBundleSize + chunkBundleSize);
 
                             // write bundle to sb file
@@ -381,9 +440,80 @@ internal class Dynamic2018 : IDisposable
                         }
                         else
                         {
-                            throw new NotImplementedException();
-                        }
+                            // TODO: this is ass pls fix asap
+                            if (isDelta)
+                            {
+                                throw new NotImplementedException();
+                            }
 
+                            long pos = sbStream.Position;
+                            List<(long OriginalSize, (Block<byte> Block, bool NeedsToDispose)? Data, bool IsModified, bool IsAdded)> originalSizes = new();
+                            Block<byte> bundleMeta = BinaryBundle.Modify(sbStream, bundleModInfo, m_modifiedEbx,
+                                m_modifiedRes,
+                                m_modifiedChunks,
+                                (entry, _, isAdded, isModified, originalSize) =>
+                                {
+                                    (Block<byte> Block, bool NeedsToDispose)? data = null;
+                                    if (isModified)
+                                    {
+                                        data = m_getDataFun(entry.Sha1);
+                                        if (entry is ChunkModEntry chunk && chunk.FirstMip > 0)
+                                        {
+                                            data.Value.Block.Shift((int)chunk.RangeStart);
+                                        }
+                                    }
+
+                                    originalSizes.Add((originalSize, data, isModified, isAdded));
+                                });
+                            uint baseBundleSize = (uint)(sbStream.Position - pos);
+
+                            // write patched bundle
+                            inModifiedStream.WriteUInt32(1, Endian.Big);
+                            inModifiedStream.WriteUInt32(0, Endian.Big);
+                            inModifiedStream.WriteInt32(bundleMeta.Size, Endian.Big);
+                            long startPos = inModifiedStream.Position;
+                            inModifiedStream.WriteUInt32(0xdeadbeef, Endian.Big); // data size
+                            inModifiedStream.WriteInt32(bundleMeta.Size - 4, Endian.Big);
+                            inModifiedStream.WriteUInt32(baseBundleSize | 0x40000000u, Endian.Big);
+
+                            inModifiedStream.Write(bundleMeta);
+                            bundleMeta.Dispose();
+                            long dataOffset = inModifiedStream.Position;
+
+                            foreach ((long OriginalSize, (Block<byte> Block, bool NeedsToDispose)? Data, bool IsModified, bool IsAdded) orig in originalSizes)
+                            {
+                                long compressedSize = 0;
+                                if (!orig.IsAdded)
+                                {
+                                    // skip original data, but store the size, so we can copy it for non modified data
+                                    compressedSize = Cas.GetCompressedSize(sbStream, orig.OriginalSize);
+                                }
+                                if (orig.IsModified)
+                                {
+                                    inModifiedStream.Write(orig.Data!.Value.Block);
+                                }
+                                else
+                                {
+                                    // just copy original data to new stream
+                                    sbStream.Position -= compressedSize;
+                                    sbStream.CopyTo(inModifiedStream, (int)compressedSize);
+                                }
+
+                                if (orig.Data?.NeedsToDispose == true)
+                                {
+                                    orig.Data?.Block.Dispose();
+                                }
+                            }
+
+                            uint dataSize = (uint)(inModifiedStream.Position - dataOffset);
+
+                            inModifiedStream.Position = startPos;
+                            inModifiedStream.WriteUInt32(dataSize, Endian.Big);
+                            inModifiedStream.Position += 4;
+                            inModifiedStream.WriteUInt32((uint)(bundleMeta.Size - 4) | 0x80000000u, Endian.Big);
+
+                            newBundleSize = inModifiedStream.Position - newOffset;
+                        }
 
                         // remove bundle so we can check if the base superbundle needs to be loaded to modify a base bundle
                         inModInfo.Modified.Bundles.Remove(id);
@@ -401,7 +531,7 @@ internal class Dynamic2018 : IDisposable
                         newBundle.Set("base", true);
                     }
 
-                    if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+                    if (isDelta || (!needsOldBaseFlag && isBase))
                     {
                         newBundle.Set("delta", true);
                     }
@@ -429,14 +559,6 @@ internal class Dynamic2018 : IDisposable
 
                 Guid id = chunkObj.AsGuid("id");
 
-                if (isCas)
-                {
-                }
-                else
-                {
-
-                }
-
                 // create new bundle and add it to toc
                 DbObjectDict newChunk;
 
@@ -448,24 +570,50 @@ internal class Dynamic2018 : IDisposable
                         continue;
                     }
 
-                    // use the original info
-                    newChunk = chunkObj;
+                    if (isCas)
+                    {
+                        // use the original info
+                        newChunk = chunkObj;
+                    }
+                    else
+                    {
+                        long offset = chunkObj.AsLong("offset");
+                        long size = chunkObj.AsLong("size");
+                        newChunk = DbObject.CreateDict(3);
+                        newChunk.Set("offset", inModifiedStream.Position);
+                        newChunk.Set("size", size);
+                        deltaSbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
+                        deltaSbStream.Position = offset;
+                        deltaSbStream.CopyTo(inModifiedStream, (int)size);
+                    }
                 }
                 else
                 {
                     // modify chunk
+                    ChunkModEntry modEntry = m_modifiedChunks[id];
                     newChunk = DbObject.CreateDict(3);
 
                     if (isCas)
                     {
-                        ChunkModEntry modEntry = m_modifiedChunks[id];
-
                         newChunk.Set("id", id);
                         newChunk.Set("sha1", modEntry.Sha1);
+
+                        // add sha1 to write cas files later
+                        inModInfo.Data.Add(modEntry.Sha1);
                     }
                     else
                     {
-                        throw new NotImplementedException();
+                        newChunk.Set("id", id);
+                        newChunk.Set("offset", inModifiedStream.Position);
+                        newChunk.Set("size", modEntry.Size);
+
+                        (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
+                        inModifiedStream.Write(data.Block);
+
+                        if (data.NeedsToDispose)
+                        {
+                            data.Block.Dispose();
+                        }
                     }
 
                     // remove chunk so we can check if the base superbundle needs to be loaded to modify a base chunk
@@ -475,6 +623,14 @@ internal class Dynamic2018 : IDisposable
                 inToc.AsList("chunks").Add(newChunk);
             }
         }
+
+        if (isCas)
+        {
+            inToc.Set("cas", true);
+        }
+
+        deltaSbStream?.Dispose();
+        baseSbStream?.Dispose();
     }
 
     public void Dispose()
@@ -501,7 +657,7 @@ public partial class FrostyModExecutor
             createNewPatch = true;
         }
 
-        using (Dynamic2018 action = new(m_modifiedEbx, m_modifiedRes, m_modifiedChunks))
+        using (Dynamic2018 action = new(m_modifiedEbx, m_modifiedRes, m_modifiedChunks, GetData))
         {
             action.ModSuperBundle(tocPath, createNewPatch, inSbIc, inModInfo, inInstallChunkWriter);
 

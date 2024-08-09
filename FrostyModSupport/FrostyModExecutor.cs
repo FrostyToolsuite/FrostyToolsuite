@@ -127,15 +127,18 @@ public partial class FrostyModExecutor
         {
             SuperBundleInstallChunk sbIc = FileSystemManager.GetSuperBundleInstallChunk(sb.Key);
 
-            // write all data in this superbundle to cas files in the correct install chunk
-            InstallChunkWriter installChunkWriter = WriteCasArchives(sb.Value, sbIc);
+            InstallChunkWriter installChunkWriter = GetInstallChunkWriter(sbIc);
 
             switch (FileSystemManager.BundleFormat)
             {
                 case BundleFormat.Dynamic2018:
-                    throw new NotImplementedException();
+                    // clear Data so we can add only the ones we need to write to cas
+                    sb.Value.Data.Clear();
+                    ModDynamic2018(sbIc, sb.Value, installChunkWriter);
                     break;
                 case BundleFormat.Manifest2019:
+                    // write all cas files before the action, since we need the offset before writing
+                    WriteCasArchives(sb.Value, installChunkWriter);
                     ModManifest2019(sbIc, sb.Value, installChunkWriter);
                     break;
                 case BundleFormat.SuperBundleManifest:
@@ -147,14 +150,25 @@ public partial class FrostyModExecutor
             }
         }
 
-        // write
+        // we need to write the cas files at the end bc of non cas format
         if (FileSystemManager.BundleFormat == BundleFormat.Dynamic2018 || FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
         {
+            foreach (KeyValuePair<int, SuperBundleModInfo> sb in m_superBundleModInfos)
+            {
+                SuperBundleInstallChunk sbIc = FileSystemManager.GetSuperBundleInstallChunk(sb.Key);
+
+                InstallChunkWriter installChunkWriter = GetInstallChunkWriter(sbIc);
+
+                WriteCasArchives(sb.Value, installChunkWriter);
+            }
+
             foreach (InstallChunkWriter writer in m_installChunkWriters.Values)
             {
                 writer.WriteCatalog();
             }
         }
+
+        // TODO: dispose of in memory data
 
         // create symbolic links for everything that is in gamePatchPath but not in modDataPath
         foreach (string file in Directory.EnumerateFiles(m_gamePatchPath, string.Empty, SearchOption.AllDirectories))
@@ -172,40 +186,49 @@ public partial class FrostyModExecutor
             // symlink all other sources
             foreach (FileSystemSource source in FileSystemManager.Sources)
             {
-                if (source.Path == m_patchPath)
+                if (source.Path != m_patchPath)
                 {
-                    continue;
+                    string destPath = Path.Combine(inModPackPath, source.Path);
+                    Directory.CreateDirectory(Directory.GetParent(destPath)!.FullName);
+                    Directory.CreateSymbolicLink(destPath,
+                        Path.Combine(FileSystemManager.BasePath, source.Path));
                 }
 
-                string destPath = Path.Combine(inModPackPath, source.Path);
-                Directory.CreateDirectory(Directory.GetParent(destPath)!.FullName);
-                Directory.CreateSymbolicLink(destPath,
-                    Path.Combine(FileSystemManager.BasePath, source.Path));
+                if (source.Path != FileSystemSource.Base.Path && source.Path.Contains("Data"))
+                {
+                    File.CreateSymbolicLink(
+                        Path.Combine(inModPackPath, source.Path.Replace("/Data", string.Empty),
+                            "package.mft"),
+                        Path.Combine(FileSystemManager.BasePath, source.Path.Replace("/Data", string.Empty),
+                            "package.mft"));
+                }
             }
         }
 
         return Errors.Success;
     }
 
-    private InstallChunkWriter WriteCasArchives(SuperBundleModInfo inModInfo, SuperBundleInstallChunk sbIc)
+    private InstallChunkWriter GetInstallChunkWriter(SuperBundleInstallChunk inSbIc)
     {
-        if (!m_installChunkWriters.TryGetValue(sbIc.InstallChunk.Id, out InstallChunkWriter? installChunkWriter))
+        if (!m_installChunkWriters.TryGetValue(inSbIc.InstallChunk.Id, out InstallChunkWriter? installChunkWriter))
         {
-            m_installChunkWriters.Add(sbIc.InstallChunk.Id, installChunkWriter = new InstallChunkWriter(sbIc.InstallChunk, m_gamePatchPath, m_modDataPath, m_patchPath == FileSystemSource.Patch.Path));
+            m_installChunkWriters.Add(inSbIc.InstallChunk.Id, installChunkWriter = new InstallChunkWriter(inSbIc.InstallChunk, m_gamePatchPath, m_modDataPath, m_patchPath == FileSystemSource.Patch.Path));
         }
 
+        return installChunkWriter;
+    }
+
+    private void WriteCasArchives(SuperBundleModInfo inModInfo, InstallChunkWriter inInstallChunkWriter)
+    {
         foreach (Sha1 sha1 in inModInfo.Data)
         {
             (Block<byte> Block, bool NeedsToDispose) data = GetData(sha1);
-            installChunkWriter.WriteData(sha1, data.Block);
+            inInstallChunkWriter.WriteData(sha1, data.Block);
             if (data.NeedsToDispose)
             {
                 data.Block.Dispose();
             }
-            // TODO: dispose memorydata after all bundle actions
         }
-
-        return installChunkWriter;
     }
 
     private void LoadHandlers()

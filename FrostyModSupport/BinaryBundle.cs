@@ -14,7 +14,9 @@ namespace Frosty.ModSupport;
 
 public static class BinaryBundle
 {
-    public static Block<byte> Modify(BlockStream inStream, BundleModInfo inModInfo, Dictionary<string, EbxModEntry> inModifiedEbx, Dictionary<string, ResModEntry> inModifiedRes, Dictionary<Guid, ChunkModEntry> inModifiedChunks, Action<IModEntry, int, bool> Modify)
+    public static Block<byte> Modify(BlockStream inStream, BundleModInfo inModInfo,
+        Dictionary<string, EbxModEntry> inModifiedEbx, Dictionary<string, ResModEntry> inModifiedRes,
+        Dictionary<Guid, ChunkModEntry> inModifiedChunks, Action<IModEntry, int, bool, bool, uint> modify)
     {
         // we use big endian for default
         Endian endian = Endian.Big;
@@ -97,11 +99,12 @@ public static class BinaryBundle
                 EbxModEntry modEntry = inModifiedEbx[name];
                 ebx[i] = modEntry;
                 sha1[i] = modEntry.Sha1;
-                Modify(modEntry, j, false);
+                modify(modEntry, j, false, true, originalSize);
             }
             else
             {
                 ebx[i] = new EbxModEntry(name, sha1[j], originalSize);
+                modify(ebx[i], j, false, false, originalSize);
             }
 
             inStream.Position = currentPos;
@@ -117,7 +120,7 @@ public static class BinaryBundle
         {
             EbxModEntry modEntry = inModifiedEbx[name];
             ebx[k++] = modEntry;
-            Modify(modEntry, j , true);
+            modify(modEntry, j , true, true, 0);
             sha1[j++] = modEntry.Sha1;
             if (strings.TryAdd(name, offset))
             {
@@ -151,11 +154,12 @@ public static class BinaryBundle
                 ResModEntry modEntry = inModifiedRes[name];
                 res[i] = modEntry;
                 sha1[i] = modEntry.Sha1;
-                Modify(modEntry, j, false);
+                modify(modEntry, j, false, true, originalSize);
             }
             else
             {
                 res[i] = new ResModEntry(name, sha1[j], originalSize, resRid, resType, resMeta);
+                modify(res[i], j, false, false, originalSize);
             }
 
             inStream.Position = currentPos;
@@ -171,7 +175,7 @@ public static class BinaryBundle
         {
             ResModEntry modEntry = inModifiedRes[name];
             res[k++] = modEntry;
-            Modify(modEntry, j , true);
+            modify(modEntry, j , true, true, 0);
             sha1[j++] = modEntry.Sha1;
 
             if (strings.TryAdd(name, offset))
@@ -192,14 +196,15 @@ public static class BinaryBundle
         for (int i = 0; i < chunkCount; i++, j++)
         {
             Guid id = inStream.ReadGuid(endian);
+            uint logicalOffset = inStream.ReadUInt32(endian);
+            uint logicalSize = inStream.ReadUInt32(endian);
+
             if (inModInfo.Modified.Chunks.Contains(id))
             {
-                // skip logicalOffset and size
-                inStream.Position += 8;
                 ChunkModEntry modEntry = inModifiedChunks[id];
                 chunks[i] = modEntry;
                 sha1[i] = modEntry.Sha1;
-                Modify(modEntry, j, false);
+                modify(modEntry, j, false, true, (logicalOffset & 0xFFFF) | logicalSize);
 
                 if (modEntry.FirstMip != -1)
                 {
@@ -217,7 +222,8 @@ public static class BinaryBundle
             }
             else
             {
-                chunks[i] = new ChunkModEntry(id, sha1[j], inStream.ReadUInt32(endian), inStream.ReadUInt32(endian));
+                chunks[i] = new ChunkModEntry(id, sha1[j], logicalOffset, logicalSize);
+                modify(chunks[i], j, false, false, (logicalOffset & 0xFFFF) | logicalSize);
             }
         }
 
@@ -226,7 +232,7 @@ public static class BinaryBundle
         {
             ChunkModEntry modEntry = inModifiedChunks[id];
             chunks[k++] = modEntry;
-            Modify(modEntry, j , true);
+            modify(modEntry, j , true, true, 0);
             sha1[j++] = modEntry.Sha1;
 
             DbObjectDict meta = DbObject.CreateDict(2);
