@@ -393,33 +393,30 @@ public class TypeSdkGenerator
             out Compilation outputCompilation,
             out _);
 
-#if EBX_TYPE_SDK_DEBUG
         foreach (SyntaxTree tree in outputCompilation.SyntaxTrees)
         {
             if (string.IsNullOrEmpty(tree.FilePath))
             {
                 File.WriteAllText("DumpedTypes.cs", tree.GetText().ToString());
+#if EBX_TYPE_SDK_DEBUG
                 continue;
-                //break;
+#else
+                break;
+#endif
             }
 
             FileInfo fileInfo = new(tree.FilePath);
             Directory.CreateDirectory(fileInfo.DirectoryName!);
             File.WriteAllText(tree.FilePath, tree.GetText().ToString());
         }
-#endif
 
         using (MemoryStream stream = new())
         {
             EmitResult result = outputCompilation.Emit(stream);
             if (!result.Success)
             {
-#if EBX_TYPE_SDK_DEBUG
                 File.WriteAllLines("Errors.txt", result.Diagnostics.Select(static d => d.ToString()));
                 FrostyLogger.Logger?.LogError($"Could not compile sdk, errors written to Errors.txt");
-#else
-                FrostyLogger.Logger?.LogError($"Could not compile sdk");
-#endif
                 return false;
             }
             File.WriteAllBytes(filePath, stream.ToArray());
