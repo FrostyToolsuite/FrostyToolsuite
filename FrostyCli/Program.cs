@@ -3,6 +3,8 @@ using System.CommandLine;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
+using Frosty.ModSupport;
 using Frosty.ModSupport.Mod;
 using Frosty.Sdk;
 using Frosty.Sdk.Ebx;
@@ -54,7 +56,7 @@ internal static class Program
                  case ActionType.Quit:
                      break;
                  case ActionType.Mod:
-                     Logger.LogErrorInternal("Not implemented yet.");
+                     ModGame();
                      break;
                  case ActionType.UpdateMod:
                      UpdateMod();
@@ -212,6 +214,26 @@ internal static class Program
         if (!AssetManager.Initialize())
         {
         }
+    }
+
+    private static void ModGame()
+    {
+        DirectoryInfo modsDirInfo = new(Prompt.Input<string>("Pass in the path to a folder containing the mods that you want to apply"));
+        if (!modsDirInfo.Exists)
+        {
+            Logger.LogErrorInternal("Mods folder does not exist");
+            return;
+        }
+
+        DirectoryInfo modDataDirInfo = new(Prompt.Input<string>("Pass in the path to a folder where the generated data should get stored in"));
+        if (!modDataDirInfo.Exists)
+        {
+            Logger.LogErrorInternal("ModData folder does not exist");
+            return;
+        }
+
+        FrostyModExecutor executor = new();
+        executor.GenerateMods(modDataDirInfo?.FullName ?? Path.Combine(FileSystemManager.BasePath, "ModData/Default"), Directory.GetFiles(modsDirInfo.FullName));
     }
 
     private static void UpdateMod()
@@ -492,7 +514,14 @@ internal static class Program
         // load game
         LoadGame(inGameFileInfo, inKeyFileInfo, inPid);
 
-        Logger.LogErrorInternal("Not implemented yet.");
+        if (!inModsDirInfo.Exists)
+        {
+            Logger.LogErrorInternal($"Directory {inModsDirInfo.FullName} doesnt exist.");
+            return;
+        }
+
+        FrostyModExecutor executor = new();
+        executor.GenerateMods(inModDataDirInfo?.FullName ?? Path.Combine(FileSystemManager.BasePath, "ModData/Default"), Directory.GetFiles(inModsDirInfo.FullName));
     }
 
     private static void AddUpdateModCommand(RootCommand rootCommand)

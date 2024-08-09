@@ -22,7 +22,7 @@ public enum Code
 public class Manifest2019AssetLoader : IAssetLoader
 {
     [Flags]
-    private enum Flags
+    public enum Flags
     {
         HasBaseBundles = 1 << 0, // base toc has bundles that the patch doesnt have
         HasBaseChunks = 1 << 1, // base toc has chunks that the patch doesnt have
