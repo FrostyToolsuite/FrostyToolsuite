@@ -37,9 +37,9 @@ internal class PrimitiveInfoData : TypeInfoData
             case TypeFlags.TypeEnum.UInt64:
                 return reader.ReadULong().ToString();
             case TypeFlags.TypeEnum.Float32:
-                return $"{reader.ReadSingle().ToString(CultureInfo.CurrentCulture)}f";
+                return $"{reader.ReadSingle().ToString(CultureInfo.InvariantCulture)}f";
             case TypeFlags.TypeEnum.Float64:
-                return reader.ReadDouble().ToString(CultureInfo.CurrentCulture);
+                return reader.ReadDouble().ToString(CultureInfo.InvariantCulture);
             case TypeFlags.TypeEnum.Guid:
                 return $"System.Guid.Parse(\"{reader.ReadGuid().ToString()}\")";
             case TypeFlags.TypeEnum.Sha1:
