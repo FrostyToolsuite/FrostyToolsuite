@@ -391,7 +391,7 @@ public class TypeSdkGenerator
         driver.RunGeneratorsAndUpdateCompilation(
             compilation,
             out Compilation outputCompilation,
-            out _);
+            out ImmutableArray<Diagnostic> diagnostics);
 
         foreach (SyntaxTree tree in outputCompilation.SyntaxTrees)
         {
@@ -416,6 +416,7 @@ public class TypeSdkGenerator
             if (!result.Success)
             {
                 File.WriteAllLines("Errors.txt", result.Diagnostics.Select(static d => d.ToString()));
+                File.WriteAllLines("Errors_gen.txt", diagnostics.Select(static d => d.ToString()));
                 FrostyLogger.Logger?.LogError($"Could not compile sdk, errors written to Errors.txt");
                 return false;
             }
