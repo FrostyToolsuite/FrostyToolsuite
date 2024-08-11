@@ -41,6 +41,11 @@ internal class Logger : ILogger
         Console.WriteLine($"{s_error} - {message}");
     }
 
+    internal static void LogInfoInternal(string message)
+    {
+        Console.WriteLine($"{s_info} - {message}");
+    }
+
     public void LogProgress(double progress)
     {
         // Implement progress logging if needed

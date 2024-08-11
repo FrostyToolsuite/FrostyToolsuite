@@ -196,6 +196,7 @@ internal static class Program
                 return;
             }
 
+            Logger.LogInfoInternal("The game is not needed anymore and can be closed.");
             if (!typeSdkGenerator.CreateSdk(ProfilesLibrary.SdkPath))
             {
                 return;
@@ -237,7 +238,7 @@ internal static class Program
         }
 
         FrostyModExecutor executor = new();
-        executor.GenerateMods(modDataDirInfo?.FullName ?? Path.Combine(FileSystemManager.BasePath, "ModData/Default"), Directory.GetFiles(modsDirInfo.FullName));
+        executor.GenerateMods(modDataDirInfo.FullName, Directory.GetFiles(modsDirInfo.FullName));
     }
 
     private static void UpdateMod()
@@ -454,6 +455,7 @@ internal static class Program
                 return;
             }
 
+            Logger.LogInfoInternal("The game is not needed anymore and can be closed.");
             if (!typeSdkGenerator.CreateSdk(ProfilesLibrary.SdkPath))
             {
                 return;
