@@ -393,23 +393,6 @@ public class TypeSdkGenerator
             out Compilation outputCompilation,
             out ImmutableArray<Diagnostic> diagnostics);
 
-        foreach (SyntaxTree tree in outputCompilation.SyntaxTrees)
-        {
-            if (string.IsNullOrEmpty(tree.FilePath))
-            {
-                File.WriteAllText("DumpedTypes.cs", tree.GetText().ToString());
-#if EBX_TYPE_SDK_DEBUG
-                continue;
-#else
-                break;
-#endif
-            }
-
-            FileInfo fileInfo = new(tree.FilePath);
-            Directory.CreateDirectory(fileInfo.DirectoryName!);
-            File.WriteAllText(tree.FilePath, tree.GetText().ToString());
-        }
-
         using (MemoryStream stream = new())
         {
             EmitResult result = outputCompilation.Emit(stream);
@@ -418,6 +401,25 @@ public class TypeSdkGenerator
                 File.WriteAllLines("Errors.txt", result.Diagnostics.Select(static d => d.ToString()));
                 File.WriteAllLines("Errors_gen.txt", diagnostics.Select(static d => d.ToString()));
                 FrostyLogger.Logger?.LogError($"Could not compile sdk, errors written to Errors.txt");
+
+                // write types
+                foreach (SyntaxTree tree in outputCompilation.SyntaxTrees)
+                {
+                    if (string.IsNullOrEmpty(tree.FilePath))
+                    {
+                        File.WriteAllText("DumpedTypes.cs", tree.GetText().ToString());
+#if EBX_TYPE_SDK_DEBUG
+                        continue;
+#else
+                break;
+#endif
+                    }
+
+                    FileInfo fileInfo = new(tree.FilePath);
+                    Directory.CreateDirectory(fileInfo.DirectoryName!);
+                    File.WriteAllText(tree.FilePath, tree.GetText().ToString());
+                }
+
                 return false;
             }
             File.WriteAllBytes(filePath, stream.ToArray());

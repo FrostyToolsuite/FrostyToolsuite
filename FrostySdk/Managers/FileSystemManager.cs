@@ -36,6 +36,8 @@ public static class FileSystemManager
 
     private static readonly Dictionary<string, SuperBundleInfo> s_superBundleMapping = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<int, int> s_persistentIndexMapping = new();
+    private static readonly Dictionary<int, int> s_reversePersistentIndexMapping = new();
+    private static readonly Dictionary<Guid, int> s_idMapping = new();
     private static readonly List<InstallChunkInfo> s_installChunks = new();
     private static readonly Dictionary<int, SuperBundleInstallChunk> s_sbIcMapping = new();
     private static readonly Dictionary<int, string> s_casFiles = new();
@@ -244,13 +246,12 @@ public static class FileSystemManager
 
     public static InstallChunkInfo GetInstallChunkInfo(Guid id)
     {
-        return s_installChunks.FirstOrDefault(ic => ic.Id == id) ?? throw new KeyNotFoundException();
+        return s_installChunks[s_idMapping[id]];
     }
 
     public static int GetInstallChunkIndex(InstallChunkInfo info)
     {
-        // TODO: works for now, since we only call this for the cat which doesnt have a persistent index, but we should create a dict for the reverse thing
-        return s_installChunks.IndexOf(info);
+        return s_reversePersistentIndexMapping[s_idMapping[info.Id]];
     }
 
     public static SuperBundleInstallChunk GetSuperBundleInstallChunk(string sbIcName)
@@ -463,6 +464,8 @@ public static class FileSystemManager
 
             s_installChunks.Add(ic);
             s_persistentIndexMapping.Add(0, 0);
+            s_reversePersistentIndexMapping.Add(0, 0);
+            s_idMapping.Add(ic.Id, 0);
         }
         else
         {
@@ -496,6 +499,8 @@ public static class FileSystemManager
 
                 int index = installChunk.AsDict().AsInt("persistentIndex", s_installChunks.Count);
                 s_persistentIndexMapping.Add(index, s_installChunks.Count);
+                s_reversePersistentIndexMapping.Add(s_installChunks.Count, index);
+                s_idMapping.Add(ic.Id, s_installChunks.Count);
                 s_installChunks.Add(ic);
 
                 foreach (DbObject superBundle in installChunk.AsDict().AsList("superbundles"))
