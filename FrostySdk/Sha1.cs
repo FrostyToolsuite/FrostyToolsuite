@@ -14,11 +14,11 @@ public readonly struct Sha1
             throw new ArgumentException("Input buffer is too small");
         }
 
-        m_a = (uint)(bytes[(0 * 4) + 0] | bytes[(0 * 4) + 1] << 8 | bytes[(0 * 4) + 2] << 16 | bytes[(0 * 4) + 3] << 24);
-        m_b = (uint)(bytes[(1 * 4) + 0] | bytes[(1 * 4) + 1] << 8 | bytes[(1 * 4) + 2] << 16 | bytes[(1 * 4) + 3] << 24);
-        m_c = (uint)(bytes[(2 * 4) + 0] | bytes[(2 * 4) + 1] << 8 | bytes[(2 * 4) + 2] << 16 | bytes[(2 * 4) + 3] << 24);
-        m_d = (uint)(bytes[(3 * 4) + 0] | bytes[(3 * 4) + 1] << 8 | bytes[(3 * 4) + 2] << 16 | bytes[(3 * 4) + 3] << 24);
-        m_e = (uint)(bytes[(4 * 4) + 0] | bytes[(4 * 4) + 1] << 8 | bytes[(4 * 4) + 2] << 16 | bytes[(4 * 4) + 3] << 24);
+        m_a = (uint)(bytes[0 * 4 + 0] | bytes[0 * 4 + 1] << 8 | bytes[0 * 4 + 2] << 16 | bytes[0 * 4 + 3] << 24);
+        m_b = (uint)(bytes[1 * 4 + 0] | bytes[1 * 4 + 1] << 8 | bytes[1 * 4 + 2] << 16 | bytes[1 * 4 + 3] << 24);
+        m_c = (uint)(bytes[2 * 4 + 0] | bytes[2 * 4 + 1] << 8 | bytes[2 * 4 + 2] << 16 | bytes[2 * 4 + 3] << 24);
+        m_d = (uint)(bytes[3 * 4 + 0] | bytes[3 * 4 + 1] << 8 | bytes[3 * 4 + 2] << 16 | bytes[3 * 4 + 3] << 24);
+        m_e = (uint)(bytes[4 * 4 + 0] | bytes[4 * 4 + 1] << 8 | bytes[4 * 4 + 2] << 16 | bytes[4 * 4 + 3] << 24);
     }
 
     public Sha1(string text)
@@ -32,11 +32,11 @@ public readonly struct Sha1
             throw new ArgumentException("Input buffer is too small");
         }
 
-        m_a = (uint)(bytes[(0 * 4) + 0] | bytes[(0 * 4) + 1] << 8 | bytes[(0 * 4) + 2] << 16 | bytes[(0 * 4) + 3] << 24);
-        m_b = (uint)(bytes[(1 * 4) + 0] | bytes[(1 * 4) + 1] << 8 | bytes[(1 * 4) + 2] << 16 | bytes[(1 * 4) + 3] << 24);
-        m_c = (uint)(bytes[(2 * 4) + 0] | bytes[(2 * 4) + 1] << 8 | bytes[(2 * 4) + 2] << 16 | bytes[(2 * 4) + 3] << 24);
-        m_d = (uint)(bytes[(3 * 4) + 0] | bytes[(3 * 4) + 1] << 8 | bytes[(3 * 4) + 2] << 16 | bytes[(3 * 4) + 3] << 24);
-        m_e = (uint)(bytes[(4 * 4) + 0] | bytes[(4 * 4) + 1] << 8 | bytes[(4 * 4) + 2] << 16 | bytes[(4 * 4) + 3] << 24);
+        m_a = (uint)(bytes[0 * 4 + 0] | bytes[0 * 4 + 1] << 8 | bytes[0 * 4 + 2] << 16 | bytes[0 * 4 + 3] << 24);
+        m_b = (uint)(bytes[1 * 4 + 0] | bytes[1 * 4 + 1] << 8 | bytes[1 * 4 + 2] << 16 | bytes[1 * 4 + 3] << 24);
+        m_c = (uint)(bytes[2 * 4 + 0] | bytes[2 * 4 + 1] << 8 | bytes[2 * 4 + 2] << 16 | bytes[2 * 4 + 3] << 24);
+        m_d = (uint)(bytes[3 * 4 + 0] | bytes[3 * 4 + 1] << 8 | bytes[3 * 4 + 2] << 16 | bytes[3 * 4 + 3] << 24);
+        m_e = (uint)(bytes[4 * 4 + 0] | bytes[4 * 4 + 1] << 8 | bytes[4 * 4 + 2] << 16 | bytes[4 * 4 + 3] << 24);
     }
 
     public static bool operator ==(Sha1 a, Sha1 b) => a.Equals(b);
@@ -45,11 +45,11 @@ public readonly struct Sha1
     public byte[] ToByteArray()
     {
         byte[] bytes = new byte[20];
-        bytes[(0 * 4) + 0] = (byte)(m_a & 0xFF); bytes[(0 * 4) + 1] = (byte)((m_a >> 8) & 0xFF); bytes[(0 * 4) + 2] = (byte)((m_a >> 16) & 0xFF); bytes[(0 * 4) + 3] = (byte)((m_a >> 24) & 0xFF);
-        bytes[(1 * 4) + 0] = (byte)(m_b & 0xFF); bytes[(1 * 4) + 1] = (byte)((m_b >> 8) & 0xFF); bytes[(1 * 4) + 2] = (byte)((m_b >> 16) & 0xFF); bytes[(1 * 4) + 3] = (byte)((m_b >> 24) & 0xFF);
-        bytes[(2 * 4) + 0] = (byte)(m_c & 0xFF); bytes[(2 * 4) + 1] = (byte)((m_c >> 8) & 0xFF); bytes[(2 * 4) + 2] = (byte)((m_c >> 16) & 0xFF); bytes[(2 * 4) + 3] = (byte)((m_c >> 24) & 0xFF);
-        bytes[(3 * 4) + 0] = (byte)(m_d & 0xFF); bytes[(3 * 4) + 1] = (byte)((m_d >> 8) & 0xFF); bytes[(3 * 4) + 2] = (byte)((m_d >> 16) & 0xFF); bytes[(3 * 4) + 3] = (byte)((m_d >> 24) & 0xFF);
-        bytes[(4 * 4) + 0] = (byte)(m_e & 0xFF); bytes[(4 * 4) + 1] = (byte)((m_e >> 8) & 0xFF); bytes[(4 * 4) + 2] = (byte)((m_e >> 16) & 0xFF); bytes[(4 * 4) + 3] = (byte)((m_e >> 24) & 0xFF);
+        bytes[0 * 4 + 0] = (byte)(m_a & 0xFF); bytes[0 * 4 + 1] = (byte)((m_a >> 8) & 0xFF); bytes[0 * 4 + 2] = (byte)((m_a >> 16) & 0xFF); bytes[0 * 4 + 3] = (byte)((m_a >> 24) & 0xFF);
+        bytes[1 * 4 + 0] = (byte)(m_b & 0xFF); bytes[1 * 4 + 1] = (byte)((m_b >> 8) & 0xFF); bytes[1 * 4 + 2] = (byte)((m_b >> 16) & 0xFF); bytes[1 * 4 + 3] = (byte)((m_b >> 24) & 0xFF);
+        bytes[2 * 4 + 0] = (byte)(m_c & 0xFF); bytes[2 * 4 + 1] = (byte)((m_c >> 8) & 0xFF); bytes[2 * 4 + 2] = (byte)((m_c >> 16) & 0xFF); bytes[2 * 4 + 3] = (byte)((m_c >> 24) & 0xFF);
+        bytes[3 * 4 + 0] = (byte)(m_d & 0xFF); bytes[3 * 4 + 1] = (byte)((m_d >> 8) & 0xFF); bytes[3 * 4 + 2] = (byte)((m_d >> 16) & 0xFF); bytes[3 * 4 + 3] = (byte)((m_d >> 24) & 0xFF);
+        bytes[4 * 4 + 0] = (byte)(m_e & 0xFF); bytes[4 * 4 + 1] = (byte)((m_e >> 8) & 0xFF); bytes[4 * 4 + 2] = (byte)((m_e >> 16) & 0xFF); bytes[4 * 4 + 3] = (byte)((m_e >> 24) & 0xFF);
         return bytes;
     }
 
@@ -59,16 +59,16 @@ public readonly struct Sha1
         {
             return false;
         }
-        
-        destination[(0 * 4) + 0] = (byte)(m_a & 0xFF); destination[(0 * 4) + 1] = (byte)((m_a >> 8) & 0xFF); destination[(0 * 4) + 2] = (byte)((m_a >> 16) & 0xFF); destination[(0 * 4) + 3] = (byte)((m_a >> 24) & 0xFF);
-        destination[(1 * 4) + 0] = (byte)(m_b & 0xFF); destination[(1 * 4) + 1] = (byte)((m_b >> 8) & 0xFF); destination[(1 * 4) + 2] = (byte)((m_b >> 16) & 0xFF); destination[(1 * 4) + 3] = (byte)((m_b >> 24) & 0xFF);
-        destination[(2 * 4) + 0] = (byte)(m_c & 0xFF); destination[(2 * 4) + 1] = (byte)((m_c >> 8) & 0xFF); destination[(2 * 4) + 2] = (byte)((m_c >> 16) & 0xFF); destination[(2 * 4) + 3] = (byte)((m_c >> 24) & 0xFF);
-        destination[(3 * 4) + 0] = (byte)(m_d & 0xFF); destination[(3 * 4) + 1] = (byte)((m_d >> 8) & 0xFF); destination[(3 * 4) + 2] = (byte)((m_d >> 16) & 0xFF); destination[(3 * 4) + 3] = (byte)((m_d >> 24) & 0xFF);
-        destination[(4 * 4) + 0] = (byte)(m_e & 0xFF); destination[(4 * 4) + 1] = (byte)((m_e >> 8) & 0xFF); destination[(4 * 4) + 2] = (byte)((m_e >> 16) & 0xFF); destination[(4 * 4) + 3] = (byte)((m_e >> 24) & 0xFF);
+
+        destination[0 * 4 + 0] = (byte)(m_a & 0xFF); destination[0 * 4 + 1] = (byte)((m_a >> 8) & 0xFF); destination[0 * 4 + 2] = (byte)((m_a >> 16) & 0xFF); destination[0 * 4 + 3] = (byte)((m_a >> 24) & 0xFF);
+        destination[1 * 4 + 0] = (byte)(m_b & 0xFF); destination[1 * 4 + 1] = (byte)((m_b >> 8) & 0xFF); destination[1 * 4 + 2] = (byte)((m_b >> 16) & 0xFF); destination[1 * 4 + 3] = (byte)((m_b >> 24) & 0xFF);
+        destination[2 * 4 + 0] = (byte)(m_c & 0xFF); destination[2 * 4 + 1] = (byte)((m_c >> 8) & 0xFF); destination[2 * 4 + 2] = (byte)((m_c >> 16) & 0xFF); destination[2 * 4 + 3] = (byte)((m_c >> 24) & 0xFF);
+        destination[3 * 4 + 0] = (byte)(m_d & 0xFF); destination[3 * 4 + 1] = (byte)((m_d >> 8) & 0xFF); destination[3 * 4 + 2] = (byte)((m_d >> 16) & 0xFF); destination[3 * 4 + 3] = (byte)((m_d >> 24) & 0xFF);
+        destination[4 * 4 + 0] = (byte)(m_e & 0xFF); destination[4 * 4 + 1] = (byte)((m_e >> 8) & 0xFF); destination[4 * 4 + 2] = (byte)((m_e >> 16) & 0xFF); destination[4 * 4 + 3] = (byte)((m_e >> 24) & 0xFF);
 
         return true;
     }
-    
+
     public override bool Equals(object? obj)
     {
         if (obj == null || obj.GetType() != typeof(Sha1))
@@ -121,15 +121,15 @@ public readonly struct Sha1
 
     public override string ToString()
     {
-        string result = "";
-        uint[] values = new uint[] { m_a, m_b, m_c, m_d, m_e };
+        return
+            $"{ToBigEndianHex(m_a)}{ToBigEndianHex(m_b)}{ToBigEndianHex(m_c)}{ToBigEndianHex(m_d)}{ToBigEndianHex(m_e)}";
+    }
 
-        for (int i = 0; i < 5; i++)
-            result += ((byte)(values[i] & 0xFF)).ToString("x2")
-                + ((byte)(values[i] >> 8)).ToString("x2")
-                + ((byte)(values[i] >> 16)).ToString("x2")
-                + ((byte)(values[i] >> 24)).ToString("x2");
-
-        return result;
+    private string ToBigEndianHex(uint inValue)
+    {
+        return ((byte)inValue).ToString("x2")
+               + ((byte)(inValue >> 8)).ToString("x2")
+               + ((byte)(inValue >> 16)).ToString("x2")
+               + ((byte)(inValue >> 24)).ToString("x2");
     }
 }

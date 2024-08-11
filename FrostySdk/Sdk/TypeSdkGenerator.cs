@@ -82,13 +82,14 @@ public class TypeSdkGenerator
         string fieldNamesPath = Path.Combine(stringsDir, $"{ProfilesLibrary.InternalName}_fields.json");
         if (ProfilesLibrary.HasStrippedTypeNames && File.Exists(typeNamesPath))
         {
-            // load strings files
+            // load previously created string file
             HashSet<string>? typeNames = JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(typeNamesPath));
             if (typeNames is null)
             {
                 return false;
             }
 
+            // create our type mapping
             foreach (string name in typeNames)
             {
                 Strings.TypeMapping.Add(HashTypeName(name), name);
@@ -101,6 +102,7 @@ public class TypeSdkGenerator
                 return false;
             }
 
+            // create our field mapping
             foreach (KeyValuePair<string, HashSet<string>> kv in fieldNames)
             {
                 Dictionary<uint, string> dict = new();
@@ -129,7 +131,7 @@ public class TypeSdkGenerator
 
         if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
         {
-            // try to resolve hashes from other games
+            // try to resolve type hashes from other games
             foreach (string file in Directory.EnumerateFiles(stringsDir, "*_types.json"))
             {
                 HashSet<string>? types = JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(file));
@@ -142,22 +144,29 @@ public class TypeSdkGenerator
                 {
                     uint hash = HashTypeName(name);
 
+                    // continue if type is not used
                     if (!Strings.TypeHashes.Contains(hash))
                     {
                         continue;
                     }
 
+                    // add type to our mapping if we haven't resolved it already
                     if (!Strings.TypeMapping.TryGetValue(hash, out string? currentName) || string.IsNullOrEmpty(currentName))
                     {
                         Strings.TypeMapping[hash] = name;
                     }
                     else
                     {
-                        Debug.Assert(currentName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                        // a type with this hash was already added, check if its the same (ignore case)
+                        if (!currentName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            FrostyLogger.Logger?.LogInfo($"Type hash {hash:X8} duplicate. Using \"{currentName}\" instead of \"{name}\"");
+                        }
                     }
                 }
             }
 
+            // try to resolve field hashes from other games
             foreach (string file in Directory.EnumerateFiles(stringsDir, "*_fields.json"))
             {
                 Dictionary<string, HashSet<string>>? mapping = JsonSerializer.Deserialize<Dictionary<string, HashSet<string>>>(File.ReadAllText(file));
@@ -170,11 +179,13 @@ public class TypeSdkGenerator
                 {
                     uint typeHash = HashTypeName(type.Key);
 
+                    // only continue if type is used
                     if (!Strings.FieldHashes.TryGetValue(typeHash, out HashSet<uint>? fields))
                     {
                         continue;
                     }
 
+                    // same thing as before
                     if (!Strings.FieldMapping.TryGetValue(typeHash, out Dictionary<uint, string>? dict))
                     {
                         continue;
@@ -184,18 +195,24 @@ public class TypeSdkGenerator
                     {
                         uint fieldHash = HashTypeName(field);
 
+                        // only continue if field is used
                         if (!fields.Contains(fieldHash))
                         {
                             continue;
                         }
 
+                        // if we havent already resolved this hash set it
                         if (!dict.TryGetValue(fieldHash, out string? name) || string.IsNullOrEmpty(name))
                         {
                             dict[fieldHash] = field;
                         }
                         else
                         {
-                            Debug.Assert(name.Equals(field, StringComparison.OrdinalIgnoreCase));
+                            // a field with this hash was already added, check if its the same (ignore case)
+                            if (!name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                            {
+                                FrostyLogger.Logger?.LogInfo($"Type hash {fieldHash:X8} duplicate. Using \"{name}\" instead of \"{field}\"");
+                            }
                         }
                     }
                 }
