@@ -54,6 +54,10 @@ internal static class Program
              switch (actionType = Prompt.Select<ActionType>("Select what you want to do"))
              {
                  case ActionType.Quit:
+                     if (FrostyLogger.Logger is Logger logger)
+                     {
+                         logger.StopLogging();
+                     }
                      break;
                  case ActionType.Mod:
                      ModGame();
