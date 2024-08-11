@@ -305,7 +305,7 @@ internal class Dynamic2018 : IDisposable
                                 resList.Add(res);
                             }
 
-                            Dictionary<int, DbObjectDict>? metaDict = null;
+                            Dictionary<int, List<DbObjectDict>>? metaDict = null;
                             for (int i = 0; i < chunkList?.Count; i++)
                             {
                                 DbObjectDict chunk = chunkList[i].AsDict();
@@ -334,22 +334,34 @@ internal class Dynamic2018 : IDisposable
                                 // i dont think the chunkMeta is sorted in any way for these games
                                 if (metaDict is null)
                                 {
-                                    metaDict = new Dictionary<int, DbObjectDict>(chunkMetaList!.Count);
+                                    metaDict = new Dictionary<int, List<DbObjectDict>>(chunkMetaList!.Count);
                                     foreach (DbObject metaObj in chunkMetaList)
                                     {
-                                        metaDict.Add(metaObj.AsDict().AsInt("h32"), metaObj.AsDict());
+                                        // some chunks have the same
+                                        int h32 = metaObj.AsDict().AsInt("h32");
+                                        metaDict.TryAdd(h32, new List<DbObjectDict>());
+                                        metaDict[h32].Add(metaObj.AsDict());
                                     }
                                 }
 
                                 // if the h32 didnt change just get it to change the firstMip if necessary
                                 // else we just add a new meta with the new h32
                                 // since the game only looks up the h32 afaik
-                                if (!metaDict.TryGetValue(modEntry.H32, out DbObjectDict? chunkMeta))
+                                DbObjectDict? chunkMeta = null;
+                                if (!metaDict.TryGetValue(modEntry.H32, out List<DbObjectDict>? list))
                                 {
                                     chunkMeta = DbObject.CreateDict(2);
                                     chunkMeta.Set("h32", modEntry.H32);
                                     chunkMeta.Set("meta", DbObject.CreateDict(1));
                                     chunkMetaList!.Add(chunkMeta);
+                                }
+                                else
+                                {
+                                    if (list.Count != 1)
+                                    {
+                                        FrostyLogger.Logger?.LogWarning($"More than 1 chunk for h32 {modEntry.H32}");
+                                    }
+                                    chunkMeta = list[0];
                                 }
 
                                 DbObjectDict meta = chunkMeta.AsDict("meta");
