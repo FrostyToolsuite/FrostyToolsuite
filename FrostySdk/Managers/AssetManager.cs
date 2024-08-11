@@ -525,7 +525,7 @@ public static class AssetManager
                 {
                     // happens when they changed the name when patching it
 
-                    // since we load patch superbundles first the first one should be correct, hopefully not too many issues arise bc of this
+                    // since we load patch superbundles first the first one should be correct most of the time, hopefully not too many issues arise bc of this
                     FrostyLogger.Logger?.LogWarning($"Removing ebx \"{entry.Name}\" with same guid as \"{other.Name}\"");
 
                     s_ebxNameMapping.Remove(entry.Name);
@@ -561,6 +561,7 @@ public static class AssetManager
             }
         }
 
+        int a = 0;
         foreach (ChunkAssetEntry entry in s_chunkGuidMapping.Values)
         {
             if (entry.FileInfo is null)
@@ -570,10 +571,12 @@ public static class AssetManager
             }
             else if (entry.LogicalSize == 0)
             {
+                a++;
                 entry.OriginalSize = entry.FileInfo.GetOriginalSize();
                 entry.LogicalSize = (uint)entry.OriginalSize;
             }
         }
+        FrostyLogger.Logger?.LogInfo($"Had to resolve OriginalSize for {a} chunks");
     }
 
     private static bool ReadCache(out List<EbxAssetEntry> prePatchEbx, out List<ResAssetEntry> prePatchRes, out List<ChunkAssetEntry> prePatchChunks)

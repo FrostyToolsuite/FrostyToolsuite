@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Frosty.Sdk.DbObjectElements;
@@ -16,7 +15,7 @@ public class ManifestAssetLoader : IAssetLoader
     public void Load()
     {
         // This format has all SuperBundles stripped
-        // all of the bundles and chunks of all SuperBundles are put into the manifest
+        // all bundles and chunks of all SuperBundles are put into the manifest
         // afaik u cant reconstruct the SuperBundles, so this might make things a bit ugly
         // They also have catalog files which entries are not used, but they still make a sanity check for the offsets and indices in the file
 
@@ -41,8 +40,6 @@ public class ManifestAssetLoader : IAssetLoader
                     (uint)stream.ReadInt64());
             }
 
-            Dictionary<int, HashSet<int>> mapping = new();
-
             // bundles
             for (int i = 0; i < bundleCount; i++)
             {
@@ -53,7 +50,7 @@ public class ManifestAssetLoader : IAssetLoader
                 // unknown, always 0
                 stream.Position += sizeof(ulong);
 
-                (CasFileIdentifier, uint, long) resourceInfo = files[startIndex];
+                (CasFileIdentifier Identifier, uint Offset, long Size) resourceInfo = files[startIndex];
 
                 // we use the installChunk of the bundle to get a superBundle and SuperBundleInstallChunk
                 InstallChunkInfo ic = FileSystemManager.GetInstallChunkInfo(resourceInfo.Item1.InstallChunkIndex);
@@ -64,8 +61,8 @@ public class ManifestAssetLoader : IAssetLoader
 
                 BinaryBundle bundleMeta;
                 using (BlockStream bundleStream = BlockStream.FromFile(
-                           FileSystemManager.GetFilePath(resourceInfo.Item1), resourceInfo.Item2,
-                           (int)resourceInfo.Item3))
+                           FileSystemManager.GetFilePath(resourceInfo.Identifier), resourceInfo.Offset,
+                           (int)resourceInfo.Size))
                 {
                      bundleMeta = BinaryBundle.Deserialize(bundleStream);
                 }

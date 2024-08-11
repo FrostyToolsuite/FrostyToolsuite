@@ -44,10 +44,9 @@ public class FileSystemSource
 
     /// <summary>
     /// Resolves path in current Source.
-    /// Returns the path, even if it doesn't exist.
     /// </summary>
-    /// <param name="inPath"></param>
-    /// <returns></returns>
+    /// <param name="inPath">The relative path to resolve.</param>
+    /// <returns>The resolved full path.</returns>
     public string ResolvePath(string inPath)
     {
         return System.IO.Path.Combine(FileSystemManager.BasePath, Path, inPath);

@@ -8,6 +8,7 @@ namespace Frosty.Sdk.Managers.Infos.FileInfos;
 
 public class KelvinFileInfo : IFileInfo
 {
+    private readonly string m_path;
     private readonly int m_casIndex;
     private readonly uint m_offset;
     private readonly uint m_size;
@@ -19,6 +20,7 @@ public class KelvinFileInfo : IFileInfo
         m_offset = inOffset;
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
+        m_path = FileSystemManager.GetFilePath(m_casIndex);
     }
 
     public bool IsDelta() => false;
@@ -27,7 +29,7 @@ public class KelvinFileInfo : IFileInfo
 
     public long GetOriginalSize()
     {
-        using (BlockStream stream = BlockStream.FromFile(FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(m_casIndex)), m_offset, (int)m_size))
+        using (BlockStream stream = BlockStream.FromFile(m_path, m_offset, (int)m_size))
         {
             return Cas.GetOriginalSize(stream);
         }
@@ -35,7 +37,7 @@ public class KelvinFileInfo : IFileInfo
 
     public Block<byte> GetRawData()
     {
-        using (FileStream stream = new(FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(m_casIndex)), FileMode.Open, FileAccess.Read))
+        using (FileStream stream = new(m_path, FileMode.Open, FileAccess.Read))
         {
             stream.Position = m_offset;
 
@@ -46,9 +48,9 @@ public class KelvinFileInfo : IFileInfo
         }
     }
 
-    public Block<byte> GetData(int originalSize = 0)
+    public Block<byte> GetData(int originalSize)
     {
-        using (BlockStream stream = BlockStream.FromFile(FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(m_casIndex)), m_offset, (int)m_size))
+        using (BlockStream stream = BlockStream.FromFile(m_path, m_offset, (int)m_size))
         {
             return Cas.DecompressData(stream, originalSize);
         }

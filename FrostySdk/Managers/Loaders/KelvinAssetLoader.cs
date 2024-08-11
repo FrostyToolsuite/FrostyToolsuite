@@ -122,8 +122,7 @@ public class KelvinAssetLoader : IAssetLoader
                     int index = 0;
                     FileIdentifier resourceInfo = files[index];
 
-                    BlockStream dataStream = BlockStream.FromFile(
-                        FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(resourceInfo.FileIndex)),
+                    BlockStream dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
                         resourceInfo.Offset, (int)resourceInfo.Size);
 
                     BinaryBundle bundleMeta = BinaryBundle.Deserialize(dataStream);
@@ -134,8 +133,7 @@ public class KelvinAssetLoader : IAssetLoader
                          {
                              dataStream.Dispose();
                              resourceInfo = files[++index];
-                             dataStream = BlockStream.FromFile(
-                                 FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(resourceInfo.FileIndex)),
+                             dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
                                  resourceInfo.Offset, (int)resourceInfo.Size);
                          }
 
@@ -153,8 +151,7 @@ public class KelvinAssetLoader : IAssetLoader
                          {
                              dataStream.Dispose();
                              resourceInfo = files[++index];
-                             dataStream = BlockStream.FromFile(
-                                 FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(resourceInfo.FileIndex)),
+                             dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
                                  resourceInfo.Offset, (int)resourceInfo.Size);
                          }
 
@@ -172,8 +169,7 @@ public class KelvinAssetLoader : IAssetLoader
                          {
                              dataStream.Dispose();
                              resourceInfo = files[++index];
-                             dataStream = BlockStream.FromFile(
-                                 FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(resourceInfo.FileIndex)),
+                             dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
                                  resourceInfo.Offset, (int)resourceInfo.Size);
                          }
 

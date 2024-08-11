@@ -111,45 +111,17 @@ public static class FileSystemManager
     }
 
     /// <summary>
-    /// Resolves the path of a file inside the games data directories.
+    /// Tries to resolve the relative path for the best source (patch -> dlc -> base)
     /// </summary>
-    /// <param name="filename">
-    /// <para>The relative path of the file prefixed with native_data or native_patch.</para>
-    /// If there is no prefix it will look through all data directories starting with the patch ones.
-    /// </param>
-    /// <returns>The full path to the file or an empty string if the file doesnt exist.</returns>
-    public static string ResolvePath(string filename)
+    /// <param name="inPath">The relative path to a file or dictionary.</param>
+    /// <param name="resolvedPath">The resolved full path.</param>
+    /// <returns>True if it could resolve the path, false if it couldn't resolve it.</returns>
+    public static bool TryResolvePath(string inPath, [NotNullWhen(true)] out string? resolvedPath)
     {
-        if (filename.StartsWith("native_data/"))
-        {
-            return FileSystemSource.Base.ResolvePath(filename[12..]);
-        }
-
-        string s = filename.StartsWith("native_patch/") ? filename[13..] : filename;
         foreach (FileSystemSource source in Sources)
         {
-            if (source.TryResolvePath(s, out string? path))
+            if (source.TryResolvePath(inPath, out resolvedPath))
             {
-                return path;
-            }
-        }
-
-        return string.Empty;
-    }
-
-    public static bool TryResolvePath(string filename, [NotNullWhen(true)] out string? resolvedPath)
-    {
-        if (filename.StartsWith("native_data/"))
-        {
-            return FileSystemSource.Base.TryResolvePath(filename[12..], out resolvedPath);
-        }
-
-        string s = filename.StartsWith("native_patch/") ? filename[13..] : filename;
-        foreach (FileSystemSource source in Sources)
-        {
-            if (source.TryResolvePath(s, out resolvedPath))
-            {
-
                 return true;
             }
         }
@@ -158,11 +130,17 @@ public static class FileSystemManager
         return false;
     }
 
-    public static string ResolvePath(bool isPatch, string filename)
+    /// <summary>
+    /// Resolves the relative path, it doesn't check if the directory or file exists.
+    /// </summary>
+    /// <param name="isPatch">A Boolean if the path is a patch path or not.</param>
+    /// <param name="inPath">The relative path to resolve.</param>
+    /// <returns>The resolved full path. This path doesn't have to exist.</returns>
+    public static string ResolvePath(bool isPatch, string inPath)
     {
         if (isPatch)
         {
-            return FileSystemSource.Patch.ResolvePath(filename);
+            return FileSystemSource.Patch.ResolvePath(inPath);
         }
 
         foreach (FileSystemSource source in Sources)
@@ -172,7 +150,7 @@ public static class FileSystemManager
                 continue;
             }
 
-            if (source.TryResolvePath(filename, out string? path))
+            if (source.TryResolvePath(inPath, out string? path))
             {
                 return path;
             }
@@ -181,11 +159,18 @@ public static class FileSystemManager
         return string.Empty;
     }
 
-    public static bool TryResolvePath(bool isPatch, string filename, [NotNullWhen(true)] out string? resolvedPath)
+    /// <summary>
+    /// Tries to resolve the relative path.
+    /// </summary>
+    /// <param name="isPatch">A Boolean if the path is a patch path or not.</param>
+    /// <param name="inPath">The relative path to resolve.</param>
+    /// <param name="resolvedPath">The resolved full path or null if it couldn't resolve the path.</param>
+    /// <returns>True if it could resolve the path, false if it couldn't resolve it.</returns>
+    public static bool TryResolvePath(bool isPatch, string inPath, [NotNullWhen(true)] out string? resolvedPath)
     {
         if (isPatch)
         {
-            return FileSystemSource.Patch.TryResolvePath(filename, out resolvedPath);
+            return FileSystemSource.Patch.TryResolvePath(inPath, out resolvedPath);
         }
 
         foreach (FileSystemSource source in Sources)
@@ -195,7 +180,7 @@ public static class FileSystemManager
                 continue;
             }
 
-            if (source.TryResolvePath(filename, out resolvedPath))
+            if (source.TryResolvePath(inPath, out resolvedPath))
             {
                 return true;
             }
@@ -206,6 +191,11 @@ public static class FileSystemManager
         return false;
     }
 
+    /// <summary>
+    /// Gets the full path to a cas file.
+    /// </summary>
+    /// <param name="casFileIdentifier">The <see cref="CasFileIdentifier"/> for the cas file.</param>
+    /// <returns>The full path to the cas file.</returns>
     public static string GetFilePath(CasFileIdentifier casFileIdentifier)
     {
         InstallChunkInfo installChunkInfo = s_installChunks[s_persistentIndexMapping[casFileIdentifier.InstallChunkIndex]];
@@ -219,6 +209,11 @@ public static class FileSystemManager
             $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
     }
 
+    /// <summary>
+    /// Gets the full path to a cas file.
+    /// </summary>
+    /// <param name="casIndex">The index of the cas file in the layout.toc.</param>
+    /// <returns>The full path to the cas file.</returns>
     public static string GetFilePath(int casIndex)
     {
         return s_casFiles[casIndex];
@@ -526,8 +521,8 @@ public static class FileSystemManager
                         int casId = fileObj.AsDict().AsInt("id");
 
                         string casPath = fileObj.AsDict().AsString("path").Trim('/');
-                        casPath = casPath.Replace("native_data/Data", "native_data");
-                        casPath = casPath.Replace("native_data/Patch", "native_patch");
+                        casPath = casPath.Replace("native_data", BasePath);
+                        casPath = casPath.Replace("native_data", BasePath);
 
                         s_casFiles.Add(casId, casPath);
                     }

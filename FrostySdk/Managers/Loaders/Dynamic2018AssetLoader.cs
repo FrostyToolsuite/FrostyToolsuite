@@ -15,8 +15,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
 {
     private struct BaseBundleHelper
     {
-        public long Offset;
-        public long Size;
+        public readonly long Offset;
+        public readonly long Size;
 
         public BaseBundleHelper(long inOffset, long inSize)
         {
@@ -565,7 +565,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 midInstructionSize = -1;
             }
 
-            sizeLeft -= Cas.GetUncompressedSize(inBaseStream!); // no idea why rider complains here, the Debug.Asset should take care of it
+            sizeLeft -= Cas.GetUncompressedSize(inBaseStream);
 
             if (sizeLeft <= 0)
             {
