@@ -62,13 +62,13 @@ public class NonCasFileInfo : IFileInfo
 
             using (BlockStream deltaStream = BlockStream.FromFile(m_fullPath, m_offset, (int)m_size))
             {
-                return Cas.GetUncompressedSize(deltaStream, baseStream, m_midInstructionSize);
+                return Cas.GetOriginalSize(deltaStream, baseStream, m_midInstructionSize);
             }
         }
 
         using (BlockStream stream = BlockStream.FromFile(m_fullPath, m_offset, (int)m_size))
         {
-            return Cas.GetUncompressedSize(stream);
+            return Cas.GetOriginalSize(stream);
         }
     }
 

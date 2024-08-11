@@ -419,12 +419,43 @@ public static class Cas
         return decompressedSize;
     }
 
-    public static long GetUncompressedSize(DataStream inDeltaStream, DataStream? inBaseStream)
+    public static long GetOriginalSize(DataStream inStream)
+    {
+        long uncompressedSize = 0;
+
+        while (inStream.Position < inStream.Length)
+        {
+            ulong packed = inStream.ReadUInt64(Endian.Big);
+
+            if (packed == 0)
+            {
+                return 0;
+            }
+
+            int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
+            CompressionType compressionType = (CompressionType)(packed >> 24);
+            Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
+            int bufferSize = (int)(packed & 0x000FFFFF);
+
+            if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
+            {
+                bufferSize = decompressedSize;
+            }
+
+            inStream.Position += bufferSize;
+
+            uncompressedSize += decompressedSize;
+        }
+
+        return uncompressedSize;
+    }
+
+    public static long GetOriginalSize(DataStream inDeltaStream, DataStream? inBaseStream)
     {
         throw new NotImplementedException();
     }
 
-    public static long GetUncompressedSize(DataStream inDeltaStream, DataStream? inBaseStream, int inMidInstructionSize)
+    public static long GetOriginalSize(DataStream inDeltaStream, DataStream? inBaseStream, int inMidInstructionSize)
     {
         throw new NotImplementedException();
     }

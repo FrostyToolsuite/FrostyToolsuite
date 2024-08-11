@@ -44,7 +44,7 @@ public class CasFileInfo : IFileInfo
         {
             using (BlockStream stream = new(m_base.GetRawData()))
             {
-                return Cas.GetUncompressedSize(stream);
+                return Cas.GetOriginalSize(stream);
             }
         }
 
@@ -55,7 +55,7 @@ public class CasFileInfo : IFileInfo
             {
                 baseStream = new BlockStream(m_base.GetRawData());
             }
-            return Cas.GetUncompressedSize(deltaStream, baseStream);
+            return Cas.GetOriginalSize(deltaStream, baseStream);
         }
     }
 

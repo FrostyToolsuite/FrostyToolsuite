@@ -29,7 +29,7 @@ public class KelvinFileInfo : IFileInfo
     {
         using (BlockStream stream = BlockStream.FromFile(FileSystemManager.ResolvePath(FileSystemManager.GetFilePath(m_casIndex)), m_offset, (int)m_size))
         {
-            return Cas.GetUncompressedSize(stream);
+            return Cas.GetOriginalSize(stream);
         }
     }
 

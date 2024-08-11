@@ -174,11 +174,6 @@ public static class FileSystemManager
 
             if (source.TryResolvePath(filename, out string? path))
             {
-                if (source.IsDLC())
-                {
-
-                }
-
                 return path;
             }
         }
@@ -220,7 +215,7 @@ public static class FileSystemManager
                 $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
         }
 
-        return ResolvePath(false, Path.Combine(installChunkInfo.InstallBundle,
+        return FileSystemSource.Base.ResolvePath(Path.Combine(installChunkInfo.InstallBundle,
             $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
     }
 

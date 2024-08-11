@@ -585,7 +585,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         if (extraSize != 0)
         {
-            Debug.WriteLine($"{extraSize} decompressed bytes ignored at the end of bundle {inBundle.Name}");
+            FrostyLogger.Logger?.LogInfo($"{extraSize} decompressed bytes ignored at the end of bundle {inBundle.Name}");
         }
     }
 
@@ -755,8 +755,9 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
     private BinaryBundle DeserializeDeltaBundle(DataStream deltaStream, DataStream? baseStream)
     {
-        ulong magic = deltaStream.ReadUInt64();
-        if (magic != 0x0000000001000000)
+        uint magic = deltaStream.ReadUInt32(Endian.Big);
+        uint reserved = deltaStream.ReadUInt32(Endian.Big);
+        if (magic != 1 || reserved != 0)
         {
             throw new InvalidDataException();
         }
