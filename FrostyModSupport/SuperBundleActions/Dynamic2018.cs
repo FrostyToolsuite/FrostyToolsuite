@@ -22,6 +22,8 @@ internal class Dynamic2018 : IDisposable
 
     private readonly Func<Sha1, (Block<byte> Block, bool NeedsToDispose)> m_getDataFun;
 
+    private bool m_casSb;
+
     public Dynamic2018(Dictionary<string, EbxModEntry> inModifiedEbx,
         Dictionary<string, ResModEntry> inModifiedRes, Dictionary<Guid, ChunkModEntry> inModifiedChunks, Func<Sha1, (Block<byte>, bool)> inGetDataFun)
     {
@@ -51,44 +53,50 @@ internal class Dynamic2018 : IDisposable
             Debug.Assert(inModInfo.Modified.Bundles.Count == 0 && inModInfo.Modified.Chunks.Count == 0);
         }
 
-        // TODO: how to get the offset in the .sb file correct since we have the 7bit encoded int
-        SbData = new Block<byte>(modifiedSuperBundle.Size + 4);
-        long offset;
-        using (BlockStream stream = new(SbData, true))
+        if (m_casSb)
         {
-            int value = modifiedSuperBundle.Size;
-
-            int size = 0;
-            if (value == 0)
+            SbData = new Block<byte>(modifiedSuperBundle.Size);
+            long offset;
+            using (BlockStream stream = new(SbData, true))
             {
-                size = 1;
+                int value = modifiedSuperBundle.Size;
+
+                int size = 0;
+                if (value == 0)
+                {
+                    size = 1;
+                }
+                while (value > 0)
+                {
+                    size++;
+                    value >>= 7;
+                }
+
+                // write anonymous dict type
+                stream.WriteByte(2 | (1 << 7));
+                // type + name + size + data + null + null
+                stream.Write7BitEncodedInt64(1 + 8 + size + modifiedSuperBundle.Size + 1 + 1);
+
+                // write list type
+                stream.WriteByte(1);
+                stream.WriteNullTerminatedString("bundles");
+                stream.Write7BitEncodedInt64(modifiedSuperBundle.Size + 1);
+
+                offset = stream.Position;
+                stream.Write(modifiedSuperBundle);
+                modifiedSuperBundle.Dispose();
+                stream.WriteByte(0);
+                stream.WriteByte(0);
             }
-            while (value > 0)
+
+            foreach (DbObject obj in toc.AsList("bundles"))
             {
-                size++;
-                value >>= 7;
+                obj.AsDict().Set("offset", obj.AsDict().AsLong("offset") + offset);
             }
-
-            // write anonymous dict type
-            stream.WriteByte(2 | (1 << 7));
-            // type + name + size + data + null + null
-            stream.Write7BitEncodedInt64(1 + 8 + size + modifiedSuperBundle.Size + 1 + 1);
-
-            // write list type
-            stream.WriteByte(1);
-            stream.WriteNullTerminatedString("bundles");
-            stream.Write7BitEncodedInt64(modifiedSuperBundle.Size + 1);
-
-            offset = stream.Position;
-            stream.Write(modifiedSuperBundle);
-            modifiedSuperBundle.Dispose();
-            stream.WriteByte(0);
-            stream.WriteByte(0);
         }
-
-        foreach (DbObject obj in toc.AsList("bundles"))
+        else
         {
-            obj.AsDict().Set("offset", obj.AsDict().AsLong("offset") + offset);
+            SbData = modifiedSuperBundle;
         }
 
         TocData = new Block<byte>(0);
@@ -363,9 +371,9 @@ internal class Dynamic2018 : IDisposable
                                 }
                                 else
                                 {
-                                    if (list.Count != 1)
+                                    if (list.Count != 1 && modEntry.FirstMip != -1)
                                     {
-                                        FrostyLogger.Logger?.LogWarning($"More than 1 chunk for h32 {modEntry.H32}");
+                                        FrostyLogger.Logger?.LogWarning($"More than 1 chunk for texture with h32 {modEntry.H32}");
                                     }
                                     chunkMeta = list[0];
                                 }
@@ -458,6 +466,7 @@ internal class Dynamic2018 : IDisposable
                         }
                         else
                         {
+                            FrostyLogger.Logger?.LogWarning("Non cas superbundle, there might be some issues.");
                             // TODO: this is ass pls fix asap
                             if (isDelta)
                             {
@@ -645,6 +654,7 @@ internal class Dynamic2018 : IDisposable
         if (isCas)
         {
             inToc.Set("cas", true);
+            m_casSb = true;
         }
 
         deltaSbStream?.Dispose();
