@@ -169,10 +169,10 @@ internal class Dynamic2018 : IDisposable
                         }
 
                         // load and write unmodified bundle
-                        newOffset = inModifiedStream.Position;
                         newBundleSize = size;
                         if (!isBase)
                         {
+                            newOffset = inModifiedStream.Position;
                             sbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
                             sbStream.Position = offset;
                             sbStream.CopyTo(inModifiedStream, (int)size);
@@ -238,6 +238,11 @@ internal class Dynamic2018 : IDisposable
                                 ebx.Set("originalSize", modEntry.OriginalSize);
                                 ebxBundleSize += modEntry.Size;
 
+                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+                                {
+                                    ebx.Set("casPatchType", 1);
+                                }
+
                                 // add sha1 to write cas files later
                                 inModInfo.Data.Add(modEntry.Sha1);
 
@@ -254,6 +259,11 @@ internal class Dynamic2018 : IDisposable
                                 ebx.Set("size", modEntry.Size);
                                 ebx.Set("originalSize", modEntry.OriginalSize);
                                 ebxBundleSize += modEntry.Size;
+
+                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+                                {
+                                    ebx.Set("casPatchType", 1);
+                                }
 
                                 // add sha1 to write cas files later
                                 inModInfo.Data.Add(modEntry.Sha1);
@@ -286,6 +296,11 @@ internal class Dynamic2018 : IDisposable
                                 res.Set("resRid", modEntry.ResRid);
                                 resBundleSize += modEntry.Size;
 
+                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+                                {
+                                    res.Set("casPatchType", 1);
+                                }
+
                                 // add sha1 to write cas files later
                                 inModInfo.Data.Add(modEntry.Sha1);
 
@@ -305,6 +320,11 @@ internal class Dynamic2018 : IDisposable
                                 res.Set("resMeta", modEntry.ResMeta);
                                 res.Set("resRid", modEntry.ResRid);
                                 resBundleSize += modEntry.Size;
+
+                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+                                {
+                                    res.Set("casPatchType", 1);
+                                }
 
                                 // add sha1 to write cas files later
                                 inModInfo.Data.Add(modEntry.Sha1);
@@ -335,6 +355,11 @@ internal class Dynamic2018 : IDisposable
                                 chunk.Set("logicalOffset", modEntry.LogicalOffset);
                                 chunk.Set("logicalSize", modEntry.LogicalSize);
                                 chunkBundleSize += modEntry.Size - modEntry.RangeStart;
+
+                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+                                {
+                                    chunk.Set("casPatchType", 1);
+                                }
 
                                 // add sha1 to write cas files later
                                 inModInfo.Data.Add(modEntry.Sha1);
@@ -406,6 +431,11 @@ internal class Dynamic2018 : IDisposable
                                 chunk.Set("id", chunkId);
                                 chunk.Set("sha1", modEntry.Sha1);
                                 chunk.Set("size", modEntry.Size);
+
+                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+                                {
+                                    chunk.Set("casPatchType", 1);
+                                }
 
                                 // add sha1 to write cas files later
                                 inModInfo.Data.Add(modEntry.Sha1);

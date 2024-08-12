@@ -690,7 +690,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
             // old patch storing until fb 2014.4.11
             // casPatchType:
-            //   - 0: non patched
+            //   - 1: patched
             //   - 2: patched base with delta
             if (isDelta && ebx.AsInt("casPatchType") == 2)
             {
