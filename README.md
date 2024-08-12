@@ -15,6 +15,13 @@
   </a>
 </p>
 
+> [!WARNING]
+> This Project is in development and doesn't have a release yet.
+> 
+> **Use at your own risk.**
+> 
+> For a stable release use [FrostyToolsuite v1.0.6.3](https://github.com/CadeEvs/FrostyToolsuite/releases/latest).
+
 # About
 The FrostyToolsuite is a modding tool for games running on DICE's Frostbite game engine.
 
