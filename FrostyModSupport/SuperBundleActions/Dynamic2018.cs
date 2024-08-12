@@ -607,6 +607,7 @@ internal class Dynamic2018 : IDisposable
                         long offset = chunkObj.AsLong("offset");
                         long size = chunkObj.AsLong("size");
                         newChunk = DbObject.CreateDict(3);
+                        newChunk.Set("id", id);
                         newChunk.Set("offset", inModifiedStream.Position);
                         newChunk.Set("size", size);
                         deltaSbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
