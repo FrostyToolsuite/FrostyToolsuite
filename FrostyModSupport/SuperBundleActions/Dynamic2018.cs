@@ -321,7 +321,7 @@ internal class Dynamic2018 : IDisposable
                                 ChunkModEntry modEntry = m_modifiedChunks[chunkId];
 
                                 chunk = DbObject.CreateDict(9);
-                                chunk.Set("name", chunkId);
+                                chunk.Set("id", chunkId);
                                 chunk.Set("sha1", modEntry.Sha1);
                                 chunk.Set("size", modEntry.Size);
                                 chunk.Set("logicalOffset", modEntry.LogicalOffset);
@@ -347,8 +347,14 @@ internal class Dynamic2018 : IDisposable
                                 // if the h32 didnt change just get it to change the firstMip if necessary
                                 // else we just add a new meta with the new h32
                                 // since the game only looks up the h32 afaik
-                                DbObjectDict? chunkMeta = null;
-                                if (!metaDict.TryGetValue(modEntry.H32, out List<DbObjectDict>? list))
+                                DbObjectDict? chunkMeta;
+
+                                if (modEntry.H32 == 0)
+                                {
+                                    // old mod format didnt store h32, so we just dont update the meta
+                                    chunkMeta = null;
+                                }
+                                else if (!metaDict.TryGetValue(modEntry.H32, out List<DbObjectDict>? list))
                                 {
                                     chunkMeta = DbObject.CreateDict(2);
                                     chunkMeta.Set("h32", modEntry.H32);
@@ -364,7 +370,7 @@ internal class Dynamic2018 : IDisposable
                                     chunkMeta = list[0];
                                 }
 
-                                DbObjectDict meta = chunkMeta.AsDict("meta");
+                                DbObjectDict? meta = chunkMeta?.AsDict("meta");
 
                                 if (modEntry.FirstMip != -1)
                                 {
@@ -373,12 +379,12 @@ internal class Dynamic2018 : IDisposable
                                     chunk.Set("rangeEnd", modEntry.RangeEnd);
 
                                     // set firstMip in meta
-                                    meta.Set("firstMip", modEntry.FirstMip);
+                                    meta?.Set("firstMip", modEntry.FirstMip);
                                 }
                                 else
                                 {
                                     // remove firstMip from meta if it exists
-                                    meta.Remove("firstMip");
+                                    meta?.Remove("firstMip");
                                 }
 
                                 chunkList[i] = chunk;
@@ -389,7 +395,7 @@ internal class Dynamic2018 : IDisposable
                                 ChunkModEntry modEntry = m_modifiedChunks[chunkId];
 
                                 DbObjectDict chunk = DbObject.CreateDict(9);
-                                chunk.Set("name", chunkId);
+                                chunk.Set("id", chunkId);
                                 chunk.Set("sha1", modEntry.Sha1);
                                 chunk.Set("size", modEntry.Size);
 
