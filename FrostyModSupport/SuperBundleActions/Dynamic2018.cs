@@ -91,7 +91,13 @@ internal class Dynamic2018 : IDisposable
 
             foreach (DbObject obj in toc.AsList("bundles"))
             {
-                obj.AsDict().Set("offset", obj.AsDict().AsLong("offset") + offset);
+                DbObjectDict bundle = obj.AsDict();
+                if (bundle.AsBoolean("base"))
+                {
+                    // if its loaded from base superbundle dont increase the offset
+                    continue;
+                }
+                bundle.Set("offset", obj.AsDict().AsLong("offset") + offset);
             }
         }
         else
@@ -173,9 +179,9 @@ internal class Dynamic2018 : IDisposable
                         if (!isBase)
                         {
                             newOffset = inModifiedStream.Position;
-                            sbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
-                            sbStream.Position = offset;
-                            sbStream.CopyTo(inModifiedStream, (int)size);
+                            deltaSbStream ??= BlockStream.FromFile(inPath.Replace(".toc", ".sb"), false);
+                            deltaSbStream.Position = offset;
+                            deltaSbStream.CopyTo(inModifiedStream, (int)size);
                         }
                         else
                         {
@@ -417,7 +423,10 @@ internal class Dynamic2018 : IDisposable
                                 else
                                 {
                                     // remove firstMip from meta if it exists
-                                    meta?.Remove("firstMip");
+                                    if (meta?.Remove("firstMip") == true)
+                                    {
+                                        FrostyLogger.Logger?.LogWarning($"WTF why does the mod not correctly modify a texture chunk ({chunkId}).");
+                                    }
                                 }
 
                                 chunkList[i] = chunk;
@@ -676,6 +685,38 @@ internal class Dynamic2018 : IDisposable
 
                     // remove chunk so we can check if the base superbundle needs to be loaded to modify a base chunk
                     inModInfo.Modified.Chunks.Remove(id);
+                }
+
+                inToc.AsList("chunks").Add(newChunk);
+            }
+
+            foreach (Guid id in inModInfo.Added.Chunks)
+            {
+                // modify chunk
+                ChunkModEntry modEntry = m_modifiedChunks[id];
+                DbObjectDict newChunk = DbObject.CreateDict(3);
+
+                if (isCas)
+                {
+                    newChunk.Set("id", id);
+                    newChunk.Set("sha1", modEntry.Sha1);
+
+                    // add sha1 to write cas files later
+                    inModInfo.Data.Add(modEntry.Sha1);
+                }
+                else
+                {
+                    newChunk.Set("id", id);
+                    newChunk.Set("offset", inModifiedStream.Position);
+                    newChunk.Set("size", modEntry.Size);
+
+                    (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
+                    inModifiedStream.Write(data.Block);
+
+                    if (data.NeedsToDispose)
+                    {
+                        data.Block.Dispose();
+                    }
                 }
 
                 inToc.AsList("chunks").Add(newChunk);
