@@ -120,7 +120,8 @@ internal class FieldInfo : IComparable
                 typeName = "Frosty.Sdk.Ebx.PointerRef";
                 isClass = true;
             }
-
+            // force default value, for stuff that doesnt have a default instance
+            m_defaultValue = "new()";
             typeName = $"ObservableCollection<{typeName}>";
         }
         sb.AppendLine($"[{nameof(EbxFieldMetaAttribute)}({(ushort)flags}, {m_offset}, {(isClass ? $"typeof({type.GetFullName()})" : "null")})]");
