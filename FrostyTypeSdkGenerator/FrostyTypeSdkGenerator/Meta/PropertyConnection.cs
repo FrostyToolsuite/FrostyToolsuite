@@ -28,6 +28,7 @@ public partial struct PropertyConnection
     }
 
     [DependsOnAttribute(Flags)]
+    [IsTransientAttribute()]
     [EbxFieldMetaAttribute(TypeFlags.TypeEnum.Enum)]
     public InputPropertyType InputPropertyType
     {
