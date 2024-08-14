@@ -103,7 +103,7 @@ public class ModUpdater
             block.Dispose();
         }
 
-        FrostyLogger.Logger?.LogInfo("Successfully updated mod to newest format version");
+        FrostyLogger.Logger?.LogInfo("Successfully updated mod to newest format version.");
         return true;
     }
 
@@ -487,6 +487,7 @@ public class ModUpdater
 
         // get bundle actions
         Dictionary<int, (HashSet<int>, HashSet<int>)> bundles = new();
+        Dictionary<int, HashSet<int>> hackBundles = new();
         XmlElement? bundlesElem = mod["bundles"];
         if (bundlesElem is not null)
         {
@@ -504,15 +505,19 @@ public class ModUpdater
 
                 foreach (XmlElement entry in entries)
                 {
-                    if (!int.TryParse(entry.GetAttribute("id"), out int resourceId))
+                    if (!int.TryParse(entry.GetAttribute("id"), out int index))
                     {
                         continue;
                     }
                     switch (action)
                     {
+                        case "modify":
+                            hackBundles.TryAdd(index, new HashSet<int>());
+                            hackBundles[index].UnionWith(s_bundleMapping[bundleHash]);
+                            break;
                         case "add":
-                            bundles.TryAdd(resourceId, (new HashSet<int>(), new HashSet<int>()));
-                            bundles[resourceId].Item1.UnionWith(s_bundleMapping[bundleHash]);
+                            bundles.TryAdd(index, (new HashSet<int>(), new HashSet<int>()));
+                            bundles[index].Item1.UnionWith(s_bundleMapping[bundleHash]);
                             break;
                     }
                 }
@@ -531,6 +536,7 @@ public class ModUpdater
         Span<byte> guidBytes = stackalloc byte[0x10];
         if (resourcesElem is not null)
         {
+            int index = 0;
             foreach (XmlElement resource in resourcesElem)
             {
                 string resourceName = resource.GetAttribute("name");
@@ -545,13 +551,14 @@ public class ModUpdater
                 if (action == "remove")
                 {
                     // we dont really need to remove the chunks
+                    index++;
                     continue;
                 }
 
                 bool hasBundlesToAdd = false;
                 IEnumerable<int> bundlesToAdd;
                 IEnumerable<int> bundlesToRemove;
-                if (bundles.TryGetValue(resourceId, out (HashSet<int>, HashSet<int>) b))
+                if (bundles.TryGetValue(index, out (HashSet<int>, HashSet<int>) b))
                 {
                     bundlesToAdd = b.Item1;
                     bundlesToRemove = b.Item2;
@@ -594,9 +601,15 @@ public class ModUpdater
                             resMeta[i] = byte.Parse(resMetaString.Slice(i * 2, 2), NumberStyles.HexNumber);
                         }
 
+                        // some textures dont store the correct originalSize so just fix them manually since they all have the same size
+                        uint resType = (uint)int.Parse(resource.GetAttribute("resType"));
+                        if ((ResourceType)resType == ResourceType.DxTexture && originalSize != 128)
+                        {
+                            originalSize = 128;
+                        }
+
                         resources.Add(new ResModResource(resourceId, resourceName, sha1, originalSize, flags, 0,
-                            string.Empty, bundlesToAdd, bundlesToRemove,
-                            (uint)int.Parse(resource.GetAttribute("resType")),
+                            string.Empty, bundlesToAdd, bundlesToRemove, resType,
                             (ulong)long.Parse(resource.GetAttribute("resRid")), resMeta));
                         break;
                     }
@@ -630,6 +643,12 @@ public class ModUpdater
                             firstMip = DbObject.Deserialize(stream)?.AsInt() ?? -1;
                         }
 
+                        if (action == "add" && !hasBundlesToAdd && hackBundles.TryGetValue(index, out HashSet<int>? a))
+                        {
+                            bundlesToAdd = a;
+                            hasBundlesToAdd = a.Count > 0;
+                        }
+
                         BaseModResource.ResourceFlags flags = FixChunk(resourceId, hasBundlesToAdd, id,
                             ref logicalOffset, ref logicalSize, ref rangeStart, ref rangeEnd, ref firstMip,
                             out IEnumerable<int> superBundlesToAdd);
@@ -642,6 +661,7 @@ public class ModUpdater
                         break;
                     }
                 }
+                index++;
             }
         }
 
@@ -720,7 +740,7 @@ public class ModUpdater
             firstMip = 0;
         }
 
-        if (firstMip == 0 && logicalOffset != 0)
+        if (firstMip <= 0 && logicalOffset != 0)
         {
 
         }
@@ -741,7 +761,6 @@ public class ModUpdater
                     if (sb.Name.Contains("chunks", StringComparison.OrdinalIgnoreCase))
                     {
                         superBundleInfo = sb;
-                        break;
                     }
                 }
 

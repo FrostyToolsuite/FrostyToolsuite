@@ -204,382 +204,16 @@ internal class Dynamic2018 : IDisposable
                             sbStream = deltaSbStream;
                         }
 
-                        sbStream.Position = offset;
                         if (isCas)
                         {
-                            DbObjectDict? bundle = DbObject.Deserialize(sbStream)?.AsDict();
-
-                            if (bundle is null)
-                            {
-                                FrostyLogger.Logger?.LogError("Trying to mod bundle that is not valid.");
-                                continue;
-                            }
-
-                            // modify bundle assets
-                            DbObjectList? ebxList = bundle.AsList("ebx", null);
-                            DbObjectList? resList = bundle.AsList("res", null);
-                            DbObjectList? chunkList = bundle.AsList("chunks", null);
-                            DbObjectList? chunkMetaList = bundle.AsList("chunkMeta", null);
-
-                            long ebxBundleSize = 0, resBundleSize = 0, chunkBundleSize = 0;
-
-                            for (int i = 0; i < ebxList?.Count; i++)
-                            {
-                                DbObjectDict ebx = ebxList[i].AsDict();
-
-                                string name = ebx.AsString("name");
-
-                                if (!bundleModInfo.Modified.Ebx.Contains(name))
-                                {
-                                    ebxBundleSize += ebx.AsLong("size");
-                                    continue;
-                                }
-
-                                EbxModEntry modEntry = m_modifiedEbx[name];
-
-                                ebx = DbObject.CreateDict(4);
-                                ebx.Set("name", name);
-                                ebx.Set("sha1", modEntry.Sha1);
-                                ebx.Set("size", modEntry.Size);
-                                ebx.Set("originalSize", modEntry.OriginalSize);
-                                ebxBundleSize += modEntry.Size;
-
-                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
-                                {
-                                    ebx.Set("casPatchType", 1);
-                                }
-
-                                // add sha1 to write cas files later
-                                inModInfo.Data.Add(modEntry.Sha1);
-
-                                ebxList[i] = ebx;
-                            }
-
-                            foreach (string name in bundleModInfo.Added.Ebx)
-                            {
-                                EbxModEntry modEntry = m_modifiedEbx[name];
-
-                                DbObjectDict ebx = DbObject.CreateDict(4);
-                                ebx.Set("name", name);
-                                ebx.Set("sha1", modEntry.Sha1);
-                                ebx.Set("size", modEntry.Size);
-                                ebx.Set("originalSize", modEntry.OriginalSize);
-                                ebxBundleSize += modEntry.Size;
-
-                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
-                                {
-                                    ebx.Set("casPatchType", 1);
-                                }
-
-                                // add sha1 to write cas files later
-                                inModInfo.Data.Add(modEntry.Sha1);
-
-                                ebxList ??= DbObject.CreateList("ebx", bundleModInfo.Added.Ebx.Count);
-                                ebxList.Add(ebx);
-                            }
-
-                            for (int i = 0; i < resList?.Count; i++)
-                            {
-                                DbObjectDict res = resList[i].AsDict();
-
-                                string name = res.AsString("name");
-
-                                if (!bundleModInfo.Modified.Res.Contains(name))
-                                {
-                                    resBundleSize += res.AsLong("size");
-                                    continue;
-                                }
-
-                                ResModEntry modEntry = m_modifiedRes[name];
-
-                                res = DbObject.CreateDict(7);
-                                res.Set("name", name);
-                                res.Set("sha1", modEntry.Sha1);
-                                res.Set("size", modEntry.Size);
-                                res.Set("originalSize", modEntry.OriginalSize);
-                                res.Set("resType", modEntry.ResType);
-                                res.Set("resMeta", modEntry.ResMeta);
-                                res.Set("resRid", modEntry.ResRid);
-                                resBundleSize += modEntry.Size;
-
-                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
-                                {
-                                    res.Set("casPatchType", 1);
-                                }
-
-                                // add sha1 to write cas files later
-                                inModInfo.Data.Add(modEntry.Sha1);
-
-                                resList[i] = res;
-                            }
-
-                            foreach (string name in bundleModInfo.Added.Res)
-                            {
-                                ResModEntry modEntry = m_modifiedRes[name];
-
-                                DbObjectDict res = DbObject.CreateDict(7);
-                                res.Set("name", name);
-                                res.Set("sha1", modEntry.Sha1);
-                                res.Set("size", modEntry.Size);
-                                res.Set("originalSize", modEntry.OriginalSize);
-                                res.Set("resType", modEntry.ResType);
-                                res.Set("resMeta", modEntry.ResMeta);
-                                res.Set("resRid", modEntry.ResRid);
-                                resBundleSize += modEntry.Size;
-
-                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
-                                {
-                                    res.Set("casPatchType", 1);
-                                }
-
-                                // add sha1 to write cas files later
-                                inModInfo.Data.Add(modEntry.Sha1);
-
-                                resList ??= DbObject.CreateList("res", bundleModInfo.Added.Res.Count);
-                                resList.Add(res);
-                            }
-
-                            Dictionary<int, List<DbObjectDict>>? metaDict = null;
-                            for (int i = 0; i < chunkList?.Count; i++)
-                            {
-                                DbObjectDict chunk = chunkList[i].AsDict();
-
-                                Guid chunkId = chunk.AsGuid("id");
-
-                                if (!bundleModInfo.Modified.Chunks.Contains(chunkId))
-                                {
-                                    chunkBundleSize += chunk.AsLong("size") - chunk.AsUInt("rangeStart");
-                                    continue;
-                                }
-
-                                ChunkModEntry modEntry = m_modifiedChunks[chunkId];
-
-                                chunk = DbObject.CreateDict(9);
-                                chunk.Set("id", chunkId);
-                                chunk.Set("sha1", modEntry.Sha1);
-                                chunk.Set("size", modEntry.Size);
-                                chunk.Set("logicalOffset", modEntry.LogicalOffset);
-                                chunk.Set("logicalSize", modEntry.LogicalSize);
-                                chunkBundleSize += modEntry.Size - modEntry.RangeStart;
-
-                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
-                                {
-                                    chunk.Set("casPatchType", 1);
-                                }
-
-                                // add sha1 to write cas files later
-                                inModInfo.Data.Add(modEntry.Sha1);
-
-                                // i dont think the chunkMeta is sorted in any way for these games
-                                if (metaDict is null)
-                                {
-                                    metaDict = new Dictionary<int, List<DbObjectDict>>(chunkMetaList!.Count);
-                                    foreach (DbObject metaObj in chunkMetaList)
-                                    {
-                                        // some chunks have the same
-                                        int h32 = metaObj.AsDict().AsInt("h32");
-                                        metaDict.TryAdd(h32, new List<DbObjectDict>());
-                                        metaDict[h32].Add(metaObj.AsDict());
-                                    }
-                                }
-
-                                // if the h32 didnt change just get it to change the firstMip if necessary
-                                // else we just add a new meta with the new h32
-                                // since the game only looks up the h32 afaik
-                                DbObjectDict? chunkMeta;
-
-                                if (modEntry.H32 == 0)
-                                {
-                                    // old mod format didnt store h32, so we just dont update the meta
-                                    chunkMeta = null;
-                                }
-                                else if (!metaDict.TryGetValue(modEntry.H32, out List<DbObjectDict>? list))
-                                {
-                                    chunkMeta = DbObject.CreateDict(2);
-                                    chunkMeta.Set("h32", modEntry.H32);
-                                    chunkMeta.Set("meta", DbObject.CreateDict(1));
-                                    chunkMetaList!.Add(chunkMeta);
-                                }
-                                else
-                                {
-                                    if (list.Count != 1 && modEntry.FirstMip != -1)
-                                    {
-                                        FrostyLogger.Logger?.LogWarning($"More than 1 chunk for texture with h32 {modEntry.H32}");
-                                    }
-                                    chunkMeta = list[0];
-                                }
-
-                                DbObjectDict? meta = chunkMeta?.AsDict("meta");
-
-                                if (modEntry.FirstMip != -1)
-                                {
-                                    // set rangeStart/End in chunk
-                                    chunk.Set("rangeStart", modEntry.RangeStart);
-                                    chunk.Set("rangeEnd", modEntry.RangeEnd);
-
-                                    // set firstMip in meta
-                                    meta?.Set("firstMip", modEntry.FirstMip);
-                                }
-                                else
-                                {
-                                    // remove firstMip from meta if it exists
-                                    if (meta?.Remove("firstMip") == true)
-                                    {
-                                        FrostyLogger.Logger?.LogWarning($"WTF why does the mod not correctly modify a texture chunk ({chunkId}).");
-                                    }
-                                }
-
-                                chunkList[i] = chunk;
-                            }
-
-                            foreach (Guid chunkId in bundleModInfo.Added.Chunks)
-                            {
-                                ChunkModEntry modEntry = m_modifiedChunks[chunkId];
-
-                                DbObjectDict chunk = DbObject.CreateDict(9);
-                                chunk.Set("id", chunkId);
-                                chunk.Set("sha1", modEntry.Sha1);
-                                chunk.Set("size", modEntry.Size);
-
-                                if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
-                                {
-                                    chunk.Set("casPatchType", 1);
-                                }
-
-                                // add sha1 to write cas files later
-                                inModInfo.Data.Add(modEntry.Sha1);
-
-                                // create meta
-                                DbObjectDict chunkMeta = DbObject.CreateDict(2);
-                                chunkMeta.Set("h32", modEntry.H32);
-                                DbObjectDict meta = DbObject.CreateDict(1);
-                                chunkMeta.Set("meta", meta);
-
-                                if (modEntry.FirstMip != -1)
-                                {
-                                    // set rangeStart/End on chunk
-                                    chunk.Set("rangeStart", modEntry.RangeStart);
-                                    chunk.Set("rangeEnd", modEntry.RangeEnd);
-
-                                    // set firstMip on meta
-                                    meta.Set("firstMip", modEntry.FirstMip);
-                                }
-
-                                uint bundledSize = (uint)(modEntry.Size - modEntry.RangeStart);
-                                chunkBundleSize += bundledSize;
-                                if (ProfilesLibrary.FrostbiteVersion >= "2015")
-                                {
-                                    chunk.Set("bundledSize", bundledSize);
-                                }
-
-                                chunk.Set("logicalOffset", modEntry.LogicalOffset);
-                                chunk.Set("logicalSize", modEntry.LogicalSize);
-                                chunkMetaList ??= DbObject.CreateList("chunkMeta", bundleModInfo.Added.Chunks.Count);
-                                chunkMetaList.Add(chunkMeta);
-
-                                chunkList ??= DbObject.CreateList("chunks", bundleModInfo.Added.Chunks.Count);
-                                chunkList.Add(chunk);
-                            }
-
-                            // ebx and res are always there, even if there are no ebx or res
-                            bundle.Set("ebx", ebxList ?? DbObject.CreateList("ebx"));
-                            bundle.Set("res", resList ?? DbObject.CreateList("res"));
-                            if (chunkList?.Count > 0)
-                            {
-                                bundle.Set("chunks", chunkList);
-                                // if there are chunks there is also chunkMeta
-                                bundle.Set("chunkMeta", chunkMetaList!);
-                            }
-
-                            if (ProfilesLibrary.FrostbiteVersion > "2014.4.11")
-                            {
-                                bundle.Set("ebxBundleSize", ebxBundleSize);
-                                bundle.Set("resBundleSize", resBundleSize);
-                                bundle.Set("chunkBundleSize", chunkBundleSize);
-                            }
-                            bundle.Set("totalSize", ebxBundleSize + resBundleSize + chunkBundleSize);
-
-                            // write bundle to sb file
-                            DbObject.Serialize(inModifiedStream, bundle);
-                            newBundleSize = inModifiedStream.Position - newOffset;
+                            ModifyAndWriteCasBundle(sbStream, offset, inModifiedStream, inModInfo, bundleModInfo);
                         }
                         else
                         {
-                            FrostyLogger.Logger?.LogWarning("Non cas superbundle, there might be some issues.");
-                            // TODO: this is ass pls fix asap
-                            if (isDelta)
-                            {
-                                throw new NotImplementedException();
-                            }
-
-                            long pos = sbStream.Position;
-                            List<(long OriginalSize, (Block<byte> Block, bool NeedsToDispose)? Data, bool IsModified, bool IsAdded)> originalSizes = new();
-                            Block<byte> bundleMeta = BinaryBundle.Modify(sbStream, bundleModInfo, m_modifiedEbx,
-                                m_modifiedRes,
-                                m_modifiedChunks,
-                                (entry, _, isAdded, isModified, originalSize) =>
-                                {
-                                    (Block<byte> Block, bool NeedsToDispose)? data = null;
-                                    if (isModified)
-                                    {
-                                        data = m_getDataFun(entry.Sha1);
-                                        if (entry is ChunkModEntry chunk && chunk.FirstMip > 0)
-                                        {
-                                            data.Value.Block.Shift((int)chunk.RangeStart);
-                                        }
-                                    }
-
-                                    originalSizes.Add((originalSize, data, isModified, isAdded));
-                                });
-                            uint baseBundleSize = (uint)(sbStream.Position - pos);
-
-                            // write patched bundle
-                            inModifiedStream.WriteUInt32(1, Endian.Big);
-                            inModifiedStream.WriteUInt32(0, Endian.Big);
-                            inModifiedStream.WriteInt32(bundleMeta.Size, Endian.Big);
-                            long startPos = inModifiedStream.Position;
-                            inModifiedStream.WriteUInt32(0xdeadbeef, Endian.Big); // data size
-                            inModifiedStream.WriteInt32(bundleMeta.Size - 4, Endian.Big);
-                            inModifiedStream.WriteUInt32(baseBundleSize | 0x40000000u, Endian.Big);
-
-                            inModifiedStream.Write(bundleMeta);
-                            bundleMeta.Dispose();
-                            long dataOffset = inModifiedStream.Position;
-
-                            foreach ((long OriginalSize, (Block<byte> Block, bool NeedsToDispose)? Data, bool IsModified, bool IsAdded) orig in originalSizes)
-                            {
-                                long compressedSize = 0;
-                                if (!orig.IsAdded)
-                                {
-                                    // skip original data, but store the size, so we can copy it for non modified data
-                                    compressedSize = Cas.GetCompressedSize(sbStream, orig.OriginalSize);
-                                }
-                                if (orig.IsModified)
-                                {
-                                    inModifiedStream.Write(orig.Data!.Value.Block);
-                                }
-                                else
-                                {
-                                    // just copy original data to new stream
-                                    sbStream.Position -= compressedSize;
-                                    sbStream.CopyTo(inModifiedStream, (int)compressedSize);
-                                }
-
-                                if (orig.Data?.NeedsToDispose == true)
-                                {
-                                    orig.Data?.Block.Dispose();
-                                }
-                            }
-
-                            uint dataSize = (uint)(inModifiedStream.Position - dataOffset);
-
-                            inModifiedStream.Position = startPos;
-                            inModifiedStream.WriteUInt32(dataSize, Endian.Big);
-                            inModifiedStream.Position += 4;
-                            inModifiedStream.WriteUInt32((uint)(bundleMeta.Size - 4) | 0x80000000u, Endian.Big);
-
-                            newBundleSize = inModifiedStream.Position - newOffset;
+                            ModifyAndWriteNonCasBundle(sbStream, offset, inModifiedStream, isDelta, bundleModInfo);
                         }
+
+                        newBundleSize = inModifiedStream.Position - newOffset;
 
                         // remove bundle so we can check if the base superbundle needs to be loaded to modify a base bundle
                         inModInfo.Modified.Bundles.Remove(id);
@@ -605,6 +239,11 @@ internal class Dynamic2018 : IDisposable
                     inToc.AsList("bundles").Add(newBundle);
                 }
             }
+        }
+
+        foreach (BundleModInfo bundleModInfo in inModInfo.Added.Bundles.Values)
+        {
+            FrostyLogger.Logger?.LogError("Adding bundles not yet implemented.");
         }
 
         if (toc.ContainsKey("chunks"))
@@ -689,38 +328,38 @@ internal class Dynamic2018 : IDisposable
 
                 inToc.AsList("chunks").Add(newChunk);
             }
+        }
 
-            foreach (Guid id in inModInfo.Added.Chunks)
+        foreach (Guid id in inModInfo.Added.Chunks)
+        {
+            // add chunk
+            ChunkModEntry modEntry = m_modifiedChunks[id];
+            DbObjectDict newChunk = DbObject.CreateDict(3);
+
+            if (isCas)
             {
-                // modify chunk
-                ChunkModEntry modEntry = m_modifiedChunks[id];
-                DbObjectDict newChunk = DbObject.CreateDict(3);
+                newChunk.Set("id", id);
+                newChunk.Set("sha1", modEntry.Sha1);
 
-                if (isCas)
-                {
-                    newChunk.Set("id", id);
-                    newChunk.Set("sha1", modEntry.Sha1);
-
-                    // add sha1 to write cas files later
-                    inModInfo.Data.Add(modEntry.Sha1);
-                }
-                else
-                {
-                    newChunk.Set("id", id);
-                    newChunk.Set("offset", inModifiedStream.Position);
-                    newChunk.Set("size", modEntry.Size);
-
-                    (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
-                    inModifiedStream.Write(data.Block);
-
-                    if (data.NeedsToDispose)
-                    {
-                        data.Block.Dispose();
-                    }
-                }
-
-                inToc.AsList("chunks").Add(newChunk);
+                // add sha1 to write cas files later
+                inModInfo.Data.Add(modEntry.Sha1);
             }
+            else
+            {
+                newChunk.Set("id", id);
+                newChunk.Set("offset", inModifiedStream.Position);
+                newChunk.Set("size", modEntry.Size);
+
+                (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
+                inModifiedStream.Write(data.Block);
+
+                if (data.NeedsToDispose)
+                {
+                    data.Block.Dispose();
+                }
+            }
+
+            inToc.AsList("chunks").Add(newChunk);
         }
 
         if (isCas)
@@ -731,6 +370,475 @@ internal class Dynamic2018 : IDisposable
 
         deltaSbStream?.Dispose();
         baseSbStream?.Dispose();
+    }
+
+    private void ModifyAndWriteCasBundle(BlockStream inStream, long inOffset, BlockStream inModifiedStream, SuperBundleModInfo inModInfo, BundleModInfo inBundleModInfo)
+    {
+        inStream.Position = inOffset;
+        DbObjectDict? bundle = DbObject.Deserialize(inStream)?.AsDict();
+
+        if (bundle is null)
+        {
+            FrostyLogger.Logger?.LogError("Trying to mod bundle that is not valid.");
+            return;
+        }
+
+        // modify bundle assets
+        DbObjectList? ebxList = bundle.AsList("ebx", null);
+        DbObjectList? resList = bundle.AsList("res", null);
+        DbObjectList? chunkList = bundle.AsList("chunks", null);
+        DbObjectList? chunkMetaList = bundle.AsList("chunkMeta", null);
+
+        long ebxBundleSize = 0, resBundleSize = 0, chunkBundleSize = 0;
+
+        for (int i = 0; i < ebxList?.Count; i++)
+        {
+            DbObjectDict ebx = ebxList[i].AsDict();
+
+            string name = ebx.AsString("name");
+
+            if (!inBundleModInfo.Modified.Ebx.Contains(name))
+            {
+                ebxBundleSize += ebx.AsLong("size");
+                continue;
+            }
+
+            EbxModEntry modEntry = m_modifiedEbx[name];
+
+            ebx = DbObject.CreateDict(4);
+            ebx.Set("name", name);
+            ebx.Set("sha1", modEntry.Sha1);
+            ebx.Set("size", modEntry.Size);
+            ebx.Set("originalSize", modEntry.OriginalSize);
+            ebxBundleSize += modEntry.Size;
+
+            if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+            {
+                ebx.Set("casPatchType", 1);
+            }
+
+            if (modEntry.Size < byte.MaxValue)
+            {
+                (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
+                ebx.Set("idata", data.Block.ToArray());
+                if (data.NeedsToDispose)
+                {
+                    data.Block.Dispose();
+                }
+            }
+
+            // add sha1 to write cas files later
+            inModInfo.Data.Add(modEntry.Sha1);
+
+            ebxList[i] = ebx;
+        }
+
+        foreach (string name in inBundleModInfo.Added.Ebx)
+        {
+            EbxModEntry modEntry = m_modifiedEbx[name];
+
+            DbObjectDict ebx = DbObject.CreateDict(4);
+            ebx.Set("name", name);
+            ebx.Set("sha1", modEntry.Sha1);
+            ebx.Set("size", modEntry.Size);
+            ebx.Set("originalSize", modEntry.OriginalSize);
+            ebxBundleSize += modEntry.Size;
+
+            if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+            {
+                ebx.Set("casPatchType", 1);
+            }
+
+            if (modEntry.Size < byte.MaxValue)
+            {
+                (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
+                ebx.Set("idata", data.Block.ToArray());
+                if (data.NeedsToDispose)
+                {
+                    data.Block.Dispose();
+                }
+            }
+
+            // add sha1 to write cas files later
+            inModInfo.Data.Add(modEntry.Sha1);
+
+            ebxList ??= DbObject.CreateList("ebx", inBundleModInfo.Added.Ebx.Count);
+            ebxList.Add(ebx);
+        }
+
+        for (int i = 0; i < resList?.Count; i++)
+        {
+            DbObjectDict res = resList[i].AsDict();
+
+            string name = res.AsString("name");
+
+            if (!inBundleModInfo.Modified.Res.Contains(name))
+            {
+                resBundleSize += res.AsLong("size");
+                continue;
+            }
+
+            ResModEntry modEntry = m_modifiedRes[name];
+
+            res = DbObject.CreateDict(7);
+            res.Set("name", name);
+            res.Set("sha1", modEntry.Sha1);
+            res.Set("size", modEntry.Size);
+            res.Set("originalSize", modEntry.OriginalSize);
+            res.Set("resType", modEntry.ResType);
+            res.Set("resMeta", modEntry.ResMeta);
+            res.Set("resRid", modEntry.ResRid);
+            resBundleSize += modEntry.Size;
+
+            if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+            {
+                res.Set("casPatchType", 1);
+            }
+
+            if (modEntry.Size < byte.MaxValue)
+            {
+                (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
+                res.Set("idata", data.Block.ToArray());
+                if (data.NeedsToDispose)
+                {
+                    data.Block.Dispose();
+                }
+            }
+
+            // add sha1 to write cas files later
+            inModInfo.Data.Add(modEntry.Sha1);
+
+            resList[i] = res;
+        }
+
+        foreach (string name in inBundleModInfo.Added.Res)
+        {
+            ResModEntry modEntry = m_modifiedRes[name];
+
+            DbObjectDict res = DbObject.CreateDict(7);
+            res.Set("name", name);
+            res.Set("sha1", modEntry.Sha1);
+            res.Set("size", modEntry.Size);
+            res.Set("originalSize", modEntry.OriginalSize);
+            res.Set("resType", modEntry.ResType);
+            res.Set("resMeta", modEntry.ResMeta);
+            res.Set("resRid", modEntry.ResRid);
+            resBundleSize += modEntry.Size;
+
+            if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+            {
+                res.Set("casPatchType", 1);
+            }
+
+            if (modEntry.Size < byte.MaxValue)
+            {
+                (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
+                res.Set("idata", data.Block.ToArray());
+                if (data.NeedsToDispose)
+                {
+                    data.Block.Dispose();
+                }
+            }
+
+            // add sha1 to write cas files later
+            inModInfo.Data.Add(modEntry.Sha1);
+
+            resList ??= DbObject.CreateList("res", inBundleModInfo.Added.Res.Count);
+            resList.Add(res);
+        }
+
+        Dictionary<int, List<DbObjectDict>>? metaDict = null;
+        for (int i = 0; i < chunkList?.Count; i++)
+        {
+            DbObjectDict chunk = chunkList[i].AsDict();
+
+            Guid chunkId = chunk.AsGuid("id");
+
+            if (!inBundleModInfo.Modified.Chunks.Contains(chunkId))
+            {
+                chunkBundleSize += chunk.AsLong("size") - chunk.AsUInt("rangeStart");
+                continue;
+            }
+
+            ChunkModEntry modEntry = m_modifiedChunks[chunkId];
+
+            chunk = DbObject.CreateDict(9);
+            chunk.Set("id", chunkId);
+            chunk.Set("sha1", modEntry.Sha1);
+            chunk.Set("size", modEntry.Size);
+            chunk.Set("logicalOffset", modEntry.LogicalOffset);
+            chunk.Set("logicalSize", modEntry.LogicalSize);
+            uint bundledSize = (uint)(modEntry.Size - modEntry.RangeStart);
+            chunkBundleSize += bundledSize;
+            if (ProfilesLibrary.FrostbiteVersion >= "2015")
+            {
+                chunk.Set("bundledSize", bundledSize);
+            }
+
+            if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+            {
+                chunk.Set("casPatchType", 1);
+            }
+
+            if (modEntry.Size < byte.MaxValue)
+            {
+                (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
+                chunk.Set("idata", data.Block.ToArray());
+                if (data.NeedsToDispose)
+                {
+                    data.Block.Dispose();
+                }
+            }
+
+            // add sha1 to write cas files later
+            inModInfo.Data.Add(modEntry.Sha1);
+
+            // i dont think the chunkMeta is sorted in any way for these games
+            if (metaDict is null)
+            {
+                metaDict = new Dictionary<int, List<DbObjectDict>>(chunkMetaList!.Count);
+                foreach (DbObject metaObj in chunkMetaList)
+                {
+                    // some chunks have the same
+                    int h32 = metaObj.AsDict().AsInt("h32");
+                    metaDict.TryAdd(h32, new List<DbObjectDict>());
+                    metaDict[h32].Add(metaObj.AsDict());
+                }
+            }
+
+            // if the h32 didnt change just get it to change the firstMip if necessary
+            // else we just add a new meta with the new h32
+            // since the game only looks up the h32 afaik
+            DbObjectDict? chunkMeta;
+
+            if (modEntry.H32 == 0)
+            {
+                // old mod format didnt store h32, so we just dont update the meta
+                chunkMeta = null;
+            }
+            else if (!metaDict.TryGetValue(modEntry.H32, out List<DbObjectDict>? list))
+            {
+                chunkMeta = DbObject.CreateDict(2);
+                chunkMeta.Set("h32", modEntry.H32);
+                chunkMeta.Set("meta", DbObject.CreateDict(1));
+                chunkMetaList!.Add(chunkMeta);
+            }
+            else
+            {
+                if (list.Count != 1 && modEntry.FirstMip != -1)
+                {
+                    FrostyLogger.Logger?.LogWarning($"More than 1 chunk for texture with h32 {modEntry.H32}");
+                }
+                chunkMeta = list[0];
+            }
+
+            DbObjectDict? meta = chunkMeta?.AsDict("meta");
+
+            if (modEntry.FirstMip != -1)
+            {
+                // set rangeStart/End in chunk
+                chunk.Set("rangeStart", modEntry.RangeStart);
+                chunk.Set("rangeEnd", modEntry.RangeEnd);
+
+                // set firstMip in meta
+                meta?.Set("firstMip", modEntry.FirstMip);
+            }
+            else
+            {
+                // remove firstMip from meta if it exists
+                if (meta?.Remove("firstMip") == true)
+                {
+                    // non 2d texture chunk, since frosty v1 didn't modify it correctly, log a warning
+                    FrostyLogger.Logger?.LogWarning($"Mod does not correctly modify a texture chunk ({chunkId}).");
+                }
+            }
+
+            chunkList[i] = chunk;
+        }
+
+        foreach (Guid chunkId in inBundleModInfo.Added.Chunks)
+        {
+            ChunkModEntry modEntry = m_modifiedChunks[chunkId];
+
+            DbObjectDict chunk = DbObject.CreateDict(9);
+            chunk.Set("id", chunkId);
+            chunk.Set("sha1", modEntry.Sha1);
+            chunk.Set("size", modEntry.Size);
+            chunk.Set("logicalOffset", modEntry.LogicalOffset);
+            chunk.Set("logicalSize", modEntry.LogicalSize);
+
+            uint bundledSize = (uint)(modEntry.Size - modEntry.RangeStart);
+            chunkBundleSize += bundledSize;
+            if (ProfilesLibrary.FrostbiteVersion >= "2015")
+            {
+                chunk.Set("bundledSize", bundledSize);
+            }
+
+            if (ProfilesLibrary.FrostbiteVersion <= "2014.4.11")
+            {
+                chunk.Set("casPatchType", 1);
+            }
+
+            if (modEntry.Size < byte.MaxValue)
+            {
+                (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(modEntry.Sha1);
+                chunk.Set("idata", data.Block.ToArray());
+                if (data.NeedsToDispose)
+                {
+                    data.Block.Dispose();
+                }
+            }
+
+            // add sha1 to write cas files later
+            inModInfo.Data.Add(modEntry.Sha1);
+
+            if (metaDict is null)
+            {
+                chunkMetaList ??= DbObject.CreateList("chunkMeta", inBundleModInfo.Added.Chunks.Count);
+                metaDict = new Dictionary<int, List<DbObjectDict>>(chunkMetaList.Count);
+                foreach (DbObject metaObj in chunkMetaList)
+                {
+                    // some chunks have the same
+                    int h32 = metaObj.AsDict().AsInt("h32");
+                    metaDict.TryAdd(h32, new List<DbObjectDict>());
+                    metaDict[h32].Add(metaObj.AsDict());
+                }
+            }
+
+            DbObjectDict? chunkMeta;
+            if (!metaDict.TryGetValue(modEntry.H32, out List<DbObjectDict>? list))
+            {
+                chunkMeta = DbObject.CreateDict(2);
+                chunkMeta.Set("h32", modEntry.H32);
+                chunkMeta.Set("meta", DbObject.CreateDict(1));
+                chunkMetaList ??= DbObject.CreateList("chunkMeta", inBundleModInfo.Added.Chunks.Count);
+                chunkMetaList.Add(chunkMeta);
+            }
+            else
+            {
+                if (list.Count != 1 && modEntry.FirstMip != -1)
+                {
+                    FrostyLogger.Logger?.LogWarning($"More than 1 chunk for texture with h32 {modEntry.H32}");
+                }
+                chunkMeta = list[0];
+            }
+
+            DbObjectDict? meta = chunkMeta?.AsDict("meta");
+
+            if (modEntry.FirstMip != -1)
+            {
+                // set rangeStart/End in chunk
+                chunk.Set("rangeStart", modEntry.RangeStart);
+                chunk.Set("rangeEnd", modEntry.RangeEnd);
+
+                // set firstMip in meta
+                meta?.Set("firstMip", modEntry.FirstMip);
+            }
+            else
+            {
+                // remove firstMip from meta if it exists
+                if (meta?.Remove("firstMip") == true)
+                {
+                    // non 2d texture chunk, since frosty v1 didn't modify it correctly, log a warning
+                    FrostyLogger.Logger?.LogWarning($"Mod does not correctly modify a texture chunk ({chunkId}).");
+                }
+            }
+
+            chunkList ??= DbObject.CreateList("chunks", inBundleModInfo.Added.Chunks.Count);
+            chunkList.Add(chunk);
+        }
+
+        // ebx and res are always there, even if there are no ebx or res
+        bundle.Set("ebx", ebxList ?? DbObject.CreateList("ebx"));
+        bundle.Set("res", resList ?? DbObject.CreateList("res"));
+        if (chunkList?.Count > 0)
+        {
+            bundle.Set("chunks", chunkList);
+            // if there are chunks there is also chunkMeta
+            bundle.Set("chunkMeta", chunkMetaList!);
+        }
+
+        if (ProfilesLibrary.FrostbiteVersion > "2014.4.11")
+        {
+            bundle.Set("ebxBundleSize", ebxBundleSize);
+            bundle.Set("resBundleSize", resBundleSize);
+            bundle.Set("chunkBundleSize", chunkBundleSize);
+        }
+        bundle.Set("totalSize", ebxBundleSize + resBundleSize + chunkBundleSize);
+
+        // write bundle to sb file
+        DbObject.Serialize(inModifiedStream, bundle);
+    }
+
+    private void ModifyAndWriteNonCasBundle(BlockStream inStream, long inOffset, BlockStream inModifiedStream, bool isDelta, BundleModInfo inModInfo)
+    {
+        inStream.Position = inOffset;
+        FrostyLogger.Logger?.LogWarning("Non cas superbundle, there might be some issues.");
+
+        uint baseBundleSize;
+        Block<byte> bundleMeta;
+        Block<byte> data = new(0);
+        BlockStream dataStream = new(data, true);
+        if (isDelta)
+        {
+            throw new NotImplementedException();
+        }
+        else
+        {
+            baseBundleSize = (uint)inStream.Position;
+            bundleMeta = BinaryBundle.Modify(inStream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
+                (entry, i, isAdded, isModified, originalSize) =>
+                {
+                    if (!isModified)
+                    {
+                        uint blockCount = (originalSize + (uint)ProfilesLibrary.MaxBufferSize - 1) /
+                                          (uint)ProfilesLibrary.MaxBufferSize;
+                        dataStream.WriteUInt32(blockCount, Endian.Big);
+                    }
+                    else
+                    {
+                        uint blockCount = (originalSize & (uint)ProfilesLibrary.MaxBufferSize - 1) /
+                                          (uint)ProfilesLibrary.MaxBufferSize;
+                        dataStream.WriteUInt32(blockCount, Endian.Big);
+                        blockCount = ((uint)entry.OriginalSize + (uint)ProfilesLibrary.MaxBufferSize - 1) /
+                                          (uint)ProfilesLibrary.MaxBufferSize;
+                        dataStream.WriteUInt32(blockCount | 0x30000000, Endian.Big);
+
+                        // write data
+                        (Block<byte> Block, bool NeedsToDispose) data = m_getDataFun(entry.Sha1);
+
+                        if (entry is ChunkModEntry chunk && chunk.FirstMip > 0)
+                        {
+                            data.Block.Shift((int)chunk.RangeStart);
+                        }
+
+                        dataStream.Write(data.Block);
+
+                        if (data.NeedsToDispose)
+                        {
+                            data.Block.Dispose();
+                        }
+                    }
+                });
+            baseBundleSize = (uint)inStream.Position - baseBundleSize - 4;
+        }
+
+        dataStream.Dispose();
+
+        // write patched bundle
+        inModifiedStream.WriteUInt32(1, Endian.Big);
+        inModifiedStream.WriteUInt32(0, Endian.Big);
+        inModifiedStream.WriteInt32(bundleMeta.Size + 8, Endian.Big); // size of patched bundleMeta and uint to skip base bundleMeta
+        inModifiedStream.WriteInt32(data.Size, Endian.Big); // size of data after the meta
+
+        inModifiedStream.WriteInt32(bundleMeta.Size - 4, Endian.Big); // size of the final patched bundleMeta without the storing stuff
+        inModifiedStream.WriteUInt32(baseBundleSize | 0x40000000u, Endian.Big); // skip baseBundle
+        inModifiedStream.WriteUInt32(bundleMeta.ToBlock<uint>()[0] | 0x80); // this is big endian, since the ptr is giving us the thing in le we write it in le
+        bundleMeta.Shift(4); // skip size
+        inModifiedStream.Write(bundleMeta);
+        bundleMeta.Dispose();
+        inModifiedStream.Write(data);
+        data.Dispose();
     }
 
     public void Dispose()

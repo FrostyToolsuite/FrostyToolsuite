@@ -12,6 +12,7 @@ public class ChunkModEntry : IModEntry
     public uint RangeEnd { get; }
     public uint LogicalOffset { get; }
     public uint LogicalSize { get; }
+    public long OriginalSize => LogicalOffset & (ProfilesLibrary.MaxBufferSize - 1) | LogicalSize;
     public int H32 { get; }
     public int FirstMip { get; }
     public long Size { get; }
@@ -28,7 +29,7 @@ public class ChunkModEntry : IModEntry
         H32 = inResource.H32;
         FirstMip = inResource.FirstMip;
         Size = inSize;
-        
+
     }
 
     public ChunkModEntry(Guid inId, Sha1 inSha1, uint inLogicalOffset, uint inLogicalSize)

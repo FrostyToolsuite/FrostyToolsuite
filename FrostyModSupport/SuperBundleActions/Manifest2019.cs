@@ -447,6 +447,11 @@ internal class Manifest2019 : IDisposable
                 sbStream?.Dispose();
             }
 
+            foreach (BundleModInfo bundleModInfo in inModInfo.Added.Bundles.Values)
+            {
+                FrostyLogger.Logger?.LogError("Adding bundles not yet implemented.");
+            }
+
             if (chunksCount != 0)
             {
                 stream.Position = chunkDataOffset;
@@ -518,6 +523,14 @@ internal class Manifest2019 : IDisposable
                 }
 
                 chunkData.Dispose();
+            }
+
+            foreach (Guid id in inModInfo.Added.Chunks)
+            {
+                // add chunk
+                (CasFileIdentifier, uint, uint) info = inInstallChunkWriter.GetFileInfo(m_modifiedChunks[id].Sha1);
+
+                inChunks.Add((id, info.Item1, info.Item2, info.Item3));
             }
         }
         return bundleLoadFlag;
@@ -597,33 +610,31 @@ internal class Manifest2019 : IDisposable
         return retVal;
     }
 
-    private (Block<byte>, List<(CasFileIdentifier, uint, uint)>, bool) ModifyBundle(BlockStream stream,
+    private (Block<byte>, List<(CasFileIdentifier, uint, uint)>, bool) ModifyBundle(BlockStream inStream,
         long inOffset, BundleModInfo inModInfo, InstallChunkWriter inInstallChunkWriter)
     {
-        long curPos = stream.Position;
+        inStream.Position = inOffset;
 
-        stream.Position = inOffset;
-
-        int bundleOffset = stream.ReadInt32(Endian.Big);
-        int bundleSize = stream.ReadInt32(Endian.Big);
-        uint locationOffset = stream.ReadUInt32(Endian.Big);
-        int totalCount = stream.ReadInt32(Endian.Big);
-        uint dataOffset = stream.ReadUInt32(Endian.Big);
+        int bundleOffset = inStream.ReadInt32(Endian.Big);
+        int bundleSize = inStream.ReadInt32(Endian.Big);
+        uint locationOffset = inStream.ReadUInt32(Endian.Big);
+        int totalCount = inStream.ReadInt32(Endian.Big);
+        uint dataOffset = inStream.ReadUInt32(Endian.Big);
 
         // not used by any game rn, again maybe crypto stuff
-        stream.Position += sizeof(uint);
-        stream.Position += sizeof(uint);
+        inStream.Position += sizeof(uint);
+        inStream.Position += sizeof(uint);
         // maybe count for the offsets above
-        stream.Position += sizeof(int);
+        inStream.Position += sizeof(int);
 
         bool inlineBundle = !(bundleOffset == 0 && bundleSize == 0);
 
-        stream.Position = inOffset + locationOffset;
+        inStream.Position = inOffset + locationOffset;
 
         Block<byte> fileIdentifierFlags = new(totalCount);
-        stream.ReadExactly(fileIdentifierFlags);
+        inStream.ReadExactly(fileIdentifierFlags);
 
-        stream.Position = inOffset + dataOffset;
+        inStream.Position = inOffset + dataOffset;
 
         CasFileIdentifier file = default;
 
@@ -631,16 +642,16 @@ internal class Manifest2019 : IDisposable
         List<(CasFileIdentifier, uint, uint)> files = new(totalCount);
         for (int i = 0; i < totalCount; i++)
         {
-            file = ReadCasFileIdentifier(stream, fileIdentifierFlags[i], file);
+            file = ReadCasFileIdentifier(inStream, fileIdentifierFlags[i], file);
 
-            files.Add((file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big)));
+            files.Add((file, inStream.ReadUInt32(Endian.Big), inStream.ReadUInt32(Endian.Big)));
         }
 
         Block<byte> bundleMeta;
         if (inlineBundle)
         {
-            stream.Position = inOffset + bundleOffset;
-            bundleMeta = BinaryBundle.Modify(stream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
+            inStream.Position = inOffset + bundleOffset;
+            bundleMeta = BinaryBundle.Modify(inStream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
                 (entry, i, isAdded, isModified, _) =>
                 {
                     if (!isModified)
@@ -702,8 +713,6 @@ internal class Manifest2019 : IDisposable
         }
 
         fileIdentifierFlags.Dispose();
-
-        stream.Position = curPos;
 
         return (bundleMeta, files, inlineBundle);
     }
