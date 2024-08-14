@@ -512,10 +512,7 @@ public class ModUpdater
                     switch (action)
                     {
                         case "modify":
-                            hackBundles.TryAdd(index, new HashSet<int>());
-                            hackBundles[index].UnionWith(s_bundleMapping[bundleHash]);
-                            break;
-                        case "add":
+                            // modify the bundle, the asset was either removed, added or modified depending on its own action
                             bundles.TryAdd(index, (new HashSet<int>(), new HashSet<int>()));
                             bundles[index].Item1.UnionWith(s_bundleMapping[bundleHash]);
                             break;
@@ -558,7 +555,7 @@ public class ModUpdater
                 bool hasBundlesToAdd = false;
                 IEnumerable<int> bundlesToAdd;
                 IEnumerable<int> bundlesToRemove;
-                if (bundles.TryGetValue(index, out (HashSet<int>, HashSet<int>) b))
+                if (action == "add" && bundles.TryGetValue(index, out (HashSet<int>, HashSet<int>) b))
                 {
                     bundlesToAdd = b.Item1;
                     bundlesToRemove = b.Item2;
@@ -641,12 +638,6 @@ public class ModUpdater
                         using (BlockStream stream = new(metaBytes))
                         {
                             firstMip = DbObject.Deserialize(stream)?.AsInt() ?? -1;
-                        }
-
-                        if (action == "add" && !hasBundlesToAdd && hackBundles.TryGetValue(index, out HashSet<int>? a))
-                        {
-                            bundlesToAdd = a;
-                            hasBundlesToAdd = a.Count > 0;
                         }
 
                         BaseModResource.ResourceFlags flags = FixChunk(resourceId, hasBundlesToAdd, id,
