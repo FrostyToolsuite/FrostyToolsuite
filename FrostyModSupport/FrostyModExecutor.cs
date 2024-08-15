@@ -43,7 +43,7 @@ public partial class FrostyModExecutor
     /// </summary>
     /// <param name="inModPackPath">The full path of the directory where the modified data is going to be stored.</param>
     /// <param name="inModPaths">The full paths of the mods.</param>
-    public Errors GenerateMods(string inModPackPath, params string[] inModPaths)
+    public Errors GenerateMods(string inModPackPath, IEnumerable<string> inModPaths)
     {
         // define some paths we are going to need
         m_patchPath = FileSystemManager.Sources.Count == 1
@@ -72,12 +72,12 @@ public partial class FrostyModExecutor
         LoadHandlers();
 
         // process all mods
-        foreach (string path in inModPaths)
+        foreach (ModInfo modInfo in modInfos)
         {
-            string extension = Path.GetExtension(path);
+            string extension = Path.GetExtension(modInfo.Path);
             if (extension == ".fbmod")
             {
-                FrostyMod? mod = FrostyMod.Load(path);
+                FrostyMod? mod = FrostyMod.Load(modInfo.Path);
                 if (mod is null)
                 {
                     return Errors.InvalidMods;
@@ -90,7 +90,7 @@ public partial class FrostyModExecutor
             }
             else if (extension == ".fbcollection")
             {
-                FrostyModCollection? modCollection = FrostyModCollection.Load(path);
+                FrostyModCollection? modCollection = FrostyModCollection.Load(modInfo.Path);
                 if (modCollection is null)
                 {
                     return Errors.InvalidMods;
@@ -668,6 +668,7 @@ public partial class FrostyModExecutor
 
             ModInfo modInfo = new()
             {
+                Path = path,
                 Name = modDetails.Title,
                 Version = modDetails.Version,
                 Category = modDetails.Category,
