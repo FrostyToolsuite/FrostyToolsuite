@@ -613,6 +613,8 @@ internal class Manifest2019 : IDisposable
     private (Block<byte>, List<(CasFileIdentifier, uint, uint)>, bool) ModifyBundle(BlockStream inStream,
         long inOffset, BundleModInfo inModInfo, InstallChunkWriter inInstallChunkWriter)
     {
+        long curPos = inStream.Position;
+
         inStream.Position = inOffset;
 
         int bundleOffset = inStream.ReadInt32(Endian.Big);
@@ -713,6 +715,8 @@ internal class Manifest2019 : IDisposable
         }
 
         fileIdentifierFlags.Dispose();
+
+        inStream.Position = curPos;
 
         return (bundleMeta, files, inlineBundle);
     }
