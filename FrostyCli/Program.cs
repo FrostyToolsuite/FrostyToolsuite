@@ -270,12 +270,26 @@ internal static class Program
             return;
         }
 
-        FileInfo outputFileInfo = new(Prompt.Input<string>("Pass in the path where the updated mod should get saved to"));
+        string outputPath = Prompt.Input<string>("Pass in the path where the updated mod should get saved to");
 
-        if (!ModUpdater.UpdateMod(modFileInfo.FullName, outputFileInfo.FullName))
+        if (!string.IsNullOrEmpty(outputPath))
         {
-            Logger.LogErrorInternal("Failed to update mod.");
+            if (Directory.Exists(outputPath))
+            {
+                outputPath = Path.Combine(outputPath, modFileInfo.Name);
+            }
+            else
+            {
+                FileInfo fileInfo = new(outputPath);
+                if (fileInfo.Directory?.Exists != true)
+                {
+                    Logger.LogErrorInternal("File or some Directory of file does not exist.");
+                    return;
+                }
+            }
         }
+
+        ModUpdater.UpdateMod(modFileInfo.FullName, outputPath);
     }
 
     private static void ListEbx()
@@ -549,8 +563,27 @@ internal static class Program
             return;
         }
 
+        IEnumerable<string> mods = Directory.GetFiles(inModsDirInfo.FullName);
+
+        string modLoadOrderPath = Path.Combine(inModsDirInfo.FullName, "load_order.json");
+        if (File.Exists(modLoadOrderPath))
+        {
+            List<string>? loadOrder = JsonSerializer.Deserialize<List<string>>(modLoadOrderPath);
+            if (loadOrder is not null)
+            {
+                mods = loadOrder;
+            }
+        }
+        else
+        {
+            using (FileStream stream = new(modLoadOrderPath, FileMode.Create))
+            {
+                JsonSerializer.Serialize(stream, mods, new JsonSerializerOptions { WriteIndented = true });
+            }
+        }
+
         FrostyModExecutor executor = new();
-        executor.GenerateMods(inModDataDirInfo?.FullName ?? Path.Combine(FileSystemManager.BasePath, "ModData/Default"), Directory.GetFiles(inModsDirInfo.FullName));
+        executor.GenerateMods(inModDataDirInfo?.FullName ?? Path.Combine(FileSystemManager.BasePath, "ModData/Default"), mods);
     }
 
     private static void AddUpdateModCommand(RootCommand rootCommand)
@@ -613,6 +646,11 @@ internal static class Program
                 if (fileInfo.Directory?.Exists == true)
                 {
                     newPath = inOutputPath;
+                }
+                else
+                {
+                    Logger.LogErrorInternal("File or some Directory of file does not exist.");
+                    return;
                 }
             }
         }
