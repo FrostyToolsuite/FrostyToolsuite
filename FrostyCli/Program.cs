@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Reflection;
+using System.Text.Json;
 using Frosty.ModSupport;
 using Frosty.ModSupport.Mod;
 using Frosty.Sdk;
@@ -237,8 +238,27 @@ internal static class Program
             return;
         }
 
+        IEnumerable<string> mods = Directory.GetFiles(modsDirInfo.FullName);
+
+        string modLoadOrderPath = Path.Combine(modsDirInfo.FullName, "load_order.json");
+        if (File.Exists(modLoadOrderPath))
+        {
+            List<string>? loadOrder = JsonSerializer.Deserialize<List<string>>(modLoadOrderPath);
+            if (loadOrder is not null)
+            {
+                mods = loadOrder;
+            }
+        }
+        else
+        {
+            using (FileStream stream = new(modLoadOrderPath, FileMode.Create))
+            {
+                JsonSerializer.Serialize(stream, mods, new JsonSerializerOptions { WriteIndented = true });
+            }
+        }
+
         FrostyModExecutor executor = new();
-        executor.GenerateMods(modDataDirInfo.FullName, Directory.GetFiles(modsDirInfo.FullName));
+        executor.GenerateMods(modDataDirInfo.FullName, mods);
     }
 
     private static void UpdateMod()
@@ -252,7 +272,10 @@ internal static class Program
 
         FileInfo outputFileInfo = new(Prompt.Input<string>("Pass in the path where the updated mod should get saved to"));
 
-        ModUpdater.UpdateMod(modFileInfo.FullName, outputFileInfo.FullName);
+        if (!ModUpdater.UpdateMod(modFileInfo.FullName, outputFileInfo.FullName))
+        {
+            Logger.LogErrorInternal("Failed to update mod.");
+        }
     }
 
     private static void ListEbx()
@@ -540,7 +563,7 @@ internal static class Program
             name: "mod-path",
             description: "The path to the mod that should get updated.");
 
-        Option<FileInfo?> outputOption = new(
+        Option<string?> outputOption = new(
             name: "--output",
             description: "The path where the updated mod should be saved to, defaults to the input path.");
 
@@ -565,7 +588,7 @@ internal static class Program
         updateModCommand.SetHandler(UpdateMod, gameArg, modArg, outputOption, keyOption, sdkOption);
     }
 
-    private static void UpdateMod(FileInfo inGameFileInfo, FileInfo inModFileInfo, FileInfo? inOutputFileInfo, FileInfo? inKeyFileInfo, int? inPid)
+    private static void UpdateMod(FileInfo inGameFileInfo, FileInfo inModFileInfo, string? inOutputPath, FileInfo? inKeyFileInfo, int? inPid)
     {
         if (!inModFileInfo.Exists)
         {
@@ -576,6 +599,24 @@ internal static class Program
         // load game
         LoadGame(inGameFileInfo, inKeyFileInfo, inPid);
 
-        ModUpdater.UpdateMod(inModFileInfo.FullName, inOutputFileInfo?.FullName ?? inModFileInfo.FullName);
+        string newPath = inModFileInfo.FullName;
+
+        if (!string.IsNullOrEmpty(inOutputPath))
+        {
+            if (Directory.Exists(inOutputPath))
+            {
+                newPath = Path.Combine(inOutputPath, inModFileInfo.Name);
+            }
+            else
+            {
+                FileInfo fileInfo = new(inOutputPath);
+                if (fileInfo.Directory?.Exists == true)
+                {
+                    newPath = inOutputPath;
+                }
+            }
+        }
+
+        ModUpdater.UpdateMod(inModFileInfo.FullName, newPath);
     }
 }
