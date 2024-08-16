@@ -1,24 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.CommandLine;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
-using System.Text.Json;
-using Frosty.ModSupport;
-using Frosty.ModSupport.Mod;
 using Frosty.Sdk;
-using Frosty.Sdk.Ebx;
-using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Sdk;
 using Frosty.Sdk.Utils;
+using FrostyCli.Shaders.Rvm;
 using Sharprompt;
 
 namespace FrostyCli;
 
-internal static class Program
+internal static partial class Program
 {
     private static int Main(string[] args)
     {
@@ -30,6 +24,8 @@ internal static class Program
 
         AddUpdateModCommand(rootCommand);
 
+        AddCreateModCommand(rootCommand);
+
         rootCommand.SetHandler(InteractiveMode);
 
         return rootCommand.InvokeAsync(args).Result;
@@ -37,13 +33,16 @@ internal static class Program
 
     private static void InteractiveMode()
     {
-        string gamePath = Prompt.Input<string>("Input the path to the games executable");
+        FileInfo? game = RequestFile("Input the path to the games executable", false);
 
-        FileInfo game = new(gamePath);
+        if (game is null)
+        {
+            return;
+        }
 
         if (!game.Exists)
         {
-            Logger.LogErrorInternal("Game does not exist");
+            Logger.LogErrorInternal("Game does not exist.");
             return;
         }
 
@@ -61,10 +60,13 @@ internal static class Program
                      }
                      break;
                  case ActionType.Mod:
-                     ModGame();
+                     InteractiveModGame();
                      break;
                  case ActionType.UpdateMod:
-                     UpdateMod();
+                     InteractiveUpdateMod();
+                     break;
+                 case ActionType.CreateMod:
+                     InteractiveCreateMod();
                      break;
                  case ActionType.ListEbx:
                      ListEbx();
@@ -75,17 +77,23 @@ internal static class Program
                  case ActionType.ListChunks:
                      ListChunks();
                      break;
-                 case ActionType.GetEbx:
-                     GetEbx();
+                 case ActionType.DumpEbx:
+                     InteractiveDumpEbx();
                      break;
-                 case ActionType.GetDbx:
-                     GetDbx();
+                 case ActionType.DumpRes:
+                     InteractiveDumpRes();
                      break;
-                 case ActionType.GetRes:
-                     GetRes();
+                 case ActionType.DumpChunks:
+                     InteractiveDumpChunks();
                      break;
-                 case ActionType.GetChunk:
-                     GetChunk();
+                 case ActionType.ExportEbx:
+                     InteractiveExportEbx();
+                     break;
+                 case ActionType.ExportRes:
+                     InteractiveExportRes();
+                     break;
+                 case ActionType.ExportChunk:
+                     InteractiveExportChunk();
                      break;
              }
         } while (actionType != ActionType.Quit);
@@ -97,20 +105,23 @@ internal static class Program
         Quit,
         Mod,
         UpdateMod,
+        CreateMod,
         ListEbx,
         ListRes,
         ListChunks,
-        GetEbx,
-        GetDbx,
-        GetRes,
-        GetChunk,
+        DumpEbx,
+        DumpRes,
+        DumpChunks,
+        ExportEbx,
+        ExportRes,
+        ExportChunk,
     }
 
     private static void LoadGame(FileInfo inGameFileInfo)
     {
         if (!inGameFileInfo.Exists)
         {
-            Logger.LogErrorInternal("No game exists at that path");
+            Logger.LogErrorInternal("No game exists at that path.");
             return;
         }
 
@@ -134,7 +145,7 @@ internal static class Program
 
             if (!keyFileInfo.Exists)
             {
-                Logger.LogErrorInternal("Key does not exist");
+                Logger.LogErrorInternal("Key does not exist.");
                 return;
             }
 
@@ -149,7 +160,7 @@ internal static class Program
 
             if (!keyFileInfo.Exists)
             {
-                Logger.LogErrorInternal("Key does not exist");
+                Logger.LogErrorInternal("Key does not exist.");
                 return;
             }
 
@@ -164,7 +175,7 @@ internal static class Program
 
             if (!keyFileInfo.Exists)
             {
-                Logger.LogErrorInternal("Key does not exist");
+                Logger.LogErrorInternal("Key does not exist.");
                 return;
             }
 
@@ -173,7 +184,7 @@ internal static class Program
 
         if (inGameFileInfo.DirectoryName is null)
         {
-            Logger.LogErrorInternal("The game needs to be in a directory containing the games data");
+            Logger.LogErrorInternal("The game needs to be in a directory containing the games data.");
             return;
         }
 
@@ -222,76 +233,6 @@ internal static class Program
         }
     }
 
-    private static void ModGame()
-    {
-        DirectoryInfo modsDirInfo = new(Prompt.Input<string>("Pass in the path to a folder containing the mods that you want to apply"));
-        if (!modsDirInfo.Exists)
-        {
-            Logger.LogErrorInternal("Mods folder does not exist");
-            return;
-        }
-
-        DirectoryInfo modDataDirInfo = new(Prompt.Input<string>("Pass in the path to a folder where the generated data should get stored in"));
-        if (!modDataDirInfo.Exists)
-        {
-            Logger.LogErrorInternal("ModData folder does not exist");
-            return;
-        }
-
-        IEnumerable<string> mods = Directory.GetFiles(modsDirInfo.FullName);
-
-        string modLoadOrderPath = Path.Combine(modsDirInfo.FullName, "load_order.json");
-        if (File.Exists(modLoadOrderPath))
-        {
-            List<string>? loadOrder = JsonSerializer.Deserialize<List<string>>(modLoadOrderPath);
-            if (loadOrder is not null)
-            {
-                mods = loadOrder;
-            }
-        }
-        else
-        {
-            using (FileStream stream = new(modLoadOrderPath, FileMode.Create))
-            {
-                JsonSerializer.Serialize(stream, mods, new JsonSerializerOptions { WriteIndented = true });
-            }
-        }
-
-        FrostyModExecutor executor = new();
-        executor.GenerateMods(modDataDirInfo.FullName, mods);
-    }
-
-    private static void UpdateMod()
-    {
-        FileInfo modFileInfo = new(Prompt.Input<string>("Pass in the path to the mod that should get updated"));
-        if (!modFileInfo.Exists)
-        {
-            Logger.LogErrorInternal("Mod file does not exist");
-            return;
-        }
-
-        string outputPath = Prompt.Input<string>("Pass in the path where the updated mod should get saved to");
-
-        if (!string.IsNullOrEmpty(outputPath))
-        {
-            if (Directory.Exists(outputPath))
-            {
-                outputPath = Path.Combine(outputPath, modFileInfo.Name);
-            }
-            else
-            {
-                FileInfo fileInfo = new(outputPath);
-                if (fileInfo.Directory?.Exists != true)
-                {
-                    Logger.LogErrorInternal("File or some Directory of file does not exist.");
-                    return;
-                }
-            }
-        }
-
-        ModUpdater.UpdateMod(modFileInfo.FullName, outputPath);
-    }
-
     private static void ListEbx()
     {
         foreach (EbxAssetEntry entry in AssetManager.EnumerateEbxAssetEntries())
@@ -316,126 +257,11 @@ internal static class Program
         }
     }
 
-    private static void GetEbx()
-    {
-        string name = Prompt.Input<string>("Input ebx name");
-
-        AssetEntry? entry = AssetManager.GetEbxAssetEntry(name);
-
-        if (entry is null)
-        {
-            Logger.LogErrorInternal("Asset does not exist");
-            return;
-        }
-
-        string file = Prompt.Input<string>("Input file path to save ebx to");
-
-        using (Block<byte> data = AssetManager.GetAsset(entry))
-        {
-            File.WriteAllBytes(file, data.ToArray());
-        }
-    }
-
-    private static void GetDbx()
-    {
-        string name = Prompt.Input<string>("Input ebx name");
-
-        EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(name);
-
-        if (entry is null)
-        {
-            Logger.LogErrorInternal("Asset does not exist");
-            return;
-        }
-
-        string file = Prompt.Input<string>("Input file path to save ebx to");
-
-        EbxAsset asset = AssetManager.GetEbxAsset(entry);
-
-        using (DbxWriter writer = new(file))
-        {
-            writer.Write(asset);
-        }
-    }
-
-    private static void GetRes()
-    {
-        string name = Prompt.Input<string>("Input res name or rid");
-
-        AssetEntry? entry;
-        if (ulong.TryParse(name, NumberStyles.HexNumber, null, out ulong rid))
-        {
-            entry = AssetManager.GetResAssetEntry(rid);
-        }
-        else
-        {
-            entry = AssetManager.GetResAssetEntry(name);
-        }
-        if (entry is null)
-        {
-            Logger.LogErrorInternal("Asset does not exist");
-            return;
-        }
-
-        string file = Prompt.Input<string>("Input file path to save res to");
-
-        using (Block<byte> data = AssetManager.GetAsset(entry))
-        {
-            File.WriteAllBytes(file, data.ToArray());
-        }
-    }
-
-    private static void GetChunk()
-    {
-        string name = Prompt.Input<string>("Input chunk id");
-        Guid id = Guid.Parse(name);
-
-        AssetEntry? entry = AssetManager.GetChunkAssetEntry(id);
-
-        if (entry is null)
-        {
-            Logger.LogErrorInternal("Asset does not exist");
-            return;
-        }
-
-        string file = Prompt.Input<string>("Input file path to save chunk to");
-
-        using (Block<byte> data = AssetManager.GetAsset(entry))
-        {
-            File.WriteAllBytes(file, data.ToArray());
-        }
-    }
-
-    private static void AddLoadCommand(RootCommand rootCommand)
-    {
-        Argument<FileInfo> gameOption = new(
-            name: "game-path",
-            description: "The path to the game.");
-
-        Option<FileInfo?> keyOption = new(
-            name: "--initfs-key",
-            description: "The path to a file containing a key for the initfs if needed.");
-
-        Option<int?> sdkOption = new(
-            name: "--pid",
-            description: "The pid of the game if a sdk should get generated for the game.");
-
-        Command loadCommand = new("load", "Load a games data from the cache or create it.")
-        {
-            gameOption,
-            keyOption,
-            sdkOption
-        };
-        rootCommand.AddCommand(loadCommand);
-
-        loadCommand.SetHandler(LoadGame, gameOption, keyOption, sdkOption);
-    }
-
-    private static void LoadGame(FileInfo inGameFileInfo, FileInfo? inKeyFileInfo, int? inPid)
+    private static void LoadGameCommand(FileInfo inGameFileInfo, FileInfo? inKeyFileInfo, int? inPid)
     {
         if (!inGameFileInfo.Exists)
         {
-            Logger.LogErrorInternal("No game exists at that path");
+            Logger.LogErrorInternal("No game exists at that path.");
             return;
         }
 
@@ -455,7 +281,7 @@ internal static class Program
         {
             if (inKeyFileInfo is null || !inKeyFileInfo.Exists)
             {
-                Logger.LogErrorInternal("Pass in the path to a initfs key file using --initfs-key");
+                Logger.LogErrorInternal("Pass in the path to a initfs key file using --initfs-key.");
                 return;
             }
 
@@ -464,7 +290,7 @@ internal static class Program
 
         if (inGameFileInfo.DirectoryName is null)
         {
-            Logger.LogErrorInternal("The game needs to be in a directory containing the games data");
+            Logger.LogErrorInternal("The game needs to be in a directory containing the games data.");
             return;
         }
 
@@ -479,7 +305,7 @@ internal static class Program
         {
             if (!inPid.HasValue)
             {
-                Logger.LogErrorInternal("No sdk exists, launch the game and pass in the pid with --pid");
+                Logger.LogErrorInternal("No sdk exists, launch the game and pass in the pid with --pid.");
                 return;
             }
 
@@ -512,149 +338,55 @@ internal static class Program
         }
 
         // init asset manager, this parses the SuperBundles and loads all the assets
-        if (!AssetManager.Initialize())
-        {
-        }
+        AssetManager.Initialize();
     }
 
-    private static void AddModCommand(RootCommand rootCommand)
+    private static FileInfo? RequestFile(string inMessage, bool inCreateDirectory = false, string? inDefaultName = null)
     {
-        Argument<FileInfo> gameArg = new(
-            name: "game-path",
-            description: "The path to the game.");
+        string path = Prompt.Input<string>(inMessage);
 
-        Argument<DirectoryInfo> modsArg = new(
-            name: "mods-dir",
-            description: "The directory containing the mods to generate the data with.");
-
-        Option<DirectoryInfo?> modDataOption = new(
-            name: "--mod-data-dir",
-            description: "The directory to which the modded data should get generated.");
-
-        Option<FileInfo?> keyOption = new(
-            name: "--initfs-key",
-            description: "The path to a file containing a key for the initfs if needed.");
-
-        Option<int?> sdkOption = new(
-            name: "--sdk",
-            description: "The pid of the game if a sdk should get generated for the game.");
-
-        Command modCommand = new("mod", "todo")
-        {
-            gameArg,
-            modsArg,
-            modDataOption,
-            keyOption,
-            sdkOption
-        };
-        rootCommand.AddCommand(modCommand);
-
-        modCommand.SetHandler(ModGame, gameArg, modsArg, modDataOption, keyOption, sdkOption);
+        return GetFile(path, inCreateDirectory, inDefaultName);
     }
 
-    private static void ModGame(FileInfo inGameFileInfo, DirectoryInfo inModsDirInfo, DirectoryInfo? inModDataDirInfo, FileInfo? inKeyFileInfo, int? inPid)
+    private static FileInfo? GetFile(string inPath, bool inCreateDirectory = false, string? inDefaultName = null)
     {
-        // load game
-        LoadGame(inGameFileInfo, inKeyFileInfo, inPid);
-
-        if (!inModsDirInfo.Exists)
+        if (Directory.Exists(inPath))
         {
-            Logger.LogErrorInternal($"Directory {inModsDirInfo.FullName} doesnt exist.");
-            return;
-        }
-
-        IEnumerable<string> mods = Directory.GetFiles(inModsDirInfo.FullName);
-
-        string modLoadOrderPath = Path.Combine(inModsDirInfo.FullName, "load_order.json");
-        if (File.Exists(modLoadOrderPath))
-        {
-            List<string>? loadOrder = JsonSerializer.Deserialize<List<string>>(modLoadOrderPath);
-            if (loadOrder is not null)
+            if (string.IsNullOrEmpty(inDefaultName))
             {
-                mods = loadOrder;
+                Logger.LogErrorInternal("Path can not be a Directory.");
+                return null;
             }
-        }
-        else
-        {
-            using (FileStream stream = new(modLoadOrderPath, FileMode.Create))
-            {
-                JsonSerializer.Serialize(stream, mods, new JsonSerializerOptions { WriteIndented = true });
-            }
+
+            inPath = Path.Combine(inPath, inDefaultName);
         }
 
-        FrostyModExecutor executor = new();
-        executor.GenerateMods(inModDataDirInfo?.FullName ?? Path.Combine(FileSystemManager.BasePath, "ModData/Default"), mods);
+        FileInfo retVal = new(inPath);
+
+        if (inCreateDirectory)
+        {
+            retVal.Directory?.Create();
+        }
+        else if (retVal.Directory?.Exists == false)
+        {
+            Logger.LogErrorInternal($"Directory containing file {inPath} does not exist.");
+            return null;
+        }
+
+        return retVal;
     }
 
-    private static void AddUpdateModCommand(RootCommand rootCommand)
+    private static DirectoryInfo RequestDirectory(string inMessage, bool inCreateDirectory = false)
     {
-        Argument<FileInfo> gameArg = new(
-            name: "game-path",
-            description: "The path to the game.");
+        string path = Prompt.Input<string>(inMessage);
 
-        Argument<FileInfo> modArg = new(
-            name: "mod-path",
-            description: "The path to the mod that should get updated.");
+        DirectoryInfo retVal = new(path);
 
-        Option<string?> outputOption = new(
-            name: "--output",
-            description: "The path where the updated mod should be saved to, defaults to the input path.");
-
-        Option<FileInfo?> keyOption = new(
-            name: "--initfs-key",
-            description: "The path to a file containing a key for the initfs if needed.");
-
-        Option<int?> sdkOption = new(
-            name: "--sdk",
-            description: "The pid of the game if a sdk should get generated for the game.");
-
-        Command updateModCommand = new("update-mod", "Updates a fbmod to the newest version.")
+        if (inCreateDirectory)
         {
-            gameArg,
-            modArg,
-            outputOption,
-            keyOption,
-            sdkOption
-        };
-        rootCommand.AddCommand(updateModCommand);
-
-        updateModCommand.SetHandler(UpdateMod, gameArg, modArg, outputOption, keyOption, sdkOption);
-    }
-
-    private static void UpdateMod(FileInfo inGameFileInfo, FileInfo inModFileInfo, string? inOutputPath, FileInfo? inKeyFileInfo, int? inPid)
-    {
-        if (!inModFileInfo.Exists)
-        {
-            Logger.LogErrorInternal("Mod file does not exist");
-            return;
+            retVal.Create();
         }
 
-        // load game
-        LoadGame(inGameFileInfo, inKeyFileInfo, inPid);
-
-        string newPath = inModFileInfo.FullName;
-
-        if (!string.IsNullOrEmpty(inOutputPath))
-        {
-            if (Directory.Exists(inOutputPath))
-            {
-                newPath = Path.Combine(inOutputPath, inModFileInfo.Name);
-            }
-            else
-            {
-                FileInfo fileInfo = new(inOutputPath);
-                if (fileInfo.Directory?.Exists == true)
-                {
-                    newPath = inOutputPath;
-                }
-                else
-                {
-                    Logger.LogErrorInternal("File or some Directory of file does not exist.");
-                    return;
-                }
-            }
-        }
-
-        ModUpdater.UpdateMod(inModFileInfo.FullName, newPath);
+        return retVal;
     }
 }

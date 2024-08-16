@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Utils;
 
@@ -20,6 +21,8 @@ public partial class CompressionZStd : ICompressionFormat
     [LibraryImport(NativeLibName)] internal static partial nuint ZSTD_decompress(nuint dst, nuint dstCapacity, nuint src, nuint compressedSize);
     [LibraryImport(NativeLibName)] internal static partial nuint ZSTD_decompress_usingDDict(nuint dctx, nuint dst, nuint dstCapacity, nuint src, nuint srcSize, nuint dict);
     [LibraryImport(NativeLibName)] internal static partial nuint ZSTD_compress(nuint dst, nuint dstCapacity, nuint src, nuint srcSize);
+
+    [LibraryImport(NativeLibName)] internal static partial nuint ZSTD_compressBound(nuint srcSize);
 
     /// <summary>
     /// Checks if the specified code is a valid ZStd error.
@@ -59,9 +62,16 @@ public partial class CompressionZStd : ICompressionFormat
     }
 
     /// <inheritdoc/>
-    public unsafe void Compress<T>(Block<T> inData, ref Block<T> outData, CompressionFlags inFlags = CompressionFlags.None) where T : unmanaged
+    public unsafe int Compress<T>(Block<T> inData, ref Block<T> outData, CompressionFlags inFlags = CompressionFlags.None) where T : unmanaged
     {
         nuint code = ZSTD_compress((nuint)outData.Ptr, (nuint)outData.Size, (nuint)inData.Ptr, (nuint)inData.Size);
         GetError(code);
+        return (int)code;
+    }
+
+    /// <inheritdoc/>
+    public int GetCompressBounds(int inRawSize, CompressionFlags inFlags = CompressionFlags.None)
+    {
+        return (int)ZSTD_compressBound((nuint)inRawSize);
     }
 }

@@ -313,6 +313,10 @@ public static class AssetManager
 
     #endregion
 
+    public static IEnumerable<string> GetEbxNames() => s_ebxNameMapping.Keys;
+    public static IEnumerable<string> GetResNames() => s_resNameMapping.Keys;
+    public static IEnumerable<Guid> GetChunkIds() => s_chunkGuidMapping.Keys;
+
     public static IEnumerable<BundleInfo> EnumerateBundleInfos()
     {
         foreach (BundleInfo bundle in s_bundleMapping.Values)
@@ -779,7 +783,7 @@ public static class AssetManager
                 stream.WriteInt64(entry.OriginalSize);
 
                 stream.WriteUInt64(entry.ResRid);
-                stream.WriteUInt32(entry.ResType);
+                stream.WriteUInt32((uint)entry.ResType);
                 stream.WriteInt32(entry.ResMeta.Length);
                 stream.Write(entry.ResMeta, 0, entry.ResMeta.Length);
 

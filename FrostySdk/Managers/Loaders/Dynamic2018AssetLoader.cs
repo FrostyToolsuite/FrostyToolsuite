@@ -214,11 +214,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     if (baseToc is not null)
                     {
                         string baseSbPath = basePath.Replace(".toc", ".sb");
-
-                        if (baseToc.AsList("chunks").Count > 0 && patchChunks.Count == 0)
-                        {
-
-                        }
                         foreach (DbObject obj in baseToc.AsList("chunks"))
                         {
                             DbObjectDict chunkObj = obj.AsDict();
@@ -762,20 +757,20 @@ public class Dynamic2018AssetLoader : IAssetLoader
             throw new InvalidDataException();
         }
 
-        uint bundleSize = deltaStream.ReadUInt32(Endian.Big);
+        uint patchedSize = deltaStream.ReadUInt32(Endian.Big);
         deltaStream.ReadUInt32(Endian.Big); // size of data after binary bundle
 
         long startOffset = deltaStream.Position;
 
-        int patchedBundleSize = deltaStream.ReadInt32(Endian.Big);
+        int bundleSize = deltaStream.ReadInt32(Endian.Big);
         uint baseBundleSize = baseStream?.ReadUInt32(Endian.Big) ?? 0;
         long baseBundleOffset = baseStream?.Position ?? -1;
 
-        using (BlockStream stream = new(patchedBundleSize + 4))
+        using (BlockStream stream = new(bundleSize + 4))
         {
-            stream.WriteInt32(patchedBundleSize, Endian.Big);
+            stream.WriteInt32(bundleSize, Endian.Big);
 
-            while (deltaStream.Position < bundleSize + startOffset)
+            while (deltaStream.Position < patchedSize + startOffset)
             {
                 uint packed = deltaStream.ReadUInt32(Endian.Big);
                 uint instructionType = (packed & 0xF0000000) >> 28;
@@ -785,7 +780,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 {
                     // read base block
                     case 0:
-                        stream.Write(baseStream!.ReadBytes(blockData), 0, blockData);
+                        stream.Write(baseStream!.ReadBytes(blockData));
                         break;
                     // skip base block
                     case 4:
@@ -793,7 +788,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                         break;
                     // read delta block
                     case 8:
-                        stream.Write(deltaStream.ReadBytes(blockData), 0, blockData);
+                        stream.Write(deltaStream.ReadBytes(blockData));
                         break;
                 }
             }

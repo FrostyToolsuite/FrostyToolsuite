@@ -32,7 +32,7 @@ internal class Manifest2019 : IDisposable
 
         public bool EncodeStrings;
         private uint m_currentOffset;
-        private Dictionary<string, String> m_mapping = new();
+        private readonly Dictionary<string, String> m_mapping = new();
         public IList<uint>? Tree;
         public byte[]? Data;
 
