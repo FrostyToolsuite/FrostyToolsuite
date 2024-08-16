@@ -55,7 +55,7 @@ public static class Cas
                         throw new UnknownValueException<CompressionType>("CompressionType", inType);
                 }
 
-                int compSize = compressor?.GetCompressBounds(decompressedSize) ?? decompressedSize;
+                int compSize = compressor?.GetCompressBounds(decompressedSize, inFlags) ?? decompressedSize;
                 Block<byte> compBuffer = inType == CompressionType.None ? data : new(compSize);
 
                 int compressedSize = compressor?.Compress(data, ref compBuffer, inFlags) ?? decompressedSize;
