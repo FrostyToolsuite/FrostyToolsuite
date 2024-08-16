@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -19,7 +20,6 @@ public class EbxReader : BaseEbxReader
     private readonly EbxTypeResolver m_typeResolver;
 
     private readonly Dictionary<uint, EbxBoxedValue> m_boxedValues = new();
-
 
     public EbxReader(DataStream inStream)
         : base(inStream)
@@ -127,7 +127,7 @@ public class EbxReader : BaseEbxReader
 
         for (int i = 0; i < boxedValueCount; i++)
         {
-            var b = new EbxBoxedValue
+            EbxBoxedValue b = new()
             {
                 Offset = inStream.ReadUInt32(),
                 Count = inStream.ReadInt32(),
@@ -479,7 +479,7 @@ public class EbxReader : BaseEbxReader
         if ((packed & 0x80000000) != 0)
         {
             // primitive type
-            return new TypeRef(GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1).GetName());
+            return new TypeRef(GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1));
         }
 
         int typeRef = (int)(packed >> 2);
@@ -604,7 +604,7 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.Array:
                 EbxTypeDescriptor arrayTypeDescriptor = m_typeResolver.ResolveType(inTypeDescriptorRef);
                 EbxFieldDescriptor elementFieldDescriptor = m_typeResolver.ResolveField(arrayTypeDescriptor.FieldIndex);
-                return typeof(List<>).MakeGenericType(GetTypeFromEbxField(elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef));
+                return typeof(ObservableCollection<>).MakeGenericType(GetTypeFromEbxField(elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef));
             case TypeFlags.TypeEnum.Enum:
                 return TypeLibrary.GetType(m_fixup.TypeGuids[inTypeDescriptorRef])!;
 
