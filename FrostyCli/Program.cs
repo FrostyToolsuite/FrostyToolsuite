@@ -7,7 +7,6 @@ using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Sdk;
 using Frosty.Sdk.Utils;
-using FrostyCli.Shaders.Rvm;
 using Sharprompt;
 
 namespace FrostyCli;
