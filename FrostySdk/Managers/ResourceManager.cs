@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using Frosty.Sdk.IO;
+using Frosty.Sdk.IO.Compression;
 using Frosty.Sdk.Managers.CatResources;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Infos.FileInfos;
@@ -85,6 +87,9 @@ public static class ResourceManager
             string path = Path.Combine(thirdPartyPath, $"oo2core{ext}");
             File.Delete(path);
             File.CreateSymbolicLink(path, libOodle);
+
+            // get major version X (2.X.y) from dll name (oo2core_X_win64.dll)
+            CompressionOodle.MajorVersion = int.Parse(Regex.Match(libOodle, "oo2core_(.*?)_win").Groups[1].Value);
 
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && ext == ".dll")
             {

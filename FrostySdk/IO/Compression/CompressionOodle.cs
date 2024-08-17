@@ -8,6 +8,7 @@ namespace Frosty.Sdk.IO.Compression;
 
 public partial class CompressionOodle : ICompressionFormat
 {
+    public static int MajorVersion = 9;
     public string Identifier => "Oodle";
     private const string NativeLibName = "ThirdParty/oo2core";
 
@@ -96,8 +97,11 @@ public partial class CompressionOodle : ICompressionFormat
         nuint compBuf, OodleLZ_CompressionLevel level, nuint pOptions = 0, nuint dictionaryBase = 0, nuint lrm = 0,
         nuint scratchMem = 0, nuint scratchSize = 0);
 
-    [LibraryImport(NativeLibName)]
+    [LibraryImport(NativeLibName, EntryPoint = "OodleLZ_GetCompressedBufferSizeNeeded")]
     internal static partial nuint OodleLZ_GetCompressedBufferSizeNeeded(OodleLZ_Compressor compressor, nuint rawSize);
+
+    [LibraryImport(NativeLibName, EntryPoint = "OodleLZ_GetCompressedBufferSizeNeeded")]
+    internal static partial nuint OodleLZ_GetCompressedBufferSizeNeeded_Old(nuint rawSize);
 
     private Dictionary<CompressionFlags, OodleLZ_Compressor> m_compressors = new()
     {
@@ -117,6 +121,8 @@ public partial class CompressionOodle : ICompressionFormat
 
     public unsafe int Compress<T>(Block<T> inData, ref Block<T> outData, CompressionFlags inFlags = CompressionFlags.None) where T : unmanaged
     {
+        // 2.6.0 - add scratchMem and scratchSize
+
         nuint retCode = OodleLZ_Compress(m_compressors[inFlags], (nuint)inData.Ptr, (nuint)inData.Size,
             (nuint)outData.Ptr, OodleLZ_CompressionLevel.OodleLZ_CompressionLevel_Optimal5);
         if (retCode == 0)
@@ -129,6 +135,12 @@ public partial class CompressionOodle : ICompressionFormat
 
     public int GetCompressBounds(int inRawSize, CompressionFlags inFlags = CompressionFlags.None)
     {
-        return (int)OodleLZ_GetCompressedBufferSizeNeeded(m_compressors[inFlags], (nuint)inRawSize);
+        // 2.8.0 - add compressor
+        if (MajorVersion >= 8)
+        {
+            return (int)OodleLZ_GetCompressedBufferSizeNeeded(m_compressors[inFlags], (nuint)inRawSize);
+        }
+
+        return (int)OodleLZ_GetCompressedBufferSizeNeeded_Old((nuint)inRawSize);
     }
 }

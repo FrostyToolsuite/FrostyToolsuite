@@ -9,20 +9,20 @@ namespace Frosty.Sdk.Managers.Infos.FileInfos;
 public class NonCasFileInfo : IFileInfo
 {
     private readonly string m_superBundlePath;
-    private readonly uint m_offset;
+    private readonly long m_offset;
     private readonly uint m_size;
     private readonly uint m_logicalOffset;
 
     private readonly bool m_isDelta;
     private readonly string? m_superBundleBasePath;
-    private readonly uint m_baseOffset;
+    private readonly long m_baseOffset;
     private readonly uint m_baseSize;
     private readonly int m_midInstructionSize;
 
     private readonly string m_fullPath;
     private readonly string? m_fullBasePath;
 
-    public NonCasFileInfo(string inSuperBundlePath, uint inOffset, uint inSize, uint inLogicalOffset = 0)
+    public NonCasFileInfo(string inSuperBundlePath, long inOffset, uint inSize, uint inLogicalOffset = 0)
     {
         m_superBundlePath = inSuperBundlePath;
         m_offset = inOffset;
@@ -31,7 +31,7 @@ public class NonCasFileInfo : IFileInfo
         m_fullPath = Path.Combine(FileSystemManager.BasePath, m_superBundlePath);
     }
 
-    public NonCasFileInfo(string inSuperBundlePath, string? inSuperBundleBasePath, uint inDeltaOffset, uint inDeltaSize, uint inBaseOffset, uint inBaseSize, int inMidInstructionSize, uint inLogicalOffset = 0)
+    public NonCasFileInfo(string inSuperBundlePath, string? inSuperBundleBasePath, long inDeltaOffset, uint inDeltaSize, long inBaseOffset, uint inBaseSize, int inMidInstructionSize, uint inLogicalOffset = 0)
     {
         m_isDelta = true;
         m_superBundlePath = inSuperBundlePath;
@@ -124,12 +124,12 @@ public class NonCasFileInfo : IFileInfo
             stream.WriteNullTerminatedString(m_superBundleBasePath ?? string.Empty);
         }
 
-        stream.WriteUInt32(m_offset);
+        stream.WriteInt64(m_offset);
         stream.WriteUInt32(m_size);
 
         if (m_isDelta)
         {
-            stream.WriteUInt32(m_baseOffset);
+            stream.WriteInt64(m_baseOffset);
             stream.WriteUInt32(m_baseSize);
             stream.WriteInt32(m_midInstructionSize);
         }
@@ -143,10 +143,10 @@ public class NonCasFileInfo : IFileInfo
         if (isDelta)
         {
             return new NonCasFileInfo(stream.ReadNullTerminatedString(), stream.ReadNullTerminatedString(),
-                stream.ReadUInt32(), stream.ReadUInt32(), stream.ReadUInt32(), stream.ReadUInt32(), stream.ReadInt32(),
+                stream.ReadInt64(), stream.ReadUInt32(), stream.ReadInt64(), stream.ReadUInt32(), stream.ReadInt32(),
                 stream.ReadUInt32());
         }
-        return new NonCasFileInfo(stream.ReadNullTerminatedString(), stream.ReadUInt32(), stream.ReadUInt32(),
+        return new NonCasFileInfo(stream.ReadNullTerminatedString(), stream.ReadInt64(), stream.ReadUInt32(),
             stream.ReadUInt32());
     }
 }
