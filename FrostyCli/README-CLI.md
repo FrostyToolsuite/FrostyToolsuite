@@ -3,7 +3,7 @@
 ## Build from source
 
 ### Install dependencies
-This project requires [.NET 7.0 or higher](https://learn.microsoft.com/en-us/dotnet/core/install/)
+This project requires [.NET 7.0](https://learn.microsoft.com/en-us/dotnet/core/install/)
 
 ### Build instructions
 Follow the [build instructions](https://github.com/DAPOTTIS/FrostyToolsuite?tab=readme-ov-file#from-source).
@@ -38,8 +38,14 @@ Commands:
   create-mod <game-path> <project-path> <--output>  Creates a mod from a project.
 ```
 
-## Examples
+## Interactive mode
 Using the interactive CLI mode:
 ```bash
 $ ./FrostyCli
 ```
+Example clip using the interactive mode to generate mod data:
+https://github.com/user-attachments/assets/3a3b93ea-e034-4ef6-b0fb-1729310cb111
+
+
+
+
