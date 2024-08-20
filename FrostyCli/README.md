@@ -59,7 +59,9 @@ After generating a mod data folder, pass the datapath argument to the games laun
 
 ```-datapath '<mod data path>'```
 
-Or as an alternative to the datapath launch command, you can use the `GAME_DATA_DIR` environment variable instead.
+Or as an alternative to the datapath launch command, you can use the `GAME_DATA_DIR` environment variable instead as such:
+
+```GAME_DATA_DIR=<mod data path>```
 
 
 
