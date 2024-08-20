@@ -6,7 +6,7 @@
 This project requires [.NET 7.0](https://learn.microsoft.com/en-us/dotnet/core/install/)
 
 ### Build instructions
-Follow the [build instructions](https://github.com/DAPOTTIS/FrostyToolsuite?tab=readme-ov-file#from-source).
+Follow the [build instructions](https://github.com/FrostyToolsuite/FrostyToolsuite?tab=readme-ov-file#from-source).
 
 The compiled executable will be in the `FrostyCLI/bin/Debug/net7.0/` directory.
 
@@ -58,6 +58,8 @@ https://github.com/user-attachments/assets/3a3b93ea-e034-4ef6-b0fb-1729310cb111
 After generating a mod data folder, pass the datapath argument to the games launch options to apply the mods as such:
 
 ```-datapath '<mod data path>'```
+
+Or as an alternative to the datapath launch command, you can use the `GAME_DATA_DIR` environment variable instead.
 
 
 
