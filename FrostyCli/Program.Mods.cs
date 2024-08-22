@@ -76,7 +76,7 @@ internal static partial class Program
         }
 
         FileInfo? output = RequestFile("Pass in the path where the updated mod should get saved to", true,
-            modFileInfo.FullName);
+            modFileInfo.Name);
 
         if (output is null)
         {
