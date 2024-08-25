@@ -124,6 +124,12 @@ internal class FieldInfo : IComparable
             m_defaultValue = "new()";
             typeName = $"ObservableCollection<{typeName}>";
         }
+        else if (type is StructInfo && string.IsNullOrEmpty(m_defaultValue))
+        {
+            // force default value, for stuff that doesnt have a default instance
+            m_defaultValue = "new()";
+        }
+
         sb.AppendLine($"[{nameof(EbxFieldMetaAttribute)}({(ushort)flags}, {m_offset}, {(isClass ? $"typeof({type.GetFullName()})" : "null")})]");
         sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
 

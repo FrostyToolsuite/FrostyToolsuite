@@ -8,7 +8,7 @@ namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
 internal class StructInfoData : TypeInfoData
 {
-    private List<FieldInfo> m_fieldInfos = new List<FieldInfo>();
+    private List<FieldInfo> m_fieldInfos = new();
     private long p_defaultValue;
 
     public override void Read(MemoryReader reader)
