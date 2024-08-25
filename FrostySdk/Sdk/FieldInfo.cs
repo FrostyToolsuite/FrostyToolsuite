@@ -120,11 +120,10 @@ internal class FieldInfo : IComparable
                 typeName = "Frosty.Sdk.Ebx.PointerRef";
                 isClass = true;
             }
-            // force default value, for stuff that doesnt have a default instance
-            m_defaultValue = "new()";
             typeName = $"ObservableCollection<{typeName}>";
         }
-        else if (type is StructInfo && string.IsNullOrEmpty(m_defaultValue))
+
+        if (string.IsNullOrEmpty(m_defaultValue))
         {
             // force default value, for stuff that doesnt have a default instance
             m_defaultValue = "new()";

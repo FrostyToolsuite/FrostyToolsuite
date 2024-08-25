@@ -163,12 +163,12 @@ internal class PrimitiveInfoData : TypeInfoData
                             {
                                 if (obj is {{m_name}} a)
                                 {
-                                    return m_value.Equals(a.m_value);
+                                    return m_value == a.m_value;
                                 }
 
                                 if (obj is {{actualType}} b)
                                 {
-                                    return m_value.Equals(b);
+                                    return m_value == b;
                                 }
 
                                 return false;
