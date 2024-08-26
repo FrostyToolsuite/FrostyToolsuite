@@ -127,7 +127,7 @@ public class ManifestAssetLoader : IAssetLoader
                 // hack we just assume there are no splitSuperBundles
                 SuperBundleInstallChunk sbIc = FileSystemManager.GetSuperBundleInstallChunk(superbundle);
 
-                ChunkAssetEntry entry = new(chunkId, Sha1.Zero, 0, (uint)resourceInfo.Item3, Utils.Utils.HashString(sbIc.Name, true));
+                ChunkAssetEntry entry = new(chunkId, Sha1.Zero, 0, 0, sbIc.Id);
 
                 entry.AddFileInfo(
                     new CasFileInfo(resourceInfo.Item1, resourceInfo.Item2, (uint)resourceInfo.Item3, 0));

@@ -194,13 +194,12 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     ChunkAssetEntry entry;
                     if (isCas || isDas)
                     {
-                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), chunkObj.AsSha1("sha1"), 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
-
+                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), chunkObj.AsSha1("sha1"), 0, 0, inSbIc.Id);
                         entry.AddFileInfo(ResourceManager.GetFileInfo(entry.Sha1));
                     }
                     else
                     {
-                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
+                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, inSbIc.Id);
                         entry.AddFileInfo(new NonCasFileInfo(relSbPath, chunkObj.AsLong("offset"),
                             chunkObj.AsUInt("size")));
                     }
@@ -232,14 +231,12 @@ public class Dynamic2018AssetLoader : IAssetLoader
                             if (isCas || isDas)
                             {
                                 entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), chunkObj.AsSha1("sha1"), 0, 0,
-                                    Utils.Utils.HashString(inSbIc.Name, true));
-
+                                    inSbIc.Id);
                                 entry.AddFileInfo(ResourceManager.GetFileInfo(entry.Sha1));
                             }
                             else
                             {
-                                entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0,
-                                    Utils.Utils.HashString(inSbIc.Name, true));
+                                entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, inSbIc.Id);
                                 entry.AddFileInfo(new NonCasFileInfo(relBaseSbPath, chunkObj.AsLong("offset"),
                                     chunkObj.AsUInt("size")));
                             }

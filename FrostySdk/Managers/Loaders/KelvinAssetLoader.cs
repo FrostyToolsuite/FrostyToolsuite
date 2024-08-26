@@ -207,7 +207,7 @@ public class KelvinAssetLoader : IAssetLoader
                     uint dataOffset = stream.ReadUInt32();
                     uint dataSize = stream.ReadUInt32();
 
-                    ChunkAssetEntry chunk = new(guid, Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
+                    ChunkAssetEntry chunk = new(guid, Sha1.Zero, 0, 0, inSbIc.Id);
 
                     chunk.AddFileInfo(new KelvinFileInfo(fileIndex, dataOffset, dataSize, 0));
 

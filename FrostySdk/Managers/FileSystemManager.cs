@@ -458,7 +458,7 @@ public static class FileSystemManager
                 ic.SuperBundles.Add(sb.Name);
 
                 SuperBundleInstallChunk sbIc = new(sb, ic, InstallChunkType.Default);
-                s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                s_sbIcMapping.Add(sbIc.Id, sbIc);
                 sb.InstallChunks.Add(sbIc);
             }
 
@@ -510,7 +510,7 @@ public static class FileSystemManager
 
                     SuperBundleInfo sb = s_superBundleMapping[name];
                     SuperBundleInstallChunk sbIc = new(sb, ic, InstallChunkType.Default);
-                    s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                    s_sbIcMapping.Add(sbIc.Id, sbIc);
                     sb.InstallChunks.Add(sbIc);
                 }
 
@@ -542,7 +542,7 @@ public static class FileSystemManager
 
                         SuperBundleInfo sb = s_superBundleMapping[name];
                         SuperBundleInstallChunk sbIc = new(sb, ic, InstallChunkType.Split);
-                        s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                        s_sbIcMapping.Add(sbIc.Id, sbIc);
                         sb.InstallChunks.Add(sbIc);
                     }
                 }
@@ -556,7 +556,7 @@ public static class FileSystemManager
 
                         SuperBundleInfo sb = s_superBundleMapping[name];
                         SuperBundleInstallChunk sbIc = new(sb, ic, InstallChunkType.Split);
-                        s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                        s_sbIcMapping.Add(sbIc.Id, sbIc);
                         sb.InstallChunks.Add(sbIc);
                     }
                 }
@@ -581,7 +581,7 @@ public static class FileSystemManager
 
                     SuperBundleInstallChunk sbIc = new(sb, DefaultInstallChunk, InstallChunkType.Default);
                     DefaultInstallChunk.SuperBundles.Add(sb.Name);
-                    s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                    s_sbIcMapping.Add(sbIc.Id, sbIc);
                     sb.InstallChunks.Add(sbIc);
                 }
                 else if (!sb.Name.Contains("debug", StringComparison.OrdinalIgnoreCase))
@@ -590,7 +590,7 @@ public static class FileSystemManager
 
                     SuperBundleInstallChunk sbIc = new(sb, DefaultInstallChunk, InstallChunkType.Default);
                     DefaultInstallChunk.SuperBundles.Add(sb.Name);
-                    s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                    s_sbIcMapping.Add(sbIc.Id, sbIc);
                     sb.InstallChunks.Add(sbIc);
                 }
             }

@@ -222,7 +222,7 @@ public class Manifest2019AssetLoader : IAssetLoader
                     uint offset = BinaryPrimitives.ReverseEndianness(chunkData[index++]);
                     uint size = BinaryPrimitives.ReverseEndianness(chunkData[index]);
 
-                    ChunkAssetEntry chunk = new(guid, Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
+                    ChunkAssetEntry chunk = new(guid, Sha1.Zero, 0, 0, inSbIc.Id);
 
                     chunk.AddFileInfo(new CasFileInfo(casFileIdentifier, offset, size, 0));
 
