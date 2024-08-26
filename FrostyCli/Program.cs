@@ -259,10 +259,6 @@ internal static partial class Program
     {
         foreach (ResAssetEntry entry in AssetManager.EnumerateResAssetEntries())
         {
-            if ((ResourceType)entry.ResType == ResourceType.Dx11RvmDatabase)
-            {
-                var db = AssetManager.GetResAs<RvmDatabase>(entry);
-            }
             Console.WriteLine(entry.Name);
         }
     }
