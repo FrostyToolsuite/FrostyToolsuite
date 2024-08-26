@@ -38,6 +38,8 @@ jobs:
     - name: Build FrostyCli
       run: |
         cd FrostyCli
+        dotnet restore --runtime win-x64
+        dotnet restore --runtime linux-x64
         dotnet publish --no-restore -c Release --runtime win-x64 --self-contained /p:DebugType=None /p:DebugSymbols=false
         dotnet publish --no-restore -c Release --runtime linux-x64 --self-contained /p:DebugType=None /p:DebugSymbols=false
     - name: Upload linux
