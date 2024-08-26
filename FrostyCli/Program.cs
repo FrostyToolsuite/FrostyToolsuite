@@ -151,6 +151,7 @@ internal static partial class Program
             if (keyFileInfo.Length != 0x10)
             {
                 Logger.LogErrorInternal("InitFs key needs to be 16 bytes long.");
+                return false;
             }
 
             KeyManager.AddKey("InitFsKey", File.ReadAllBytes(keyFileInfo.FullName));
@@ -169,6 +170,7 @@ internal static partial class Program
             if (keyFileInfo.Length != 0x10)
             {
                 Logger.LogErrorInternal("Bundle key needs to be 16 bytes long.");
+                return false;
             }
 
             KeyManager.AddKey("BundleEncryptionKey", File.ReadAllBytes(keyFileInfo.FullName));
@@ -187,6 +189,7 @@ internal static partial class Program
             if (keyFileInfo.Length != 0x4000)
             {
                 Logger.LogErrorInternal("Cas key needs to be 16384 bytes long.");
+                return false;
             }
 
             KeyManager.AddKey("CasObfuscationKey", File.ReadAllBytes(keyFileInfo.FullName));

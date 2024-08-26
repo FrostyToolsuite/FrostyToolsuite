@@ -37,7 +37,8 @@ internal static partial class Program
         };
         rootCommand.AddCommand(loadCommand);
 
-        loadCommand.SetHandler((game, pid, key1, key2, key3) => LoadGame(game, pid, key1, key2, key3), gameArg, pidOption, key1Option, key2Option, key3Option);
+        loadCommand.SetHandler((game, pid, key1, key2, key3) => LoadGame(game, pid, key1, key2, key3), gameArg,
+            pidOption, key1Option, key2Option, key3Option);
     }
 
     private static void AddModCommand(RootCommand rootCommand)
