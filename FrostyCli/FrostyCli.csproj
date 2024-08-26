@@ -8,6 +8,7 @@
         <PublishSingleFile>true</PublishSingleFile>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
+        <Version>2.0.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
@@ -21,6 +22,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="MSBuildGitHash" Version="2.0.2">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
       <PackageReference Include="Pastel" Version="5.0.0" />
       <PackageReference Include="Sharprompt" Version="2.4.5" />
       <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />

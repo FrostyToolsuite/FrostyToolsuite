@@ -10,24 +10,23 @@ namespace FrostyCli;
 
 internal static partial class Program
 {
-    private static void InteractiveModGame()
+    private static void ModGame(FileInfo? inGameFileInfo = null, int? inPid = null,
+        FileInfo? inInitFsKeyFileInfo = null, FileInfo? inBundleKeyFileInfo = null, FileInfo? inCasKeyFileInfo = null,
+        DirectoryInfo? inModsDirInfo = null, DirectoryInfo? inModDataDirInfo = null)
     {
-        DirectoryInfo modsDirInfo =
-            RequestDirectory("Pass in the path to a folder containing the mods that you want to apply");
-        if (!modsDirInfo.Exists)
+        if (!s_isInteractive)
         {
-            Logger.LogErrorInternal("Mods folder does not exist.");
-            return;
+            if (!LoadGame(inGameFileInfo, inPid, inInitFsKeyFileInfo, inBundleKeyFileInfo, inCasKeyFileInfo))
+            {
+                return;
+            }
         }
 
-        DirectoryInfo modDataDirInfo =
-            RequestDirectory("Pass in the path to a folder where the generated data should get stored in", true);
+        inModsDirInfo ??= RequestDirectory("Pass in the path to a folder containing the mods that you want to apply");
+        inModDataDirInfo ??= s_isInteractive
+            ? RequestDirectory("Pass in the path to a folder where the generated data should get stored in", true)
+            : new DirectoryInfo(Path.Combine(FileSystemManager.BasePath, "ModData", "Default"));
 
-        ModGame(modsDirInfo, modDataDirInfo);
-    }
-
-    private static void ModGame(DirectoryInfo inModsDirInfo, DirectoryInfo inModDataDirInfo)
-    {
         IEnumerable<string> mods = Directory.GetFiles(inModsDirInfo.FullName);
 
         FileInfo modLoadOrderPath = new(Path.Combine(inModsDirInfo.FullName, "load_order.json"));
@@ -50,120 +49,54 @@ internal static partial class Program
         executor.GenerateMods(inModDataDirInfo.FullName, mods);
     }
 
-    private static void ModGameCommand(FileInfo inGameFileInfo, DirectoryInfo inModsDirInfo,
-        DirectoryInfo? inModDataDirInfo, FileInfo? inKeyFileInfo, int? inPid)
+    private static void UpdateMod(FileInfo? inGameFileInfo = null, int? inPid = null,
+        FileInfo? inInitFsKeyFileInfo = null, FileInfo? inBundleKeyFileInfo = null, FileInfo? inCasKeyFileInfo = null,
+        FileInfo? inModFileInfo = null, string? inOutputPath = null)
     {
-        // load game
-        LoadGameCommand(inGameFileInfo, inKeyFileInfo, inPid);
-
-        if (!inModsDirInfo.Exists)
+        if (!s_isInteractive)
         {
-            Logger.LogErrorInternal($"Directory {inModsDirInfo.FullName} doesnt exist.");
-            return;
+            LoadGame(inGameFileInfo, inPid, inInitFsKeyFileInfo, inBundleKeyFileInfo, inCasKeyFileInfo);
         }
 
-        ModGame(inModsDirInfo,
-            inModDataDirInfo ?? new DirectoryInfo(Path.Combine(FileSystemManager.BasePath, "ModData", "Default")));
-    }
-
-    private static void InteractiveUpdateMod()
-    {
-        FileInfo? modFileInfo = RequestFile("Pass in the path to the mod that should get updated");
-        if (modFileInfo?.Exists != true)
+        inModFileInfo ??= RequestFile("Pass in the path to the mod that should get updated");
+        if (inModFileInfo?.Exists != true)
         {
             Logger.LogErrorInternal("Mod file does not exist.");
             return;
         }
 
-        FileInfo? output = RequestFile("Pass in the path where the updated mod should get saved to", true,
-            modFileInfo.Name);
+        FileInfo? output;
+        if (string.IsNullOrEmpty(inOutputPath))
+        {
+            output = s_isInteractive
+                ? RequestFile("Pass in the path where the updated mod should get saved to", true,
+                    inModFileInfo.Name)
+                : inModFileInfo;
+        }
+        else
+        {
+            output = GetFile(inOutputPath, true, inModFileInfo.FullName);
+        }
 
         if (output is null)
         {
             return;
         }
 
-        ModUpdater.UpdateMod(modFileInfo.FullName, output.FullName);
-    }
-
-    private static void UpdateModCommand(FileInfo inGameFileInfo, FileInfo inModFileInfo, string? inOutputPath,
-        FileInfo? inKeyFileInfo, int? inPid)
-    {
-        if (!inModFileInfo.Exists)
-        {
-            Logger.LogErrorInternal("Mod file does not exist.");
-            return;
-        }
-
-        // load game
-        LoadGameCommand(inGameFileInfo, inKeyFileInfo, inPid);
-
-        FileInfo? output;
-        if (!string.IsNullOrEmpty(inOutputPath))
-        {
-            output = GetFile(inOutputPath, true, inModFileInfo.FullName);
-            if (output is null)
-            {
-                return;
-            }
-        }
-        else
-        {
-            output = inModFileInfo;
-        }
-
         ModUpdater.UpdateMod(inModFileInfo.FullName, output.FullName);
     }
 
-    private static void InteractiveCreateMod()
+    private static void CreateMod(FileInfo? inGameFileInfo = null, int? inPid = null,
+        FileInfo? inInitFsKeyFileInfo = null, FileInfo? inBundleKeyFileInfo = null, FileInfo? inCasKeyFileInfo = null,
+        DirectoryInfo? inProjectDirInfo = null, string? inOutputPath = null)
     {
-        DirectoryInfo projectDirectory = RequestDirectory("Pass in the path to the project directory");
-        if (!projectDirectory.Exists)
+        if (!s_isInteractive)
         {
-            Logger.LogErrorInternal("Project directory does not exist.");
-            return;
+            LoadGame(inGameFileInfo, inPid, inInitFsKeyFileInfo, inBundleKeyFileInfo, inCasKeyFileInfo);
         }
 
-        FileInfo? outputFile = RequestFile("Input the path where the updated mod should get saved to", true,
-            $"{projectDirectory.Name}.fbmod");
+        inProjectDirInfo ??= RequestDirectory("Pass in the path to the project directory");
 
-        if (outputFile is null)
-        {
-            return;
-        }
-
-        CreateMod(projectDirectory, outputFile);
-    }
-
-    private static void CreateModCommand(FileInfo inGameFileInfo, DirectoryInfo inProjectDirInfo, string? inOutputPath,
-        FileInfo? inKeyFileInfo, int? inPid)
-    {
-        // load game
-        LoadGameCommand(inGameFileInfo, inKeyFileInfo, inPid);
-
-        if (!inProjectDirInfo.Exists)
-        {
-            Logger.LogErrorInternal("Project directory does not exist.");
-            return;
-        }
-
-        if (string.IsNullOrEmpty(inOutputPath))
-        {
-            inOutputPath = inProjectDirInfo.FullName;
-        }
-
-        FileInfo? outputFile = GetFile(inOutputPath, true, $"{inProjectDirInfo.Name}.fbmod");
-
-        if (outputFile is null)
-        {
-            return;
-        }
-
-        CreateMod(inProjectDirInfo, outputFile);
-    }
-
-    private static void CreateMod(DirectoryInfo inProjectDirInfo, FileInfo inOutputFileInfo)
-    {
         FileInfo path = new(Path.Combine(inProjectDirInfo.FullName, "project.json"));
         if (!path.Exists)
         {
@@ -192,6 +125,24 @@ internal static partial class Program
 
         project.BasePath = path.DirectoryName ?? string.Empty;
 
-        project.CompileToMod(inOutputFileInfo.FullName);
+        FileInfo? output;
+        if (string.IsNullOrEmpty(inOutputPath))
+        {
+            output = s_isInteractive
+                ? RequestFile("Input the path where the updated mod should get saved to", true,
+                    $"{inProjectDirInfo.Name}.fbmod")
+                : new FileInfo($"{inProjectDirInfo.FullName}.fbmod");
+        }
+        else
+        {
+            output = GetFile(inOutputPath, true, $"{inProjectDirInfo.Name}.fbmod");
+        }
+
+        if (output is null)
+        {
+            return;
+        }
+
+        project.CompileToMod(output.FullName);
     }
 }

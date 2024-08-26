@@ -2,6 +2,8 @@
 using System.CommandLine;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using Frosty.Sdk;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
@@ -13,6 +15,8 @@ namespace FrostyCli;
 
 internal static partial class Program
 {
+    private static bool s_isInteractive;
+
     private static int Main(string[] args)
     {
         RootCommand rootCommand = new("CLI app to load and mod games made with the Frostbite Engine.");
@@ -32,20 +36,15 @@ internal static partial class Program
 
     private static void InteractiveMode()
     {
-        FileInfo? game = RequestFile("Input the path to the games executable", false);
+        Assembly assembly = Assembly.GetExecutingAssembly();
 
-        if (game is null)
+        Logger.LogInfoInternal(
+            $"FrostyCli v{assembly.GetName().Version}-{assembly.GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "GitHash")?.Value}");
+
+        if (!LoadGame())
         {
             return;
         }
-
-        if (!game.Exists)
-        {
-            Logger.LogErrorInternal("Game does not exist.");
-            return;
-        }
-
-        LoadGame(game);
 
         ActionType actionType;
         do
@@ -59,13 +58,13 @@ internal static partial class Program
                      }
                      break;
                  case ActionType.Mod:
-                     InteractiveModGame();
+                     ModGame();
                      break;
                  case ActionType.UpdateMod:
-                     InteractiveUpdateMod();
+                     UpdateMod();
                      break;
                  case ActionType.CreateMod:
-                     InteractiveCreateMod();
+                     CreateMod();
                      break;
                  case ActionType.ListEbx:
                      ListEbx();
@@ -116,12 +115,15 @@ internal static partial class Program
         ExportChunk,
     }
 
-    private static void LoadGame(FileInfo inGameFileInfo)
+    private static bool LoadGame(FileInfo? inGameFileInfo = null, int? inPid = null,
+        FileInfo? inInitFsKeyFileInfo = null, FileInfo? inBundleKeyFileInfo = null, FileInfo? inCasKeyFileInfo = null)
     {
-        if (!inGameFileInfo.Exists)
+        FileInfo? game = inGameFileInfo ?? RequestFile("Input the path to the games executable");
+
+        if (game?.Exists != true)
         {
-            Logger.LogErrorInternal("No game exists at that path.");
-            return;
+            Logger.LogErrorInternal("Game does not exist.");
+            return false;
         }
 
         // set logger
@@ -131,21 +133,24 @@ internal static partial class Program
         Utils.BaseDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
 
         // init profile
-        if (!ProfilesLibrary.Initialize(Path.GetFileNameWithoutExtension(inGameFileInfo.Name)))
+        if (!ProfilesLibrary.Initialize(Path.GetFileNameWithoutExtension(game.Name)))
         {
-            return;
+            return false;
         }
 
         if (ProfilesLibrary.RequiresInitFsKey)
         {
-            string keyPath = Prompt.Input<string>("Pass in the path to an initfs key");
+            FileInfo? keyFileInfo = inInitFsKeyFileInfo ?? RequestFile("Pass in the path to an initfs key");
 
-            FileInfo keyFileInfo = new(keyPath);
-
-            if (!keyFileInfo.Exists)
+            if (keyFileInfo?.Exists != true)
             {
                 Logger.LogErrorInternal("Key does not exist.");
-                return;
+                return false;
+            }
+
+            if (keyFileInfo.Length != 0x10)
+            {
+                Logger.LogErrorInternal("InitFs key needs to be 16 bytes long.");
             }
 
             KeyManager.AddKey("InitFsKey", File.ReadAllBytes(keyFileInfo.FullName));
@@ -153,14 +158,17 @@ internal static partial class Program
 
         if (ProfilesLibrary.RequiresBundleKey)
         {
-            string keyPath = Prompt.Input<string>("Pass in the path to an bundle key");
+            FileInfo? keyFileInfo = inBundleKeyFileInfo ?? RequestFile("Pass in the path to an bundle key");
 
-            FileInfo keyFileInfo = new(keyPath);
-
-            if (!keyFileInfo.Exists)
+            if (keyFileInfo?.Exists != true)
             {
                 Logger.LogErrorInternal("Key does not exist.");
-                return;
+                return false;
+            }
+
+            if (keyFileInfo.Length != 0x10)
+            {
+                Logger.LogErrorInternal("Bundle key needs to be 16 bytes long.");
             }
 
             KeyManager.AddKey("BundleEncryptionKey", File.ReadAllBytes(keyFileInfo.FullName));
@@ -168,68 +176,75 @@ internal static partial class Program
 
         if (ProfilesLibrary.RequiresCasKey)
         {
-            string keyPath = Prompt.Input<string>("Pass in the path to an cas key");
+            FileInfo? keyFileInfo = inCasKeyFileInfo ?? RequestFile("Pass in the path to an cas key");
 
-            FileInfo keyFileInfo = new(keyPath);
-
-            if (!keyFileInfo.Exists)
+            if (keyFileInfo?.Exists != true)
             {
                 Logger.LogErrorInternal("Key does not exist.");
-                return;
+                return false;
+            }
+
+            if (keyFileInfo.Length != 0x4000)
+            {
+                Logger.LogErrorInternal("Cas key needs to be 16384 bytes long.");
             }
 
             KeyManager.AddKey("CasObfuscationKey", File.ReadAllBytes(keyFileInfo.FullName));
         }
 
-        if (inGameFileInfo.DirectoryName is null)
+        if (game.DirectoryName is null)
         {
             Logger.LogErrorInternal("The game needs to be in a directory containing the games data.");
-            return;
+            return false;
         }
 
         // init filesystem manager, this parses the layout.toc file
-        if (!FileSystemManager.Initialize(inGameFileInfo.DirectoryName))
+        if (!FileSystemManager.Initialize(game.DirectoryName))
         {
-            return;
+            return false;
         }
 
         // generate sdk if needed
         if (!File.Exists(ProfilesLibrary.SdkPath))
         {
-            int pid = Prompt.Input<int>("Input pid of the currently running game");
+            int pid = inPid ?? Prompt.Input<int>("Input pid of the currently running game");
 
             TypeSdkGenerator typeSdkGenerator = new();
 
-            Process game = Process.GetProcessById(pid);
+            Process process = Process.GetProcessById(pid);
 
-            if (!typeSdkGenerator.DumpTypes(game))
+            if (!typeSdkGenerator.DumpTypes(process))
             {
-                return;
+                return false;
             }
 
             Logger.LogInfoInternal("The game is not needed anymore and can be closed.");
             if (!typeSdkGenerator.CreateSdk(ProfilesLibrary.SdkPath))
             {
-                return;
+                return false;
             }
         }
 
         // init type library, this loads the EbxTypeSdk used to properly parse ebx assets
         if (!TypeLibrary.Initialize())
         {
-            return;
+            return false;
         }
 
         // init resource manager, this parses the cas.cat files if they exist for easy asset lookup
         if (!ResourceManager.Initialize())
         {
-            return;
+            return false;
         }
 
         // init asset manager, this parses the SuperBundles and loads all the assets
         if (!AssetManager.Initialize())
         {
+            return false;
         }
+
+        s_isInteractive = true;
+        return true;
     }
 
     private static void ListEbx()
@@ -244,6 +259,10 @@ internal static partial class Program
     {
         foreach (ResAssetEntry entry in AssetManager.EnumerateResAssetEntries())
         {
+            if ((ResourceType)entry.ResType == ResourceType.Dx11RvmDatabase)
+            {
+                var db = AssetManager.GetResAs<RvmDatabase>(entry);
+            }
             Console.WriteLine(entry.Name);
         }
     }
@@ -254,90 +273,6 @@ internal static partial class Program
         {
             Console.WriteLine(entry.Name);
         }
-    }
-
-    private static void LoadGameCommand(FileInfo inGameFileInfo, FileInfo? inKeyFileInfo, int? inPid)
-    {
-        if (!inGameFileInfo.Exists)
-        {
-            Logger.LogErrorInternal("No game exists at that path.");
-            return;
-        }
-
-        // set logger
-        FrostyLogger.Logger = new Logger();
-
-        // set base directory to the directory containing the executable
-        Utils.BaseDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
-
-        // init profile
-        if (!ProfilesLibrary.Initialize(Path.GetFileNameWithoutExtension(inGameFileInfo.Name)))
-        {
-            return;
-        }
-
-        if (ProfilesLibrary.RequiresInitFsKey)
-        {
-            if (inKeyFileInfo is null || !inKeyFileInfo.Exists)
-            {
-                Logger.LogErrorInternal("Pass in the path to a initfs key file using --initfs-key.");
-                return;
-            }
-
-            KeyManager.AddKey("InitFsKey", File.ReadAllBytes(inKeyFileInfo.FullName));
-        }
-
-        if (inGameFileInfo.DirectoryName is null)
-        {
-            Logger.LogErrorInternal("The game needs to be in a directory containing the games data.");
-            return;
-        }
-
-        // init filesystem manager, this parses the layout.toc file
-        if (!FileSystemManager.Initialize(inGameFileInfo.DirectoryName))
-        {
-            return;
-        }
-
-        // generate sdk if needed
-        if (!File.Exists(ProfilesLibrary.SdkPath))
-        {
-            if (!inPid.HasValue)
-            {
-                Logger.LogErrorInternal("No sdk exists, launch the game and pass in the pid with --pid.");
-                return;
-            }
-
-            TypeSdkGenerator typeSdkGenerator = new();
-
-            Process game = Process.GetProcessById(inPid.Value);
-
-            if (!typeSdkGenerator.DumpTypes(game))
-            {
-                return;
-            }
-
-            Logger.LogInfoInternal("The game is not needed anymore and can be closed.");
-            if (!typeSdkGenerator.CreateSdk(ProfilesLibrary.SdkPath))
-            {
-                return;
-            }
-        }
-
-        // init type library, this loads the EbxTypeSdk used to properly parse ebx assets
-        if (!TypeLibrary.Initialize())
-        {
-            return;
-        }
-
-        // init resource manager, this parses the cas.cat files if they exist for easy asset lookup
-        if (!ResourceManager.Initialize())
-        {
-            return;
-        }
-
-        // init asset manager, this parses the SuperBundles and loads all the assets
-        AssetManager.Initialize();
     }
 
     private static FileInfo? RequestFile(string inMessage, bool inCreateDirectory = false, string? inDefaultName = null)
