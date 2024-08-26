@@ -148,7 +148,7 @@ internal class Dynamic2018 : IDisposable
                                 : bundles.Count + inModInfo.Added.Bundles.Count));
                 }
 
-                BlockStream? sbStream = null;
+                BlockStream? sbStream;
                 foreach (DbObject obj in bundles)
                 {
                     DbObjectDict bundleObj = obj.AsDict();

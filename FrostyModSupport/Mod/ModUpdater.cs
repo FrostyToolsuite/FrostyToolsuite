@@ -759,7 +759,7 @@ public class ModUpdater
 
                 foreach (SuperBundleInstallChunk sbIc in superBundleInfo.InstallChunks)
                 {
-                    temp.Add(Frosty.Sdk.Utils.Utils.HashString(sbIc.Name, true));
+                    temp.Add(sbIc.Id);
                 }
 
                 Debug.Assert(temp.Count > 0);
