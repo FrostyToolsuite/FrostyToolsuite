@@ -106,6 +106,8 @@ internal class FieldInfo : IComparable
         TypeFlags flags = type.GetFlags();
         bool isClass = false;
 
+        bool needInit = type is PrimitiveInfo or ClassInfo or StructInfo or ArrayInfo;
+
         if (type is ClassInfo)
         {
             typeName = "Frosty.Sdk.Ebx.PointerRef";
@@ -123,7 +125,7 @@ internal class FieldInfo : IComparable
             typeName = $"ObservableCollection<{typeName}>";
         }
 
-        if (string.IsNullOrEmpty(m_defaultValue))
+        if (string.IsNullOrEmpty(m_defaultValue) && needInit)
         {
             // force default value, for stuff that doesnt have a default instance
             m_defaultValue = "new()";
