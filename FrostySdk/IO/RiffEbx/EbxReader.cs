@@ -269,6 +269,9 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(ReadFileRef());
                 break;
             case TypeFlags.TypeEnum.Delegate:
+                TypeRef t = ReadTypeRef();
+                FrostyLogger.Logger?.LogInfo($"Delegate found: {t}");
+                break;
             case TypeFlags.TypeEnum.TypeRef:
                 inAddFunc(ReadTypeRef());
                 break;
