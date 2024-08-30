@@ -80,8 +80,13 @@ public class TypeSdkGenerator
         string stringsDir = Path.Combine(Utils.Utils.BaseDirectory, "Sdk", "Strings");
         string typeNamesPath = Path.Combine(stringsDir, $"{ProfilesLibrary.InternalName}_types.json");
         string fieldNamesPath = Path.Combine(stringsDir, $"{ProfilesLibrary.InternalName}_fields.json");
+        Strings.TypeNames = new HashSet<string>();
+        Strings.FieldNames = new Dictionary<string, HashSet<string>>();
         if (ProfilesLibrary.HasStrippedTypeNames && File.Exists(typeNamesPath))
         {
+            Strings.TypeMapping = new Dictionary<uint, string>();
+            Strings.FieldMapping = new Dictionary<uint, Dictionary<uint, string>>();
+
             // load previously created string file
             HashSet<string>? typeNames = JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(typeNamesPath));
             if (typeNames is null)
@@ -118,7 +123,8 @@ public class TypeSdkGenerator
         }
 
         MemoryReader reader = new(process) { Position = typeInfoOffset };
-        TypeInfo.TypeInfoMapping.Clear();
+        TypeInfo.TypeInfoMapping = new Dictionary<long, TypeInfo>();
+        ArrayInfo.Mapping = new Dictionary<long, long>();
 
         TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
 
@@ -131,6 +137,11 @@ public class TypeSdkGenerator
 
         if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
         {
+            Strings.TypeMapping = new Dictionary<uint, string>();
+            Strings.FieldMapping = new Dictionary<uint, Dictionary<uint, string>>();
+            Strings.TypeHashes = new HashSet<uint>();
+            Strings.FieldHashes = new Dictionary<uint, HashSet<uint>>();
+
             // try to resolve type hashes from other games
             foreach (string file in Directory.EnumerateFiles(stringsDir, "*_types.json"))
             {
@@ -281,16 +292,12 @@ public class TypeSdkGenerator
             File.WriteAllText(typeNamesPath, JsonSerializer.Serialize(Strings.TypeNames));
             File.WriteAllText(fieldNamesPath, JsonSerializer.Serialize(Strings.FieldNames));
 
-            // reparse the typeinfo with now hopefully more typenames
-            TypeInfo.TypeInfoMapping.Clear();
+            // update the typeinfo with now hopefully more typenames
 
-            reader.Position = typeInfoOffset;
-            ti = TypeInfo.ReadTypeInfo(reader);
-
-            do
+            foreach (TypeInfo typeInfo in TypeInfo.TypeInfoMapping.Values)
             {
-                ti = ti.GetNextTypeInfo(reader);
-            } while (ti is not null);
+                typeInfo.UpdateName();
+            }
         }
         else
         {
@@ -299,7 +306,9 @@ public class TypeSdkGenerator
             File.WriteAllText(fieldNamesPath, JsonSerializer.Serialize(Strings.FieldNames));
         }
 
-        if (TypeInfo.TypeInfoMapping.Count > 0)
+        Strings.Reset();
+
+        if (TypeInfo.TypeInfoMapping?.Count > 0)
         {
             foreach (TypeInfo type in TypeInfo.TypeInfoMapping.Values)
             {
@@ -326,6 +335,12 @@ public class TypeSdkGenerator
     {
         FrostyLogger.Logger?.LogInfo("Creating sdk");
 
+        if (TypeInfo.TypeInfoMapping is null)
+        {
+            FrostyLogger.Logger?.LogError($"No dumped types to create the sdk from. Call {nameof(DumpTypes)} first.");
+            return false;
+        }
+
         StringBuilder sb = new();
 
         sb.AppendLine("using System;");
@@ -346,8 +361,9 @@ public class TypeSdkGenerator
                 case TypeFlags.TypeEnum.Struct:
                 case TypeFlags.TypeEnum.Class:
                 case TypeFlags.TypeEnum.Enum:
-                case TypeFlags.TypeEnum.Delegate:
+                case TypeFlags.TypeEnum.Function:
                 case TypeFlags.TypeEnum.Interface:
+                case TypeFlags.TypeEnum.Delegate:
                     typeInfo.CreateType(sb);
                     break;
 
@@ -375,6 +391,9 @@ public class TypeSdkGenerator
                     break;
             }
         }
+
+        TypeInfo.TypeInfoMapping = null;
+        ArrayInfo.Mapping = null;
 
         string source = sb.ToString();
 

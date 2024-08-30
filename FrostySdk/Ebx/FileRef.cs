@@ -2,18 +2,18 @@ namespace Frosty.Sdk.Ebx;
 
 public readonly struct FileRef
 {
-    private readonly string m_fileName = string.Empty;
+    private readonly string? m_fileName;
 
     public FileRef(string value)
     {
         m_fileName = value;
     }
 
-    public static implicit operator string(FileRef value) => value.m_fileName;
+    public static implicit operator string(FileRef value) => value.m_fileName ?? string.Empty;
 
     public static implicit operator FileRef(string value) => new(value);
 
-    public override string ToString() => $"FileRef '{m_fileName}'";
+    public override string ToString() => $"FileRef '{m_fileName ?? "null"}'";
 
     public override bool Equals(object? obj)
     {
@@ -36,6 +36,6 @@ public readonly struct FileRef
 
     public override int GetHashCode()
     {
-        return m_fileName.GetHashCode();
+        return m_fileName?.GetHashCode() ?? 0;
     }
 }

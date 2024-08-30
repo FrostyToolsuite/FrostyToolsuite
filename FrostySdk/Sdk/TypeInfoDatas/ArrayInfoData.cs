@@ -7,7 +7,7 @@ namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
 internal class ArrayInfoData : TypeInfoData
 {
-    public TypeInfo GetTypeInfo() => TypeInfo.TypeInfoMapping[p_typeInfo];
+    public TypeInfo GetTypeInfo() => TypeInfo.TypeInfoMapping![p_typeInfo];
 
     public long GetTypeInfoPtr() => p_typeInfo;
 

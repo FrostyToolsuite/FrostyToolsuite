@@ -112,4 +112,14 @@ internal class StructInfoData : TypeInfoData
             sb.AppendLine("}");
         }
     }
+
+    public override void UpdateName()
+    {
+        base.UpdateName();
+
+        foreach (FieldInfo fieldInfo in m_fieldInfos)
+        {
+            fieldInfo.UpdateName(m_nameHash);
+        }
+    }
 }

@@ -5,7 +5,7 @@ namespace Frosty.Sdk.Sdk;
 internal class ParameterInfo
 {
     public string GetName() => m_name;
-    public TypeInfo GetTypeInfo() => TypeInfo.TypeInfoMapping[p_typeInfo];
+    public TypeInfo GetTypeInfo() => TypeInfo.TypeInfoMapping![p_typeInfo];
     public byte GetParameterType() => m_type;
 
     private string m_name = string.Empty;

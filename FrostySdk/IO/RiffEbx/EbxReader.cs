@@ -176,6 +176,13 @@ public class EbxReader : BaseEbxReader
                         primitive.FromActualType(value);
                         value = primitive;
                     }
+
+                    if (typeof(IDelegate).IsAssignableFrom(propertyInfo?.PropertyType))
+                    {
+                        IDelegate @delegate = (IDelegate)Activator.CreateInstance(propertyInfo.PropertyType)!;
+                        @delegate.FunctionType = (Type)value;
+                        value = @delegate;
+                    }
                     propertyInfo?.GetValue(obj)?.GetType().GetMethod("Add")?.Invoke(propertyInfo.GetValue(obj), new[] { value });
                 });
             }
@@ -200,6 +207,13 @@ public class EbxReader : BaseEbxReader
                                 IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType)!;
                                 primitive.FromActualType(value);
                                 value = primitive;
+                            }
+
+                            if (typeof(IDelegate).IsAssignableFrom(propertyInfo?.PropertyType))
+                            {
+                                IDelegate @delegate = (IDelegate)Activator.CreateInstance(propertyInfo.PropertyType)!;
+                                @delegate.FunctionType = (Type)value;
+                                value = @delegate;
                             }
                             propertyInfo?.SetValue(obj, value);
                         });
@@ -269,8 +283,7 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(ReadFileRef());
                 break;
             case TypeFlags.TypeEnum.Delegate:
-                TypeRef t = ReadTypeRef();
-                FrostyLogger.Logger?.LogInfo($"Delegate found: {t}");
+                inAddFunc(ReadDelegate());
                 break;
             case TypeFlags.TypeEnum.TypeRef:
                 inAddFunc(ReadTypeRef());
@@ -487,6 +500,26 @@ public class EbxReader : BaseEbxReader
 
         int typeRef = (int)(packed >> 2);
         return new TypeRef(m_fixup.TypeGuids[typeRef]);
+    }
+
+    private Type? ReadDelegate()
+    {
+        uint packed = m_stream.ReadUInt32();
+        m_stream.Position += 4;
+
+        if (packed == 0)
+        {
+            return null;
+        }
+
+        if ((packed & 0x80000000) != 0)
+        {
+            // primitive type
+            return GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1);
+        }
+
+        int typeRef = (int)(packed >> 2);
+        return TypeLibrary.GetType(m_fixup.TypeGuids[typeRef]);
     }
 
     private BoxedValueRef ReadBoxedValueRef()
