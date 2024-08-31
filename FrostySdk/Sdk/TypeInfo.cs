@@ -66,7 +66,7 @@ internal class TypeInfo
     {
         long startPos = reader.Position;
 
-        long typeInfoDataOffset = reader.ReadLong();
+        long typeInfoDataOffset = reader.ReadPtr();
 
         long curPos = reader.Position;
 
@@ -127,10 +127,10 @@ internal class TypeInfo
     {
         if (Version > 5)
         {
-            p_prev = reader.ReadLong();
+            p_prev = reader.ReadPtr();
         }
 
-        p_next = reader.ReadLong();
+        p_next = reader.ReadPtr();
 
         if (Version == 4)
         {

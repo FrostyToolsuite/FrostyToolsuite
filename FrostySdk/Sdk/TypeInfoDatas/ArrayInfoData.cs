@@ -22,7 +22,7 @@ internal class ArrayInfoData : TypeInfoData
             m_name = $"Array_{m_nameHash:x8}";
         }
 
-        p_typeInfo = reader.ReadLong();
+        p_typeInfo = reader.ReadPtr();
     }
 
     public override void CreateType(StringBuilder sb)

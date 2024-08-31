@@ -27,16 +27,16 @@ internal class FunctionInfoData : TypeInfoData
             m_name = $"Function_{m_nameHash:x8}";
         }
 
-        reader.ReadLong();
-        reader.ReadLong();
-        reader.ReadLong();
+        reader.ReadPtr();
+        reader.ReadPtr();
+        reader.ReadPtr();
         if (TypeInfo.Version > 3)
         {
-            reader.ReadLong();
-            reader.ReadLong();
+            reader.ReadPtr();
+            reader.ReadPtr();
         }
 
-        long pParameterInfos = reader.ReadLong();
+        long pParameterInfos = reader.ReadPtr();
         m_modifier = (Modifier)reader.ReadInt();
 
         reader.Position = pParameterInfos;

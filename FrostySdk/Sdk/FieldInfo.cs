@@ -56,7 +56,7 @@ internal class FieldInfo : IComparable
         m_flags = reader.ReadUShort();
         m_offset = reader.ReadUShort();
 
-        p_typeInfo = reader.ReadLong();
+        p_typeInfo = reader.ReadPtr();
 
         if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings)
         {

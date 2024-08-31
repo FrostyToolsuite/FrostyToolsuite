@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using Frosty.Sdk.IO.Ebx;
 
@@ -6,6 +7,7 @@ namespace Frosty.Sdk.IO.PartitionEbx;
 
 internal struct EbxHeader
 {
+    public Endian Endian;
     public EbxVersion Magic;
     public uint StringsOffset;
     public uint StringsAndDataLength;
@@ -45,30 +47,42 @@ internal struct EbxHeader
 
     public static EbxHeader ReadHeader(DataStream inStream)
     {
-        EbxHeader header = new()
+        EbxHeader header = new();
+        header.Magic = (EbxVersion)inStream.ReadUInt32();
+        if (Enum.IsDefined(typeof(EbxVersion), header.Magic))
         {
-            Magic = (EbxVersion)inStream.ReadUInt32(),
-            StringsOffset = inStream.ReadUInt32(),
-            StringsAndDataLength = inStream.ReadUInt32(),
-            ImportCount = inStream.ReadInt32(),
-            InstanceCount = inStream.ReadUInt16(),
-            ExportedInstanceCount = inStream.ReadUInt16(),
-            UniqueTypeCount = inStream.ReadUInt16(),
-            TypeDescriptorCount = inStream.ReadUInt16(),
-            FieldDescriptorCount = inStream.ReadUInt16(),
-            TypeNameTableLength = inStream.ReadUInt16(),
-            StringTableLength = inStream.ReadUInt32(),
-            ArrayCount = inStream.ReadInt32(),
-            DataLength = inStream.ReadUInt32(),
-            PartitionGuid = inStream.ReadGuid()
-        };
+            header.Endian = Endian.Little;
+        }
+        else
+        {
+            header.Magic = (EbxVersion)BinaryPrimitives.ReverseEndianness((uint)header.Magic);
+            if (!Enum.IsDefined(typeof(EbxVersion), header.Magic))
+            {
+                throw new Exception();
+            }
+            FrostyLogger.Logger?.LogWarning("Big endian ebx, might not work correctly.");
+            header.Endian = Endian.Big;
+        }
+        header.StringsOffset = inStream.ReadUInt32(header.Endian);
+        header.StringsAndDataLength = inStream.ReadUInt32(header.Endian);
+        header.ImportCount = inStream.ReadInt32(header.Endian);
+        header.InstanceCount = inStream.ReadUInt16(header.Endian);
+        header.ExportedInstanceCount = inStream.ReadUInt16(header.Endian);
+        header.UniqueTypeCount = inStream.ReadUInt16(header.Endian);
+        header.TypeDescriptorCount = inStream.ReadUInt16(header.Endian);
+        header.FieldDescriptorCount = inStream.ReadUInt16(header.Endian);
+        header.TypeNameTableLength = inStream.ReadUInt16(header.Endian);
+        header.StringTableLength = inStream.ReadUInt32(header.Endian);
+        header.ArrayCount = inStream.ReadInt32(header.Endian);
+        header.DataLength = inStream.ReadUInt32(header.Endian);
+        header.PartitionGuid = inStream.ReadGuid(header.Endian);
 
         header.ArrayOffset = header.StringsOffset + header.StringTableLength + header.DataLength;
 
         if (header.Magic == EbxVersion.Version4)
         {
-            header.BoxedValueCount = inStream.ReadInt32();
-            header.BoxedValueOffset = inStream.ReadUInt32();
+            header.BoxedValueCount = inStream.ReadInt32(header.Endian);
+            header.BoxedValueOffset = inStream.ReadUInt32(header.Endian);
             header.BoxedValueOffset += header.StringsOffset + header.StringTableLength;
         }
         else
@@ -82,8 +96,8 @@ internal struct EbxHeader
         {
             EbxImportReference import = new()
             {
-                FileGuid = inStream.ReadGuid(),
-                ClassGuid = inStream.ReadGuid()
+                FileGuid = inStream.ReadGuid(header.Endian),
+                ClassGuid = inStream.ReadGuid(header.Endian)
             };
 
             header.Imports[i] = import;
@@ -106,11 +120,11 @@ internal struct EbxHeader
         {
             EbxFieldDescriptor fieldDescriptor = new()
             {
-                NameHash = inStream.ReadUInt32(),
-                Flags = inStream.ReadUInt16(),
-                TypeDescriptorRef = inStream.ReadUInt16(),
-                DataOffset = inStream.ReadUInt32(),
-                SecondOffset = inStream.ReadUInt32(),
+                NameHash = inStream.ReadUInt32(header.Endian),
+                Flags = inStream.ReadUInt16(header.Endian),
+                TypeDescriptorRef = inStream.ReadUInt16(header.Endian),
+                DataOffset = inStream.ReadUInt32(header.Endian),
+                SecondOffset = inStream.ReadUInt32(header.Endian),
             };
 
             fieldDescriptor.Name = typeNames.TryGetValue((int)fieldDescriptor.NameHash, out string? value)
@@ -125,13 +139,13 @@ internal struct EbxHeader
         {
             EbxTypeDescriptor typeDescriptor = new()
             {
-                NameHash = inStream.ReadUInt32(),
-                FieldIndex = inStream.ReadInt32(),
+                NameHash = inStream.ReadUInt32(header.Endian),
+                FieldIndex = inStream.ReadInt32(header.Endian),
                 FieldCount = inStream.ReadByte(),
                 Alignment = inStream.ReadByte(),
-                Flags = inStream.ReadUInt16(),
-                Size = inStream.ReadUInt16(),
-                SecondSize = inStream.ReadUInt16(),
+                Flags = inStream.ReadUInt16(header.Endian),
+                Size = inStream.ReadUInt16(header.Endian),
+                SecondSize = inStream.ReadUInt16(header.Endian),
                 Index = -1
             };
 
@@ -147,8 +161,8 @@ internal struct EbxHeader
         {
             EbxInstance inst = new()
             {
-                TypeDescriptorRef = inStream.ReadUInt16(),
-                Count = inStream.ReadUInt16()
+                TypeDescriptorRef = inStream.ReadUInt16(header.Endian),
+                Count = inStream.ReadUInt16(header.Endian)
             };
 
             if (i < header.ExportedInstanceCount)
@@ -166,9 +180,9 @@ internal struct EbxHeader
         {
             header.Arrays[i] = new EbxArray
             {
-                Offset = inStream.ReadUInt32(),
-                Count = inStream.ReadUInt32(),
-                TypeDescriptorRef = inStream.ReadInt32()
+                Offset = inStream.ReadUInt32(header.Endian),
+                Count = inStream.ReadUInt32(header.Endian),
+                TypeDescriptorRef = inStream.ReadInt32(header.Endian)
             };
         }
 
@@ -179,9 +193,9 @@ internal struct EbxHeader
         {
             header.BoxedValues[i] = new EbxBoxedValue
             {
-                Offset = inStream.ReadUInt32(),
-                TypeDescriptorRef = inStream.ReadUInt16(),
-                Type = inStream.ReadUInt16()
+                Offset = inStream.ReadUInt32(header.Endian),
+                TypeDescriptorRef = inStream.ReadUInt16(header.Endian),
+                Type = inStream.ReadUInt16(header.Endian)
             };
         }
 

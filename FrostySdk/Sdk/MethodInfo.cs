@@ -23,8 +23,8 @@ internal class MethodInfo
             return false;
         }
 
-        p_unknown = reader.ReadLong();
-        p_functionInfo = reader.ReadLong();
+        p_unknown = reader.ReadPtr();
+        p_functionInfo = reader.ReadPtr();
         return true;
     }
 }

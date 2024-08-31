@@ -19,8 +19,8 @@ internal class ClassInfo : TypeInfo
     {
         base.Read(reader);
 
-        p_superClass = reader.ReadLong();
-        p_defaultInstance = reader.ReadLong();
+        p_superClass = reader.ReadPtr();
+        p_defaultInstance = reader.ReadPtr();
     }
 
     public override string ReadDefaultValue(MemoryReader reader)

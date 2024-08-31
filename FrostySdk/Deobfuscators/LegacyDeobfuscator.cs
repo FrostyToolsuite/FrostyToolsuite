@@ -8,7 +8,7 @@ public class LegacyDeobfuscator : IDeobfuscator
 {
     public void Deobfuscate(Span<byte> header, Block<byte> data)
     {
-        if (header[3] != 0x01)
+        if (header[3] == 0x03)
         {
             return;
         }

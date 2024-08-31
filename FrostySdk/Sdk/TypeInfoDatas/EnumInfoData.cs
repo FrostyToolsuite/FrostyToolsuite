@@ -18,7 +18,7 @@ internal class EnumInfoData : TypeInfoData
             m_name = $"Enum_{m_nameHash:x8}";
         }
 
-        long pFieldInfos = reader.ReadLong();
+        long pFieldInfos = reader.ReadPtr();
 
         reader.Position = pFieldInfos;
         for (int i = 0; i < m_fieldCount; i++)

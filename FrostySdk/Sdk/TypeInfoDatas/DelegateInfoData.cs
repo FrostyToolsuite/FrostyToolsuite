@@ -20,7 +20,7 @@ internal class DelegateInfoData : TypeInfoData
             m_name = $"Delegate_{m_nameHash:x8}";
         }
 
-        long pParameterInfos = reader.ReadLong();
+        long pParameterInfos = reader.ReadPtr();
 
         reader.Position = pParameterInfos;
         for (int i = 0; i < m_fieldCount; i++)

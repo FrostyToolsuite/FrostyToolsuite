@@ -65,10 +65,12 @@ public sealed unsafe partial class MemoryReader
     public long Position { get; set; }
 
     private readonly Process m_process;
+    private readonly bool m_is32Bit;
 
-    public MemoryReader(Process inProcess)
+    public MemoryReader(Process inProcess, bool inIs32Bit)
     {
         m_process = inProcess;
+        m_is32Bit = inIs32Bit;
     }
 
     public void Pad(int alignment)
@@ -77,6 +79,16 @@ public sealed unsafe partial class MemoryReader
         {
             Position += alignment - Position % alignment;
         }
+    }
+
+    public nint ReadPtr(bool pad = true)
+    {
+        if (m_is32Bit)
+        {
+            return ReadInt(pad);
+        }
+
+        return (nint)ReadLong(pad);
     }
 
     public byte ReadByte()
@@ -187,14 +199,9 @@ public sealed unsafe partial class MemoryReader
         return new Sha1(span);
     }
 
-    public string ReadNullTerminatedString(bool pad = true)
+    public string ReadNullTerminatedString()
     {
-        if (pad)
-        {
-            Pad(sizeof(long));
-        }
-
-        long offset = ReadLong();
+        long offset = ReadPtr();
         long orig = Position;
         Position = offset;
 
@@ -226,7 +233,7 @@ public sealed unsafe partial class MemoryReader
 
     public nint ScanPatter(string pattern)
     {
-        ConvertPatternToAob(pattern, out string mask, out Block<byte> currentAob);
+        ConvertPatternToAob(pattern, out string mask, out Block<byte> currentAob, out int relativeStart);
 
         foreach ((nint Address, int Size) region in GetRegions())
         {
@@ -239,7 +246,23 @@ public sealed unsafe partial class MemoryReader
             {
                 currentAob.Dispose();
                 regionBytes.Dispose();
-                return region.Address + address;
+
+                nint offset = region.Address + address;
+
+                Position = offset + relativeStart;
+
+                if (ProfilesLibrary.FrostbiteVersion < "2013.2")
+                {
+                    // absolute offset in 32 bit
+                    Position = ReadInt(false);
+                }
+                else
+                {
+                    // relative offset in 32 bit
+                    int newValue = ReadInt(false);
+                    Position = offset + 3 + newValue + 4;
+                }
+                return ReadPtr(false);
             }
 
             regionBytes.Dispose();
@@ -267,15 +290,29 @@ public sealed unsafe partial class MemoryReader
         return 0;
     }
 
-    private void ConvertPatternToAob(string inPatternString, out string mask, out Block<byte> currentAob)
+    private void ConvertPatternToAob(string inPatternString, out string mask, out Block<byte> currentAob, out int relativeStart)
     {
         string trimmed = inPatternString.Trim();
 
         mask = "";
         string[] partHex = trimmed.Split(' ');
         currentAob = new Block<byte>(partHex.Length);
+
+        // hardcode since all older patterns have that
+        relativeStart = 3;
+
         for (int i = 0; i < partHex.Length; ++i)
         {
+            if (partHex[i].StartsWith("["))
+            {
+                relativeStart = i;
+                partHex[i] = partHex[i].Remove(0, 1);
+            }
+            if (partHex[i].EndsWith("]"))
+            {
+                partHex[i] = partHex[i].Remove(partHex[i].Length - 1, 1);
+            }
+
             if (partHex[i].Contains('?'))
             {
                 currentAob[i] = 0xCC;

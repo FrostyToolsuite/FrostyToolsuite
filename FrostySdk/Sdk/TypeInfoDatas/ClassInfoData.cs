@@ -24,13 +24,13 @@ internal class ClassInfoData : TypeInfoData
             m_name = $"Class_{m_nameHash:x8}";
         }
 
-        p_superClass = reader.ReadLong();
+        p_superClass = reader.ReadPtr();
         if (TypeInfo.Version < 3)
         {
-            reader.ReadLong();
+            reader.ReadPtr();
         }
-        long pFieldInfos = reader.ReadLong();
-        long pMethodInfos = reader.ReadLong();
+        long pFieldInfos = reader.ReadPtr();
+        long pMethodInfos = reader.ReadPtr();
 
         if (pFieldInfos != 0)
         {
@@ -49,7 +49,7 @@ internal class ClassInfoData : TypeInfoData
                 bool read;
                 do
                 {
-                    var methodInfo = new MethodInfo();
+                    MethodInfo methodInfo = new();
                     read = methodInfo.Read(reader);
                     if (read)
                     {

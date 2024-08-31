@@ -25,7 +25,7 @@ public class TypeSdkGenerator
 {
     private long FindTypeInfoOffset(Process process)
     {
-        MemoryReader reader = new(process);
+        MemoryReader reader = new(process, ProfilesLibrary.FrostbiteVersion < "2013.2");
 
         nint offset = nint.Zero;
 
@@ -55,21 +55,13 @@ public class TypeSdkGenerator
             }
         }
 
-        if (offset == nint.Zero)
-        {
-            return -1;
-        }
-
-        reader.Position = offset + 3;
-        int newValue = reader.ReadInt(false);
-        reader.Position = offset + 3 + newValue + 4;
-        return reader.ReadLong(false);
+        return offset;
     }
 
     public bool DumpTypes(Process process)
     {
         long typeInfoOffset = FindTypeInfoOffset(process);
-        if (typeInfoOffset == -1)
+        if (typeInfoOffset == 0)
         {
             FrostyLogger.Logger?.LogError("No offset found for TypeInfo, maybe try a different TypeInfoSignature");
             return false;
@@ -122,7 +114,7 @@ public class TypeSdkGenerator
             Strings.HasStrings = true;
         }
 
-        MemoryReader reader = new(process) { Position = typeInfoOffset };
+        MemoryReader reader = new(process, ProfilesLibrary.FrostbiteVersion < "2013.2") { Position = typeInfoOffset };
         TypeInfo.TypeInfoMapping = new Dictionary<long, TypeInfo>();
         ArrayInfo.Mapping = new Dictionary<long, long>();
 

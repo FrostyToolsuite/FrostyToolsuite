@@ -62,7 +62,7 @@ public class EbxReader : BaseEbxReader
             {
                 m_stream.Pad(typeDescriptor.GetAlignment());
 
-                Guid instanceGuid = instance.IsExported ? m_stream.ReadGuid() : Guid.Empty;
+                Guid instanceGuid = instance.IsExported ? m_stream.ReadGuid(m_header.Endian) : Guid.Empty;
 
                 if (typeDescriptor.GetAlignment() != 0x04)
                 {
@@ -165,31 +165,31 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(m_stream.ReadByte());
                 break;
             case TypeFlags.TypeEnum.Int16:
-                inAddFunc(m_stream.ReadInt16());
+                inAddFunc(m_stream.ReadInt16(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.UInt16:
-                inAddFunc(m_stream.ReadUInt16());
+                inAddFunc(m_stream.ReadUInt16(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.Int32:
-                inAddFunc(m_stream.ReadInt32());
+                inAddFunc(m_stream.ReadInt32(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.UInt32:
-                inAddFunc(m_stream.ReadUInt32());
+                inAddFunc(m_stream.ReadUInt32(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.Int64:
-                inAddFunc(m_stream.ReadInt64());
+                inAddFunc(m_stream.ReadInt64(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.UInt64:
-                inAddFunc(m_stream.ReadUInt64());
+                inAddFunc(m_stream.ReadUInt64(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.Float32:
-                inAddFunc(m_stream.ReadSingle());
+                inAddFunc(m_stream.ReadSingle(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.Float64:
-                inAddFunc(m_stream.ReadDouble());
+                inAddFunc(m_stream.ReadDouble(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.Guid:
-                inAddFunc(m_stream.ReadGuid());
+                inAddFunc(m_stream.ReadGuid(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.ResourceRef:
                 inAddFunc(ReadResourceRef());
@@ -201,7 +201,7 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(m_stream.ReadFixedSizedString(32));
                 break;
             case TypeFlags.TypeEnum.CString:
-                inAddFunc(ReadString(m_stream.ReadUInt32()));
+                inAddFunc(ReadString(m_stream.ReadUInt32(m_header.Endian)));
                 break;
             case TypeFlags.TypeEnum.FileRef:
                 inAddFunc(ReadFileRef());
@@ -221,7 +221,7 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(obj);
                 break;
             case TypeFlags.TypeEnum.Enum:
-                inAddFunc(m_stream.ReadInt32());
+                inAddFunc(m_stream.ReadInt32(m_header.Endian));
                 break;
             case TypeFlags.TypeEnum.Class:
                 inAddFunc(ReadPointerRef());
@@ -240,7 +240,7 @@ public class EbxReader : BaseEbxReader
     {
         EbxTypeDescriptor arrayTypeDescriptor = inParentTypeDescriptor.HasValue ? m_typeResolver.ResolveType(inParentTypeDescriptor.Value, inTypeDescriptorRef) : m_typeResolver.ResolveType(inTypeDescriptorRef);
 
-        int index = m_stream.ReadInt32();
+        int index = m_stream.ReadInt32(m_header.Endian);
         EbxArray array = m_header.Arrays[index];
 
         long arrayPos = m_stream.Position;
@@ -270,18 +270,18 @@ public class EbxReader : BaseEbxReader
         return retStr;
     }
 
-    private ResourceRef ReadResourceRef() => new(m_stream.ReadUInt64());
+    private ResourceRef ReadResourceRef() => new(m_stream.ReadUInt64(m_header.Endian));
 
     private FileRef ReadFileRef()
     {
-        uint index = (uint)m_stream.ReadUInt64();
+        uint index = (uint)m_stream.ReadUInt64(m_header.Endian);
 
         return new FileRef(ReadString(index));
     }
 
     private PointerRef ReadPointerRef()
     {
-        uint index = m_stream.ReadUInt32();
+        uint index = m_stream.ReadUInt32(m_header.Endian);
 
         if ((index >> 0x1F) == 1)
         {
@@ -301,7 +301,7 @@ public class EbxReader : BaseEbxReader
 
     private TypeRef ReadTypeRef()
     {
-        string str = ReadString(m_stream.ReadUInt32());
+        string str = ReadString(m_stream.ReadUInt32(m_header.Endian));
         m_stream.Position += 4;
 
         if (string.IsNullOrEmpty(str))
@@ -322,7 +322,7 @@ public class EbxReader : BaseEbxReader
 
     private BoxedValueRef ReadBoxedValueRef()
     {
-        int index = m_stream.ReadInt32();
+        int index = m_stream.ReadInt32(m_header.Endian);
         m_stream.Position += 12;
 
         if (index == -1)
