@@ -50,20 +50,5 @@ jobs:
       with: 
         name: FrostyCli-win-x64
         path: FrostyCli/bin/Release/net7.0/win-x64/publish
-    - name: Build FrostyEditor
-      run: |
-        cd FrostyEditor
-        dotnet publish -c Release --runtime win-x64 --self-contained /p:DebugType=None /p:DebugSymbols=false
-        dotnet publish -c Release --runtime linux-x64 --self-contained /p:DebugType=None /p:DebugSymbols=false
-    - name: Upload linux
-      uses: actions/upload-artifact@v4.3.0
-      with:
-        name: FrostyEditor-linux-x64
-        path: FrostyEditor/bin/Release/net7.0/linux-x64/publish
-    - name: Upload windows
-      uses: actions/upload-artifact@v4.3.0
-      with:
-        name: FrostyEditor-win-x64
-        path: FrostyEditor/bin/Release/net7.0/win-x64/publish
     - name: Test
       run: dotnet test --no-build --verbosity normal
