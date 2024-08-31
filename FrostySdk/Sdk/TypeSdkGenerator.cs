@@ -61,9 +61,18 @@ public class TypeSdkGenerator
         }
 
         reader.Position = offset + 3;
-        int newValue = reader.ReadInt(false);
-        reader.Position = offset + 3 + newValue + 4;
-        return reader.ReadPtr();
+
+        // absolute offset in 32 bit
+        if (ProfilesLibrary.FrostbiteVersion < "2013.2")
+        {
+            reader.Position = reader.ReadInt(false);
+        }
+        else
+        {
+            int newValue = reader.ReadInt(false);
+            reader.Position = offset + 3 + newValue + 4;
+        }
+        return reader.ReadPtr(false);
     }
 
     public bool DumpTypes(Process process)
