@@ -39,8 +39,8 @@ internal class TypeInfoData
 
             if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
             {
-                Strings.TypeHashes.Add(nameHash);
-                Strings.TypeMapping.Add(nameHash, string.Empty);
+                Strings.TypeHashes!.Add(nameHash);
+                Strings.TypeMapping!.Add(nameHash, string.Empty);
             }
         }
         else
@@ -50,7 +50,7 @@ internal class TypeInfoData
 
         if (!ProfilesLibrary.HasStrippedTypeNames)
         {
-            Strings.TypeNames.Add(name);
+            Strings.TypeNames!.Add(name);
         }
 
         TypeFlags flags = reader.ReadUShort();
@@ -106,7 +106,7 @@ internal class TypeInfoData
                 break;
         }
 
-        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings && Strings.TypeMapping.TryGetValue(nameHash, out string? resolvedName))
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings && Strings.TypeMapping!.TryGetValue(nameHash, out string? resolvedName))
         {
             name = resolvedName;
         }
@@ -178,7 +178,7 @@ internal class TypeInfoData
             sb.AppendLine($"[{nameof(SignatureAttribute)}({m_signature})]");
         }
 
-        if (TypeInfo.TypeInfoMapping.TryGetValue(p_arrayInfo, out TypeInfo? value))
+        if (TypeInfo.TypeInfoMapping!.TryGetValue(p_arrayInfo, out TypeInfo? value))
         {
             ArrayInfo arrayInfo = (value as ArrayInfo)!;
             arrayInfo.CreateType(sb);
@@ -198,6 +198,10 @@ internal class TypeInfoData
         {
             return name[(name.IndexOf("::", StringComparison.Ordinal) + 2)..];
         }
+
+        // delegate/function stuff
+        name = name.Replace("(", "_").Replace(" ", "_").Replace(")", string.Empty).Replace("[]", "_Array")
+            .Replace(",", "_");
         return name.Replace(':', '_').Replace("<", "_").Replace(">", "_");
     }
 
@@ -219,8 +223,20 @@ internal class TypeInfoData
             name = name.Replace("::", ".");
         }
 
+        // delegate/function stuff
+        name = name.Replace("(", "_").Replace(" ", "_").Replace(")", string.Empty).Replace("[]", "_Array")
+            .Replace(",", "_");
+
         name = name.Replace(':', '_').Replace("<", "_").Replace(">", "_");
 
         return $"Frostbite.{m_nameSpace}.{name}";
+    }
+
+    public virtual void UpdateName()
+    {
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings && Strings.TypeMapping!.TryGetValue(m_nameHash, out string? resolvedName))
+        {
+            m_name = resolvedName;
+        }
     }
 }

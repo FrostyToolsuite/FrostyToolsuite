@@ -9,6 +9,13 @@ public readonly struct PointerRef
     public object? Internal { get; }
     public PointerRefType Type { get; }
 
+    public PointerRef()
+    {
+        External = new EbxImportReference();
+        Internal = null;
+        Type = PointerRefType.Null;
+    }
+
     public PointerRef(EbxImportReference externalRef)
     {
         External = externalRef;

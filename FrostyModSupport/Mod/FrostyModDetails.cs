@@ -2,14 +2,16 @@ namespace Frosty.ModSupport.Mod;
 
 public sealed class FrostyModDetails
 {
-    public string Title { get; }
-    public string Author { get; }
-    public string Version { get; }
-    public string Description { get; }
-    public string Category => string.IsNullOrEmpty(m_category) ? "Misc" : m_category;
-    public string ModPageLink { get; }
+    public string Title { get; set; } = string.Empty;
+    public string Author { get; set;} = string.Empty;
+    public string Version { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Category { get; set; } = "Misc";
+    public string ModPageLink { get; set; } = string.Empty;
 
-    private readonly string m_category;
+    public FrostyModDetails()
+    {
+    }
 
     public FrostyModDetails(string inTitle, string inAuthor, string inCategory, string inVersion, string inDescription, string inModPageLink)
     {
@@ -17,7 +19,7 @@ public sealed class FrostyModDetails
         Author = inAuthor;
         Version = inVersion;
         Description = inDescription;
-        m_category = inCategory;
+        Category = inCategory;
         ModPageLink = inModPageLink;
     }
 

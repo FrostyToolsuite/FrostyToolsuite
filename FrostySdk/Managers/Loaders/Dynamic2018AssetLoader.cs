@@ -15,8 +15,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
 {
     private struct BaseBundleHelper
     {
-        public long Offset;
-        public long Size;
+        public readonly long Offset;
+        public readonly long Size;
 
         public BaseBundleHelper(long inOffset, long inSize)
         {
@@ -88,6 +88,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         // path to sb file
         string sbPath = path.Replace(".toc", ".sb");
+        string relSbPath = Path.GetRelativePath(FileSystemManager.BasePath, sbPath);
 
         // load bundles
         if (toc.ContainsKey("bundles"))
@@ -96,6 +97,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
             DataStream sbStream = BlockStream.FromFile(sbPath, false);
             DataStream? baseSbStream = null;
             string? baseSbPath = null;
+            string? relBaseSbPath = null;
             Dictionary<int, BaseBundleHelper>? baseBundleMapping = null;
 
             // is it a das superBundle it stores the bundle values in lists
@@ -142,10 +144,11 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     if (isBase)
                     {
                         baseSbPath ??= FileSystemManager.ResolvePath(false, $"{inSbIc.Name}.sb");
+                        relBaseSbPath ??= Path.GetRelativePath(FileSystemManager.BasePath, baseSbPath);
                         baseSbStream ??=
                             BlockStream.FromFile(baseSbPath, false);
 
-                        LoadBundle(baseSbStream, offset, size, ref bundle, !isCas,  inSuperBundlePath: baseSbPath);
+                        LoadBundle(baseSbStream, offset, size, ref bundle, !isCas,  inSuperBundlePath: relBaseSbPath);
                     }
                     else if (!isCas && isDelta)
                     {
@@ -156,16 +159,17 @@ public class Dynamic2018AssetLoader : IAssetLoader
                         if (baseBundleMapping.TryGetValue(Utils.Utils.HashString(bundle.Name, true), out BaseBundleHelper helper))
                         {
                             baseSbPath ??= FileSystemManager.ResolvePath(false, $"{inSbIc.Name}.sb");
+                            relBaseSbPath ??= Path.GetRelativePath(FileSystemManager.BasePath, baseSbPath);
                             baseSbStream ??=
                                 BlockStream.FromFile(baseSbPath, false);
                         }
 
                         LoadDeltaBundle(sbStream, offset, size, baseSbStream, helper.Offset, helper.Size, ref bundle,
-                            Path.GetRelativePath(FileSystemManager.BasePath, sbPath), baseSbPath is not null ? Path.GetRelativePath(FileSystemManager.BasePath, baseSbPath) : string.Empty);
+                            relSbPath, relBaseSbPath ?? string.Empty);
                     }
                     else
                     {
-                        LoadBundle(sbStream, offset, size, ref bundle, !isCas, isDelta, sbPath);
+                        LoadBundle(sbStream, offset, size, ref bundle, !isCas, isDelta, relSbPath);
                     }
                 }
             }
@@ -190,14 +194,13 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     ChunkAssetEntry entry;
                     if (isCas || isDas)
                     {
-                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), chunkObj.AsSha1("sha1"), 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
-
+                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), chunkObj.AsSha1("sha1"), 0, 0, inSbIc.Id);
                         entry.AddFileInfo(ResourceManager.GetFileInfo(entry.Sha1));
                     }
                     else
                     {
-                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
-                        entry.AddFileInfo(new NonCasFileInfo(sbPath, chunkObj.AsUInt("offset"),
+                        entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, inSbIc.Id);
+                        entry.AddFileInfo(new NonCasFileInfo(relSbPath, chunkObj.AsLong("offset"),
                             chunkObj.AsUInt("size")));
                     }
 
@@ -214,11 +217,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     if (baseToc is not null)
                     {
                         string baseSbPath = basePath.Replace(".toc", ".sb");
-
-                        if (baseToc.AsList("chunks").Count > 0 && patchChunks.Count == 0)
-                        {
-
-                        }
+                        string relBaseSbPath = Path.GetRelativePath(FileSystemManager.BasePath, baseSbPath);
                         foreach (DbObject obj in baseToc.AsList("chunks"))
                         {
                             DbObjectDict chunkObj = obj.AsDict();
@@ -232,15 +231,13 @@ public class Dynamic2018AssetLoader : IAssetLoader
                             if (isCas || isDas)
                             {
                                 entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), chunkObj.AsSha1("sha1"), 0, 0,
-                                    Utils.Utils.HashString(inSbIc.Name, true));
-
+                                    inSbIc.Id);
                                 entry.AddFileInfo(ResourceManager.GetFileInfo(entry.Sha1));
                             }
                             else
                             {
-                                entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0,
-                                    Utils.Utils.HashString(inSbIc.Name, true));
-                                entry.AddFileInfo(new NonCasFileInfo(baseSbPath, chunkObj.AsUInt("offset"),
+                                entry = new ChunkAssetEntry(chunkObj.AsGuid("id"), Sha1.Zero, 0, 0, inSbIc.Id);
+                                entry.AddFileInfo(new NonCasFileInfo(relBaseSbPath, chunkObj.AsLong("offset"),
                                     chunkObj.AsUInt("size")));
                             }
 
@@ -344,20 +341,20 @@ public class Dynamic2018AssetLoader : IAssetLoader
         long originalSize = entry is not null ? GetOriginalSize(entry) : -1;
         long sizeLeft = originalSize;
 
-        uint deltaOffset = 0, baseOffset = 0;
+        long deltaOffset = 0, baseOffset = 0;
         int midInstructionSize = -1;
 
         while (inDeltaStream.Position - inDeltaOffset < inDeltaSize)
         {
             if (entry is not null && sizeLeft == originalSize)
             {
-                deltaOffset = (uint)inDeltaStream.Position;
-                baseOffset = (uint)(inBaseStream?.Position ?? 0);
+                deltaOffset = inDeltaStream.Position;
+                baseOffset = inBaseStream?.Position ?? 0;
                 midInstructionSize = -1;
             }
 
-            uint lastDeltaOffset = (uint)inDeltaStream.Position;
-            uint lastBaseOffset = (uint)(inBaseStream?.Position ?? 0);
+            long lastDeltaOffset = inDeltaStream.Position;
+            long lastBaseOffset = inBaseStream?.Position ?? 0;
 
             // read patched storing
             uint packed = inDeltaStream.ReadUInt32(Endian.Big);
@@ -413,7 +410,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                         ushort skipCount = inDeltaStream.ReadUInt16(Endian.Big);
 
                         // use base
-                        size += (offset - currentOffset);
+                        size += offset - currentOffset;
                         currentOffset = offset;
 
                         // use delta
@@ -560,12 +557,12 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
             if (sizeLeft == originalSize)
             {
-                deltaOffset = (uint)inDeltaStream.Position;
-                baseOffset = (uint)inBaseStream.Position;
+                deltaOffset = inDeltaStream.Position;
+                baseOffset = inBaseStream.Position;
                 midInstructionSize = -1;
             }
 
-            sizeLeft -= Cas.GetUncompressedSize(inBaseStream!); // no idea why rider complains here, the Debug.Asset should take care of it
+            sizeLeft -= Cas.GetUncompressedSize(inBaseStream);
 
             if (sizeLeft <= 0)
             {
@@ -585,7 +582,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         if (extraSize != 0)
         {
-            Debug.WriteLine($"{extraSize} decompressed bytes ignored at the end of bundle {inBundle.Name}");
+            FrostyLogger.Logger?.LogInfo($"{extraSize} decompressed bytes ignored at the end of bundle {inBundle.Name}");
         }
     }
 
@@ -594,7 +591,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         : inEntry.OriginalSize;
 
     private static void AddAsset(DataStream inDeltaStream, DataStream? inBaseStream, BundleInfo inBundle, AssetEntry? entry,
-        uint deltaOffset, uint baseOffset, int midInstructionSize, string inSuperBundlePath, string inSuperBundleBasePath)
+        long deltaOffset, long baseOffset, int midInstructionSize, string inSuperBundlePath, string inSuperBundleBasePath)
     {
         switch (entry)
         {
@@ -641,7 +638,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
         {
-            uint offset = (uint)stream.Position;
+            long offset = stream.Position;
             uint size = (uint)Cas.GetCompressedSize(stream, ebx.OriginalSize);
             ebx.AddFileInfo(new NonCasFileInfo(inSuperBundlePath, offset, size));
 
@@ -650,7 +647,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         foreach (ResAssetEntry res in bundleMeta.ResList)
         {
-            uint offset = (uint)stream.Position;
+            long offset = stream.Position;
             uint size = (uint)Cas.GetCompressedSize(stream, res.OriginalSize);
             res.AddFileInfo(new NonCasFileInfo(inSuperBundlePath, offset, size));
 
@@ -659,7 +656,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         foreach (ChunkAssetEntry chunk in bundleMeta.ChunkList)
         {
-            uint offset = (uint)stream.Position;
+            long offset = stream.Position;
             // the size of the range is different than the logical size, since the range wont get decreased further once it fits in one block
             uint size = (uint)Cas.GetCompressedSize(stream, (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize);
             chunk.AddFileInfo(new NonCasFileInfo(inSuperBundlePath, offset, size, chunk.LogicalOffset));
@@ -690,7 +687,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
             // old patch storing until fb 2014.4.11
             // casPatchType:
-            //   - 0: non patched
+            //   - 1: patched
             //   - 2: patched base with delta
             if (isDelta && ebx.AsInt("casPatchType") == 2)
             {
@@ -755,26 +752,27 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
     private BinaryBundle DeserializeDeltaBundle(DataStream deltaStream, DataStream? baseStream)
     {
-        ulong magic = deltaStream.ReadUInt64();
-        if (magic != 0x0000000001000000)
+        uint magic = deltaStream.ReadUInt32(Endian.Big);
+        uint reserved = deltaStream.ReadUInt32(Endian.Big);
+        if (magic != 1 || reserved != 0)
         {
             throw new InvalidDataException();
         }
 
-        uint bundleSize = deltaStream.ReadUInt32(Endian.Big);
+        uint patchedSize = deltaStream.ReadUInt32(Endian.Big);
         deltaStream.ReadUInt32(Endian.Big); // size of data after binary bundle
 
         long startOffset = deltaStream.Position;
 
-        int patchedBundleSize = deltaStream.ReadInt32(Endian.Big);
+        int bundleSize = deltaStream.ReadInt32(Endian.Big);
         uint baseBundleSize = baseStream?.ReadUInt32(Endian.Big) ?? 0;
         long baseBundleOffset = baseStream?.Position ?? -1;
 
-        using (BlockStream stream = new(patchedBundleSize + 4))
+        using (BlockStream stream = new(bundleSize + 4))
         {
-            stream.WriteInt32(patchedBundleSize, Endian.Big);
+            stream.WriteInt32(bundleSize, Endian.Big);
 
-            while (deltaStream.Position < bundleSize + startOffset)
+            while (deltaStream.Position < patchedSize + startOffset)
             {
                 uint packed = deltaStream.ReadUInt32(Endian.Big);
                 uint instructionType = (packed & 0xF0000000) >> 28;
@@ -784,7 +782,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                 {
                     // read base block
                     case 0:
-                        stream.Write(baseStream!.ReadBytes(blockData), 0, blockData);
+                        stream.Write(baseStream!.ReadBytes(blockData));
                         break;
                     // skip base block
                     case 4:
@@ -792,7 +790,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                         break;
                     // read delta block
                     case 8:
-                        stream.Write(deltaStream.ReadBytes(blockData), 0, blockData);
+                        stream.Write(deltaStream.ReadBytes(blockData));
                         break;
                 }
             }

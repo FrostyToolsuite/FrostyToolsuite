@@ -8,7 +8,7 @@ public class CatStream : IDisposable
     public uint ResourceCount { get; }
     public uint PatchCount { get; }
     public uint EncryptedCount { get; }
-    
+
     private const string c_catMagic = "NyanNyanNyanNyan";
 
     private readonly DataStream m_stream;
@@ -18,7 +18,7 @@ public class CatStream : IDisposable
     {
         m_isNewFormat = ProfilesLibrary.FrostbiteVersion > "2014.4.11";
         m_stream = BlockStream.FromFile(inFilename, m_isNewFormat);
-        
+
         string magic = m_stream.ReadFixedSizedString(16);
         if (magic != c_catMagic)
         {
@@ -41,6 +41,12 @@ public class CatStream : IDisposable
                 EncryptedCount = m_stream.ReadUInt32();
                 m_stream.Position += 12;
             }
+
+            // some games have encryption disabled
+            if (ResourceCount * 0x24 + PatchCount * 0x3C + EncryptedCount * 0x50 != m_stream.Length - m_stream.Position)
+            {
+                EncryptedCount = 0;
+            }
         }
     }
 
@@ -57,7 +63,7 @@ public class CatStream : IDisposable
         {
             entry.LogicalOffset = m_stream.ReadUInt32();
         }
-        
+
         entry.ArchiveIndex = m_stream.ReadInt32() & 0xFF;
         return entry;
     }

@@ -11,7 +11,7 @@ namespace Frosty.Sdk.Sdk;
 internal class FieldInfo : IComparable
 {
     public string GetName() => m_name;
-    public TypeInfo GetTypeInfo() => TypeInfo.TypeInfoMapping[p_typeInfo];
+    public TypeInfo GetTypeInfo() => TypeInfo.TypeInfoMapping![p_typeInfo];
     public int GetEnumValue() => (int)p_typeInfo;
 
     private string m_name = string.Empty;
@@ -35,10 +35,10 @@ internal class FieldInfo : IComparable
 
             if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
             {
-                Strings.FieldHashes.TryAdd(inTypeHash, new HashSet<uint>());
+                Strings.FieldHashes!.TryAdd(inTypeHash, new HashSet<uint>());
                 Strings.FieldHashes[inTypeHash].Add(m_nameHash);
 
-                Strings.FieldMapping.TryAdd(inTypeHash, new Dictionary<uint, string>());
+                Strings.FieldMapping!.TryAdd(inTypeHash, new Dictionary<uint, string>());
                 Strings.FieldMapping[inTypeHash].Add(m_nameHash, string.Empty);
             }
         }
@@ -49,7 +49,7 @@ internal class FieldInfo : IComparable
 
         if (!ProfilesLibrary.HasStrippedTypeNames)
         {
-            Strings.FieldNames.TryAdd(inTypeName, new HashSet<string>());
+            Strings.FieldNames!.TryAdd(inTypeName, new HashSet<string>());
             Strings.FieldNames[inTypeName].Add(m_name);
         }
 
@@ -60,7 +60,7 @@ internal class FieldInfo : IComparable
 
         if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings)
         {
-            if (Strings.FieldMapping.TryGetValue(inTypeHash, out Dictionary<uint, string>? dict) &&
+            if (Strings.FieldMapping!.TryGetValue(inTypeHash, out Dictionary<uint, string>? dict) &&
                 dict.TryGetValue(m_nameHash, out string? resolvedName))
             {
                 Debug.Assert(!string.IsNullOrEmpty(resolvedName));
@@ -106,6 +106,8 @@ internal class FieldInfo : IComparable
         TypeFlags flags = type.GetFlags();
         bool isClass = false;
 
+        bool needInit = type is StructInfo or ArrayInfo;
+
         if (type is ClassInfo)
         {
             typeName = "Frosty.Sdk.Ebx.PointerRef";
@@ -120,9 +122,15 @@ internal class FieldInfo : IComparable
                 typeName = "Frosty.Sdk.Ebx.PointerRef";
                 isClass = true;
             }
-
             typeName = $"ObservableCollection<{typeName}>";
         }
+
+        if (string.IsNullOrEmpty(m_defaultValue) && needInit)
+        {
+            // force default value, for stuff that doesnt have a default instance
+            m_defaultValue = "new()";
+        }
+
         sb.AppendLine($"[{nameof(EbxFieldMetaAttribute)}({(ushort)flags}, {m_offset}, {(isClass ? $"typeof({type.GetFullName()})" : "null")})]");
         sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
 
@@ -133,15 +141,14 @@ internal class FieldInfo : IComparable
     {
         return m_offset.CompareTo((obj as FieldInfo)!.m_offset);
     }
-}
 
-public struct TestStruct
-{
-    public int A;
-    public int B;
-}
-
-public class TestClass
-{
-    public TestStruct TestStruct = new() { A = 1, B = 2 };
+    public void UpdateName(uint inTypeHash)
+    {
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings && Strings.FieldMapping!.TryGetValue(inTypeHash, out Dictionary<uint, string>? dict) &&
+            dict.TryGetValue(m_nameHash, out string? resolvedName))
+        {
+            Debug.Assert(!string.IsNullOrEmpty(resolvedName));
+            m_name = resolvedName;
+        }
+    }
 }

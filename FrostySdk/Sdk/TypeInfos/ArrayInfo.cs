@@ -7,7 +7,7 @@ namespace Frosty.Sdk.Sdk.TypeInfos;
 
 internal class ArrayInfo : TypeInfo
 {
-    public static Dictionary<long, long> Mapping = new();
+    public static Dictionary<long, long>? Mapping;
 
     public ArrayInfo(ArrayInfoData data)
         : base(data)
@@ -23,7 +23,7 @@ internal class ArrayInfo : TypeInfo
             long ptr = (m_data as ArrayInfoData)!.GetTypeInfoPtr();
             if (ptr != 0)
             {
-                Mapping.Add(ptr, p_this);
+                Mapping!.Add(ptr, p_this);
             }
         }
         base.Read(reader);

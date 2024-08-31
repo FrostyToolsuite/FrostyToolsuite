@@ -5,9 +5,9 @@ namespace Frosty.Sdk.Sdk;
 
 internal class MethodInfo
 {
-    public FunctionInfo GetFunctionInfo() => (TypeInfo.TypeInfoMapping[p_functionInfo] as FunctionInfo)!;
+    public FunctionInfo GetFunctionInfo() => (TypeInfo.TypeInfoMapping![p_functionInfo] as FunctionInfo)!;
 
-    public FunctionInfo GetFunctionInfo2() => (TypeInfo.TypeInfoMapping[p_unknown] as FunctionInfo)!;
+    public FunctionInfo GetFunctionInfo2() => (TypeInfo.TypeInfoMapping![p_unknown] as FunctionInfo)!;
 
 
     private uint m_nameHash;
@@ -17,7 +17,7 @@ internal class MethodInfo
     public bool Read(MemoryReader reader)
     {
         m_nameHash = reader.ReadUInt();
-        
+
         if (m_nameHash == 0)
         {
             return false;

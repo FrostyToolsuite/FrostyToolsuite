@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -19,7 +20,6 @@ public class EbxReader : BaseEbxReader
     private readonly EbxTypeResolver m_typeResolver;
 
     private readonly Dictionary<uint, EbxBoxedValue> m_boxedValues = new();
-
 
     public EbxReader(DataStream inStream)
         : base(inStream)
@@ -127,7 +127,7 @@ public class EbxReader : BaseEbxReader
 
         for (int i = 0; i < boxedValueCount; i++)
         {
-            var b = new EbxBoxedValue
+            EbxBoxedValue b = new()
             {
                 Offset = inStream.ReadUInt32(),
                 Count = inStream.ReadInt32(),
@@ -176,6 +176,13 @@ public class EbxReader : BaseEbxReader
                         primitive.FromActualType(value);
                         value = primitive;
                     }
+
+                    if (typeof(IDelegate).IsAssignableFrom(propertyInfo?.PropertyType))
+                    {
+                        IDelegate @delegate = (IDelegate)Activator.CreateInstance(propertyInfo.PropertyType)!;
+                        @delegate.FunctionType = (Type)value;
+                        value = @delegate;
+                    }
                     propertyInfo?.GetValue(obj)?.GetType().GetMethod("Add")?.Invoke(propertyInfo.GetValue(obj), new[] { value });
                 });
             }
@@ -200,6 +207,13 @@ public class EbxReader : BaseEbxReader
                                 IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType)!;
                                 primitive.FromActualType(value);
                                 value = primitive;
+                            }
+
+                            if (typeof(IDelegate).IsAssignableFrom(propertyInfo?.PropertyType))
+                            {
+                                IDelegate @delegate = (IDelegate)Activator.CreateInstance(propertyInfo.PropertyType)!;
+                                @delegate.FunctionType = (Type)value;
+                                value = @delegate;
                             }
                             propertyInfo?.SetValue(obj, value);
                         });
@@ -269,6 +283,8 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(ReadFileRef());
                 break;
             case TypeFlags.TypeEnum.Delegate:
+                inAddFunc(ReadDelegate());
+                break;
             case TypeFlags.TypeEnum.TypeRef:
                 inAddFunc(ReadTypeRef());
                 break;
@@ -479,11 +495,31 @@ public class EbxReader : BaseEbxReader
         if ((packed & 0x80000000) != 0)
         {
             // primitive type
-            return new TypeRef(GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1).GetName());
+            return new TypeRef(GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1));
         }
 
         int typeRef = (int)(packed >> 2);
         return new TypeRef(m_fixup.TypeGuids[typeRef]);
+    }
+
+    private Type? ReadDelegate()
+    {
+        uint packed = m_stream.ReadUInt32();
+        m_stream.Position += 4;
+
+        if (packed == 0)
+        {
+            return null;
+        }
+
+        if ((packed & 0x80000000) != 0)
+        {
+            // primitive type
+            return GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1);
+        }
+
+        int typeRef = (int)(packed >> 2);
+        return TypeLibrary.GetType(m_fixup.TypeGuids[typeRef]);
     }
 
     private BoxedValueRef ReadBoxedValueRef()
@@ -604,7 +640,7 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.Array:
                 EbxTypeDescriptor arrayTypeDescriptor = m_typeResolver.ResolveType(inTypeDescriptorRef);
                 EbxFieldDescriptor elementFieldDescriptor = m_typeResolver.ResolveField(arrayTypeDescriptor.FieldIndex);
-                return typeof(List<>).MakeGenericType(GetTypeFromEbxField(elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef));
+                return typeof(ObservableCollection<>).MakeGenericType(GetTypeFromEbxField(elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef));
             case TypeFlags.TypeEnum.Enum:
                 return TypeLibrary.GetType(m_fixup.TypeGuids[inTypeDescriptorRef])!;
 

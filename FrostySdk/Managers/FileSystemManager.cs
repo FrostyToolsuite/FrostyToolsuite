@@ -36,6 +36,8 @@ public static class FileSystemManager
 
     private static readonly Dictionary<string, SuperBundleInfo> s_superBundleMapping = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<int, int> s_persistentIndexMapping = new();
+    private static readonly Dictionary<int, int> s_reversePersistentIndexMapping = new();
+    private static readonly Dictionary<Guid, int> s_idMapping = new();
     private static readonly List<InstallChunkInfo> s_installChunks = new();
     private static readonly Dictionary<int, SuperBundleInstallChunk> s_sbIcMapping = new();
     private static readonly Dictionary<int, string> s_casFiles = new();
@@ -111,45 +113,17 @@ public static class FileSystemManager
     }
 
     /// <summary>
-    /// Resolves the path of a file inside the games data directories.
+    /// Tries to resolve the relative path for the best source (patch -> dlc -> base)
     /// </summary>
-    /// <param name="filename">
-    /// <para>The relative path of the file prefixed with native_data or native_patch.</para>
-    /// If there is no prefix it will look through all data directories starting with the patch ones.
-    /// </param>
-    /// <returns>The full path to the file or an empty string if the file doesnt exist.</returns>
-    public static string ResolvePath(string filename)
+    /// <param name="inPath">The relative path to a file or dictionary.</param>
+    /// <param name="resolvedPath">The resolved full path.</param>
+    /// <returns>True if it could resolve the path, false if it couldn't resolve it.</returns>
+    public static bool TryResolvePath(string inPath, [NotNullWhen(true)] out string? resolvedPath)
     {
-        if (filename.StartsWith("native_data/"))
-        {
-            return FileSystemSource.Base.ResolvePath(filename[12..]);
-        }
-
-        string s = filename.StartsWith("native_patch/") ? filename[13..] : filename;
         foreach (FileSystemSource source in Sources)
         {
-            if (source.TryResolvePath(s, out string? path))
+            if (source.TryResolvePath(inPath, out resolvedPath))
             {
-                return path;
-            }
-        }
-
-        return string.Empty;
-    }
-
-    public static bool TryResolvePath(string filename, [NotNullWhen(true)] out string? resolvedPath)
-    {
-        if (filename.StartsWith("native_data/"))
-        {
-            return FileSystemSource.Base.TryResolvePath(filename[12..], out resolvedPath);
-        }
-
-        string s = filename.StartsWith("native_patch/") ? filename[13..] : filename;
-        foreach (FileSystemSource source in Sources)
-        {
-            if (source.TryResolvePath(s, out resolvedPath))
-            {
-
                 return true;
             }
         }
@@ -158,11 +132,17 @@ public static class FileSystemManager
         return false;
     }
 
-    public static string ResolvePath(bool isPatch, string filename)
+    /// <summary>
+    /// Resolves the relative path, it doesn't check if the directory or file exists.
+    /// </summary>
+    /// <param name="isPatch">A Boolean if the path is a patch path or not.</param>
+    /// <param name="inPath">The relative path to resolve.</param>
+    /// <returns>The resolved full path. This path doesn't have to exist.</returns>
+    public static string ResolvePath(bool isPatch, string inPath)
     {
         if (isPatch)
         {
-            return FileSystemSource.Patch.ResolvePath(filename);
+            return FileSystemSource.Patch.ResolvePath(inPath);
         }
 
         foreach (FileSystemSource source in Sources)
@@ -172,13 +152,8 @@ public static class FileSystemManager
                 continue;
             }
 
-            if (source.TryResolvePath(filename, out string? path))
+            if (source.TryResolvePath(inPath, out string? path))
             {
-                if (source.IsDLC())
-                {
-
-                }
-
                 return path;
             }
         }
@@ -186,11 +161,18 @@ public static class FileSystemManager
         return string.Empty;
     }
 
-    public static bool TryResolvePath(bool isPatch, string filename, [NotNullWhen(true)] out string? resolvedPath)
+    /// <summary>
+    /// Tries to resolve the relative path.
+    /// </summary>
+    /// <param name="isPatch">A Boolean if the path is a patch path or not.</param>
+    /// <param name="inPath">The relative path to resolve.</param>
+    /// <param name="resolvedPath">The resolved full path or null if it couldn't resolve the path.</param>
+    /// <returns>True if it could resolve the path, false if it couldn't resolve it.</returns>
+    public static bool TryResolvePath(bool isPatch, string inPath, [NotNullWhen(true)] out string? resolvedPath)
     {
         if (isPatch)
         {
-            return FileSystemSource.Patch.TryResolvePath(filename, out resolvedPath);
+            return FileSystemSource.Patch.TryResolvePath(inPath, out resolvedPath);
         }
 
         foreach (FileSystemSource source in Sources)
@@ -200,7 +182,7 @@ public static class FileSystemManager
                 continue;
             }
 
-            if (source.TryResolvePath(filename, out resolvedPath))
+            if (source.TryResolvePath(inPath, out resolvedPath))
             {
                 return true;
             }
@@ -211,6 +193,11 @@ public static class FileSystemManager
         return false;
     }
 
+    /// <summary>
+    /// Gets the full path to a cas file.
+    /// </summary>
+    /// <param name="casFileIdentifier">The <see cref="CasFileIdentifier"/> for the cas file.</param>
+    /// <returns>The full path to the cas file.</returns>
     public static string GetFilePath(CasFileIdentifier casFileIdentifier)
     {
         InstallChunkInfo installChunkInfo = s_installChunks[s_persistentIndexMapping[casFileIdentifier.InstallChunkIndex]];
@@ -220,10 +207,15 @@ public static class FileSystemManager
                 $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
         }
 
-        return ResolvePath(false, Path.Combine(installChunkInfo.InstallBundle,
+        return FileSystemSource.Base.ResolvePath(Path.Combine(installChunkInfo.InstallBundle,
             $"cas_{casFileIdentifier.CasIndex:D2}.cas"));
     }
 
+    /// <summary>
+    /// Gets the full path to a cas file.
+    /// </summary>
+    /// <param name="casIndex">The index of the cas file in the layout.toc.</param>
+    /// <returns>The full path to the cas file.</returns>
     public static string GetFilePath(int casIndex)
     {
         return s_casFiles[casIndex];
@@ -254,13 +246,12 @@ public static class FileSystemManager
 
     public static InstallChunkInfo GetInstallChunkInfo(Guid id)
     {
-        return s_installChunks.FirstOrDefault(ic => ic.Id == id) ?? throw new KeyNotFoundException();
+        return s_installChunks[s_idMapping[id]];
     }
 
     public static int GetInstallChunkIndex(InstallChunkInfo info)
     {
-        // TODO: works for now, since we only call this for the cat which doesnt have a persistent index, but we should create a dict for the reverse thing
-        return s_installChunks.IndexOf(info);
+        return s_reversePersistentIndexMapping[s_idMapping[info.Id]];
     }
 
     public static SuperBundleInstallChunk GetSuperBundleInstallChunk(string sbIcName)
@@ -467,12 +458,14 @@ public static class FileSystemManager
                 ic.SuperBundles.Add(sb.Name);
 
                 SuperBundleInstallChunk sbIc = new(sb, ic, InstallChunkType.Default);
-                s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                s_sbIcMapping.Add(sbIc.Id, sbIc);
                 sb.InstallChunks.Add(sbIc);
             }
 
             s_installChunks.Add(ic);
             s_persistentIndexMapping.Add(0, 0);
+            s_reversePersistentIndexMapping.Add(0, 0);
+            s_idMapping.Add(ic.Id, 0);
         }
         else
         {
@@ -506,6 +499,8 @@ public static class FileSystemManager
 
                 int index = installChunk.AsDict().AsInt("persistentIndex", s_installChunks.Count);
                 s_persistentIndexMapping.Add(index, s_installChunks.Count);
+                s_reversePersistentIndexMapping.Add(s_installChunks.Count, index);
+                s_idMapping.Add(ic.Id, s_installChunks.Count);
                 s_installChunks.Add(ic);
 
                 foreach (DbObject superBundle in installChunk.AsDict().AsList("superbundles"))
@@ -515,7 +510,7 @@ public static class FileSystemManager
 
                     SuperBundleInfo sb = s_superBundleMapping[name];
                     SuperBundleInstallChunk sbIc = new(sb, ic, InstallChunkType.Default);
-                    s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                    s_sbIcMapping.Add(sbIc.Id, sbIc);
                     sb.InstallChunks.Add(sbIc);
                 }
 
@@ -531,8 +526,8 @@ public static class FileSystemManager
                         int casId = fileObj.AsDict().AsInt("id");
 
                         string casPath = fileObj.AsDict().AsString("path").Trim('/');
-                        casPath = casPath.Replace("native_data/Data", "native_data");
-                        casPath = casPath.Replace("native_data/Patch", "native_patch");
+                        casPath = casPath.Replace("native_data", BasePath);
+                        casPath = casPath.Replace("native_data", BasePath);
 
                         s_casFiles.Add(casId, casPath);
                     }
@@ -547,7 +542,7 @@ public static class FileSystemManager
 
                         SuperBundleInfo sb = s_superBundleMapping[name];
                         SuperBundleInstallChunk sbIc = new(sb, ic, InstallChunkType.Split);
-                        s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                        s_sbIcMapping.Add(sbIc.Id, sbIc);
                         sb.InstallChunks.Add(sbIc);
                     }
                 }
@@ -561,7 +556,7 @@ public static class FileSystemManager
 
                         SuperBundleInfo sb = s_superBundleMapping[name];
                         SuperBundleInstallChunk sbIc = new(sb, ic, InstallChunkType.Split);
-                        s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                        s_sbIcMapping.Add(sbIc.Id, sbIc);
                         sb.InstallChunks.Add(sbIc);
                     }
                 }
@@ -586,7 +581,7 @@ public static class FileSystemManager
 
                     SuperBundleInstallChunk sbIc = new(sb, DefaultInstallChunk, InstallChunkType.Default);
                     DefaultInstallChunk.SuperBundles.Add(sb.Name);
-                    s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                    s_sbIcMapping.Add(sbIc.Id, sbIc);
                     sb.InstallChunks.Add(sbIc);
                 }
                 else if (!sb.Name.Contains("debug", StringComparison.OrdinalIgnoreCase))
@@ -595,7 +590,7 @@ public static class FileSystemManager
 
                     SuperBundleInstallChunk sbIc = new(sb, DefaultInstallChunk, InstallChunkType.Default);
                     DefaultInstallChunk.SuperBundles.Add(sb.Name);
-                    s_sbIcMapping.Add(Utils.Utils.HashString(sbIc.Name, true), sbIc);
+                    s_sbIcMapping.Add(sbIc.Id, sbIc);
                     sb.InstallChunks.Add(sbIc);
                 }
             }

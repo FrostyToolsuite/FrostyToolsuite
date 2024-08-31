@@ -22,7 +22,7 @@ public enum Code
 public class Manifest2019AssetLoader : IAssetLoader
 {
     [Flags]
-    private enum Flags
+    public enum Flags
     {
         HasBaseBundles = 1 << 0, // base toc has bundles that the patch doesnt have
         HasBaseChunks = 1 << 1, // base toc has chunks that the patch doesnt have
@@ -222,7 +222,7 @@ public class Manifest2019AssetLoader : IAssetLoader
                     uint offset = BinaryPrimitives.ReverseEndianness(chunkData[index++]);
                     uint size = BinaryPrimitives.ReverseEndianness(chunkData[index]);
 
-                    ChunkAssetEntry chunk = new(guid, Sha1.Zero, 0, 0, Utils.Utils.HashString(inSbIc.Name, true));
+                    ChunkAssetEntry chunk = new(guid, Sha1.Zero, 0, 0, inSbIc.Id);
 
                     chunk.AddFileInfo(new CasFileInfo(casFileIdentifier, offset, size, 0));
 

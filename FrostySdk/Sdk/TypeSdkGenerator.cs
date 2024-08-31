@@ -80,15 +80,21 @@ public class TypeSdkGenerator
         string stringsDir = Path.Combine(Utils.Utils.BaseDirectory, "Sdk", "Strings");
         string typeNamesPath = Path.Combine(stringsDir, $"{ProfilesLibrary.InternalName}_types.json");
         string fieldNamesPath = Path.Combine(stringsDir, $"{ProfilesLibrary.InternalName}_fields.json");
+        Strings.TypeNames = new HashSet<string>();
+        Strings.FieldNames = new Dictionary<string, HashSet<string>>();
         if (ProfilesLibrary.HasStrippedTypeNames && File.Exists(typeNamesPath))
         {
-            // load strings files
+            Strings.TypeMapping = new Dictionary<uint, string>();
+            Strings.FieldMapping = new Dictionary<uint, Dictionary<uint, string>>();
+
+            // load previously created string file
             HashSet<string>? typeNames = JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(typeNamesPath));
             if (typeNames is null)
             {
                 return false;
             }
 
+            // create our type mapping
             foreach (string name in typeNames)
             {
                 Strings.TypeMapping.Add(HashTypeName(name), name);
@@ -101,6 +107,7 @@ public class TypeSdkGenerator
                 return false;
             }
 
+            // create our field mapping
             foreach (KeyValuePair<string, HashSet<string>> kv in fieldNames)
             {
                 Dictionary<uint, string> dict = new();
@@ -116,7 +123,8 @@ public class TypeSdkGenerator
         }
 
         MemoryReader reader = new(process) { Position = typeInfoOffset };
-        TypeInfo.TypeInfoMapping.Clear();
+        TypeInfo.TypeInfoMapping = new Dictionary<long, TypeInfo>();
+        ArrayInfo.Mapping = new Dictionary<long, long>();
 
         TypeInfo? ti = TypeInfo.ReadTypeInfo(reader);
 
@@ -129,7 +137,12 @@ public class TypeSdkGenerator
 
         if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
         {
-            // try to resolve hashes from other games
+            Strings.TypeMapping = new Dictionary<uint, string>();
+            Strings.FieldMapping = new Dictionary<uint, Dictionary<uint, string>>();
+            Strings.TypeHashes = new HashSet<uint>();
+            Strings.FieldHashes = new Dictionary<uint, HashSet<uint>>();
+
+            // try to resolve type hashes from other games
             foreach (string file in Directory.EnumerateFiles(stringsDir, "*_types.json"))
             {
                 HashSet<string>? types = JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(file));
@@ -142,22 +155,29 @@ public class TypeSdkGenerator
                 {
                     uint hash = HashTypeName(name);
 
+                    // continue if type is not used
                     if (!Strings.TypeHashes.Contains(hash))
                     {
                         continue;
                     }
 
+                    // add type to our mapping if we haven't resolved it already
                     if (!Strings.TypeMapping.TryGetValue(hash, out string? currentName) || string.IsNullOrEmpty(currentName))
                     {
                         Strings.TypeMapping[hash] = name;
                     }
                     else
                     {
-                        Debug.Assert(currentName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                        // a type with this hash was already added, check if its the same (ignore case)
+                        if (!currentName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            FrostyLogger.Logger?.LogInfo($"Type hash {hash:X8} duplicate. Using \"{currentName}\" instead of \"{name}\"");
+                        }
                     }
                 }
             }
 
+            // try to resolve field hashes from other games
             foreach (string file in Directory.EnumerateFiles(stringsDir, "*_fields.json"))
             {
                 Dictionary<string, HashSet<string>>? mapping = JsonSerializer.Deserialize<Dictionary<string, HashSet<string>>>(File.ReadAllText(file));
@@ -170,11 +190,13 @@ public class TypeSdkGenerator
                 {
                     uint typeHash = HashTypeName(type.Key);
 
+                    // only continue if type is used
                     if (!Strings.FieldHashes.TryGetValue(typeHash, out HashSet<uint>? fields))
                     {
                         continue;
                     }
 
+                    // same thing as before
                     if (!Strings.FieldMapping.TryGetValue(typeHash, out Dictionary<uint, string>? dict))
                     {
                         continue;
@@ -184,18 +206,24 @@ public class TypeSdkGenerator
                     {
                         uint fieldHash = HashTypeName(field);
 
+                        // only continue if field is used
                         if (!fields.Contains(fieldHash))
                         {
                             continue;
                         }
 
+                        // if we havent already resolved this hash set it
                         if (!dict.TryGetValue(fieldHash, out string? name) || string.IsNullOrEmpty(name))
                         {
                             dict[fieldHash] = field;
                         }
                         else
                         {
-                            Debug.Assert(name.Equals(field, StringComparison.OrdinalIgnoreCase));
+                            // a field with this hash was already added, check if its the same (ignore case)
+                            if (!name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                            {
+                                FrostyLogger.Logger?.LogInfo($"Type hash {fieldHash:X8} duplicate. Using \"{name}\" instead of \"{field}\"");
+                            }
                         }
                     }
                 }
@@ -264,16 +292,12 @@ public class TypeSdkGenerator
             File.WriteAllText(typeNamesPath, JsonSerializer.Serialize(Strings.TypeNames));
             File.WriteAllText(fieldNamesPath, JsonSerializer.Serialize(Strings.FieldNames));
 
-            // reparse the typeinfo with now hopefully more typenames
-            TypeInfo.TypeInfoMapping.Clear();
+            // update the typeinfo with now hopefully more typenames
 
-            reader.Position = typeInfoOffset;
-            ti = TypeInfo.ReadTypeInfo(reader);
-
-            do
+            foreach (TypeInfo typeInfo in TypeInfo.TypeInfoMapping.Values)
             {
-                ti = ti.GetNextTypeInfo(reader);
-            } while (ti is not null);
+                typeInfo.UpdateName();
+            }
         }
         else
         {
@@ -282,7 +306,9 @@ public class TypeSdkGenerator
             File.WriteAllText(fieldNamesPath, JsonSerializer.Serialize(Strings.FieldNames));
         }
 
-        if (TypeInfo.TypeInfoMapping.Count > 0)
+        Strings.Reset();
+
+        if (TypeInfo.TypeInfoMapping?.Count > 0)
         {
             foreach (TypeInfo type in TypeInfo.TypeInfoMapping.Values)
             {
@@ -309,6 +335,12 @@ public class TypeSdkGenerator
     {
         FrostyLogger.Logger?.LogInfo("Creating sdk");
 
+        if (TypeInfo.TypeInfoMapping is null)
+        {
+            FrostyLogger.Logger?.LogError($"No dumped types to create the sdk from. Call {nameof(DumpTypes)} first.");
+            return false;
+        }
+
         StringBuilder sb = new();
 
         sb.AppendLine("using System;");
@@ -329,8 +361,9 @@ public class TypeSdkGenerator
                 case TypeFlags.TypeEnum.Struct:
                 case TypeFlags.TypeEnum.Class:
                 case TypeFlags.TypeEnum.Enum:
-                case TypeFlags.TypeEnum.Delegate:
+                case TypeFlags.TypeEnum.Function:
                 case TypeFlags.TypeEnum.Interface:
+                case TypeFlags.TypeEnum.Delegate:
                     typeInfo.CreateType(sb);
                     break;
 
@@ -358,6 +391,9 @@ public class TypeSdkGenerator
                     break;
             }
         }
+
+        TypeInfo.TypeInfoMapping = null;
+        ArrayInfo.Mapping = null;
 
         string source = sb.ToString();
 
@@ -391,35 +427,35 @@ public class TypeSdkGenerator
         driver.RunGeneratorsAndUpdateCompilation(
             compilation,
             out Compilation outputCompilation,
-            out _);
-
-#if EBX_TYPE_SDK_DEBUG
-        foreach (SyntaxTree tree in outputCompilation.SyntaxTrees)
-        {
-            if (string.IsNullOrEmpty(tree.FilePath))
-            {
-                File.WriteAllText("DumpedTypes.cs", tree.GetText().ToString());
-                continue;
-                //break;
-            }
-
-            FileInfo fileInfo = new(tree.FilePath);
-            Directory.CreateDirectory(fileInfo.DirectoryName!);
-            File.WriteAllText(tree.FilePath, tree.GetText().ToString());
-        }
-#endif
+            out ImmutableArray<Diagnostic> diagnostics);
 
         using (MemoryStream stream = new())
         {
             EmitResult result = outputCompilation.Emit(stream);
             if (!result.Success)
             {
-#if EBX_TYPE_SDK_DEBUG
                 File.WriteAllLines("Errors.txt", result.Diagnostics.Select(static d => d.ToString()));
+                File.WriteAllLines("Errors_gen.txt", diagnostics.Select(static d => d.ToString()));
                 FrostyLogger.Logger?.LogError($"Could not compile sdk, errors written to Errors.txt");
+
+                // write types
+                foreach (SyntaxTree tree in outputCompilation.SyntaxTrees)
+                {
+                    if (string.IsNullOrEmpty(tree.FilePath))
+                    {
+                        File.WriteAllText("DumpedTypes.cs", tree.GetText().ToString());
+#if EBX_TYPE_SDK_DEBUG
+                        continue;
 #else
-                FrostyLogger.Logger?.LogError($"Could not compile sdk");
+                break;
 #endif
+                    }
+
+                    FileInfo fileInfo = new(tree.FilePath);
+                    Directory.CreateDirectory(fileInfo.DirectoryName!);
+                    File.WriteAllText(tree.FilePath, tree.GetText().ToString());
+                }
+
                 return false;
             }
             File.WriteAllBytes(filePath, stream.ToArray());

@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Sdk.TypeInfoDatas;
 using Frosty.Sdk.Sdk.TypeInfos;
@@ -49,7 +48,7 @@ internal class TypeInfo
         }
     }
 
-    public static readonly Dictionary<long, TypeInfo> TypeInfoMapping = new();
+    public static Dictionary<long, TypeInfo>? TypeInfoMapping;
 
     protected long p_this;
     protected TypeInfoData m_data;
@@ -82,7 +81,7 @@ internal class TypeInfo
         retVal.p_this = startPos;
         retVal.Read(reader);
 
-        TypeInfoMapping.Add(startPos, retVal);
+        TypeInfoMapping!.Add(startPos, retVal);
 
         return retVal;
     }
@@ -172,7 +171,7 @@ internal class TypeInfo
     {
         m_data.CreateNamespace(sb);
 
-        if (Version < 3 && ArrayInfo.Mapping.TryGetValue(p_this, out long arrayInfoPtr))
+        if (Version < 3 && ArrayInfo.Mapping!.TryGetValue(p_this, out long arrayInfoPtr))
         {
             m_data.SetArrayInfoPtr(arrayInfoPtr);
         }
@@ -181,5 +180,10 @@ internal class TypeInfo
         m_data.CreateType(sb);
 
         sb.AppendLine("}");
+    }
+
+    public void UpdateName()
+    {
+        m_data.UpdateName();
     }
 }

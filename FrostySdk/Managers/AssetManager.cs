@@ -313,6 +313,10 @@ public static class AssetManager
 
     #endregion
 
+    public static IEnumerable<string> GetEbxNames() => s_ebxNameMapping.Keys;
+    public static IEnumerable<string> GetResNames() => s_resNameMapping.Keys;
+    public static IEnumerable<Guid> GetChunkIds() => s_chunkGuidMapping.Keys;
+
     public static IEnumerable<BundleInfo> EnumerateBundleInfos()
     {
         foreach (BundleInfo bundle in s_bundleMapping.Values)
@@ -433,9 +437,9 @@ public static class AssetManager
             if (existing.LogicalSize == 0)
             {
                 // this chunk was first added as a superbundle chunk, so add logical offset/size and sha1
-                existing.Sha1 = existing.Sha1;
-                existing.LogicalOffset = existing.LogicalOffset;
-                existing.LogicalSize = existing.LogicalSize;
+                existing.Sha1 = entry.Sha1;
+                existing.LogicalOffset = entry.LogicalOffset;
+                existing.LogicalSize = entry.LogicalSize;
                 existing.OriginalSize = entry.OriginalSize;
             }
 
@@ -478,6 +482,9 @@ public static class AssetManager
             entry.LogicalOffset = existing.LogicalOffset;
             entry.LogicalSize = existing.LogicalSize;
             entry.OriginalSize = existing.OriginalSize;
+
+            // add Sha1, since its only stored in bundles for some formats
+            entry.Sha1 = existing.Sha1;
 
             // merge SuperBundleInstallChunks
             entry.SuperBundleInstallChunks.UnionWith(existing.SuperBundleInstallChunks);
@@ -522,7 +529,7 @@ public static class AssetManager
                 {
                     // happens when they changed the name when patching it
 
-                    // since we load patch superbundles first the first one should be correct, hopefully not too many issues arise bc of this
+                    // since we load patch superbundles first the first one should be correct most of the time, hopefully not too many issues arise bc of this
                     FrostyLogger.Logger?.LogWarning($"Removing ebx \"{entry.Name}\" with same guid as \"{other.Name}\"");
 
                     s_ebxNameMapping.Remove(entry.Name);
@@ -558,6 +565,7 @@ public static class AssetManager
             }
         }
 
+        int a = 0;
         foreach (ChunkAssetEntry entry in s_chunkGuidMapping.Values)
         {
             if (entry.FileInfo is null)
@@ -567,10 +575,12 @@ public static class AssetManager
             }
             else if (entry.LogicalSize == 0)
             {
+                a++;
                 entry.OriginalSize = entry.FileInfo.GetOriginalSize();
                 entry.LogicalSize = (uint)entry.OriginalSize;
             }
         }
+        FrostyLogger.Logger?.LogInfo($"Had to resolve OriginalSize for {a} chunks");
     }
 
     private static bool ReadCache(out List<EbxAssetEntry> prePatchEbx, out List<ResAssetEntry> prePatchRes, out List<ChunkAssetEntry> prePatchChunks)
@@ -773,7 +783,7 @@ public static class AssetManager
                 stream.WriteInt64(entry.OriginalSize);
 
                 stream.WriteUInt64(entry.ResRid);
-                stream.WriteUInt32(entry.ResType);
+                stream.WriteUInt32((uint)entry.ResType);
                 stream.WriteInt32(entry.ResMeta.Length);
                 stream.Write(entry.ResMeta, 0, entry.ResMeta.Length);
 

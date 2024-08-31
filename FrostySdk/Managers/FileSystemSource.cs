@@ -42,16 +42,14 @@ public class FileSystemSource
         return false;
     }
 
+    /// <summary>
+    /// Resolves path in current Source.
+    /// </summary>
+    /// <param name="inPath">The relative path to resolve.</param>
+    /// <returns>The resolved full path.</returns>
     public string ResolvePath(string inPath)
     {
-        string path = System.IO.Path.Combine(FileSystemManager.BasePath, Path, inPath);
-
-        if (File.Exists(path) || Directory.Exists(path))
-        {
-            return path;
-        }
-
-        return string.Empty;
+        return System.IO.Path.Combine(FileSystemManager.BasePath, Path, inPath);
     }
 
     public bool IsDLC() => m_type == Type.DLC;

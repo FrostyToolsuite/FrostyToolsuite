@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Xml;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace Frosty.Sdk.IO;
@@ -36,15 +37,38 @@ public sealed class DbxReader
     private int m_internalId = -1;
     private string m_filepath = string.Empty;
 
-    public EbxAsset Read(string filepath)
+    public DbxReader(string filepath)
     {
         m_filepath = filepath;
         m_xml.Load(filepath);
-        m_ebx = new();
         m_guidToObjAndXmlNode.Clear();
         m_guidToRefCount.Clear();
+    }
 
-        return ReadDbx();
+    public DbxReader(Stream inStream)
+    {
+        m_xml.Load(inStream);
+        m_guidToObjAndXmlNode.Clear();
+        m_guidToRefCount.Clear();
+    }
+
+    public EbxAsset ReadAsset()
+    {
+        m_ebx = new EbxAsset();
+#if FROSTY_DEVELOPER
+        Stopwatch w = new();
+        w.Start();
+#endif
+        XmlNode? rootNode = m_xml.DocumentElement;
+
+        Debug.Assert(rootNode != null && rootNode.Name == "partition", "Invalid DBX (root element is not a partition)");
+
+        ReadPartition(rootNode);
+#if FROSTY_DEVELOPER
+        w.Stop();
+        Console.WriteLine($"Dbx {m_filepath} read in {w.ElapsedMilliseconds} ms");
+#endif
+        return m_ebx!;
     }
 
     private static void SetProperty(object obj, Type objType, string propName, object? propValue)
@@ -174,24 +198,6 @@ public sealed class DbxReader
         return primitive;
     }
 
-    private EbxAsset ReadDbx()
-    {
-#if FROSTY_DEVELOPER
-        Stopwatch w = new();
-        w.Start();
-#endif
-        XmlNode? rootNode = m_xml.DocumentElement;
-
-        Debug.Assert(rootNode != null && rootNode.Name == "partition", "Invalid DBX (root element is not a partition)");
-
-        ReadPartition(rootNode);
-#if FROSTY_DEVELOPER
-        w.Stop();
-        Console.WriteLine($"Dbx {m_filepath} read in {w.ElapsedMilliseconds} ms");
-#endif
-        return m_ebx!;
-    }
-
     private void ReadPartition(XmlNode partitionNode)
     {
         Guid partitionGuid = Guid.Parse(GetAttributeValue(partitionNode, "guid")!);
@@ -215,7 +221,7 @@ public sealed class DbxReader
 
     private void CreateInstance(XmlNode node)
     {
-        Type? ebxType = TypeLibrary.GetType(GetAttributeValue(node, "id")!);
+        Type? ebxType = TypeLibrary.GetType(GetAttributeValue(node, "type")!.Split('.')[^1]);
         if(ebxType is null)
         {
             return;

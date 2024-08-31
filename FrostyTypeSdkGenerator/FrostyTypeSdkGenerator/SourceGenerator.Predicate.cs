@@ -15,7 +15,7 @@ public sealed partial class SourceGenerator
 
     private static bool EmptyStructPredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
-        return node is StructDeclarationSyntax structDeclarationSyntax && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword) && (structDeclarationSyntax.Members.Count == 0 || !structDeclarationSyntax.Members.Any(m => m is not TypeDeclarationSyntax and not ConstructorDeclarationSyntax));
+        return node is StructDeclarationSyntax structDeclarationSyntax && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword) && (structDeclarationSyntax.Members.Count == 0 || !structDeclarationSyntax.Members.Any(m => m is FieldDeclarationSyntax));
     }
 
     private static bool BaseClassPredicate(SyntaxNode node, CancellationToken cancellationToken)
@@ -36,6 +36,6 @@ public sealed partial class SourceGenerator
 
     private static bool TypePredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
-        return node is TypeDeclarationSyntax { Members.Count: > 0 } typeDeclarationSyntax && typeDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword) && !typeDeclarationSyntax.Modifiers.Any(SyntaxKind.StaticKeyword);
+        return node is TypeDeclarationSyntax { Members.Count: > 0 } typeDeclarationSyntax && typeDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword) && !typeDeclarationSyntax.Modifiers.Any(SyntaxKind.StaticKeyword) && typeDeclarationSyntax.Members.Any(static member => member is FieldDeclarationSyntax);
     }
 }

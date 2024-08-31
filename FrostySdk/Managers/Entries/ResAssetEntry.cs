@@ -16,7 +16,7 @@ public class ResAssetEntry : AssetEntry
     /// <summary>
     /// The <see cref="ResourceType"/> of this <see cref="ResAssetEntry"/>.
     /// </summary>
-    public uint ResType { get; }
+    public ResourceType ResType { get; }
 
     /// <summary>
     /// The Meta of this <see cref="ResAssetEntry"/>.
@@ -24,6 +24,15 @@ public class ResAssetEntry : AssetEntry
     public byte[] ResMeta { get; }
 
     public ResAssetEntry(string inName, Sha1 inSha1, long inOriginalSize, ulong inResRid, uint inResType, byte[] inResMeta)
+        : base(inSha1, inOriginalSize)
+    {
+        Name = inName;
+        ResRid = inResRid;
+        ResType = (ResourceType)inResType;
+        ResMeta = inResMeta;
+    }
+
+    public ResAssetEntry(string inName, Sha1 inSha1, long inOriginalSize, ulong inResRid, ResourceType inResType, byte[] inResMeta)
         : base(inSha1, inOriginalSize)
     {
         Name = inName;

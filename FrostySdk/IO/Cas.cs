@@ -2,6 +2,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using Frosty.Sdk.Exceptions;
+using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Profiles;
 using Frosty.Sdk.Utils;
@@ -10,6 +12,67 @@ namespace Frosty.Sdk.IO;
 
 public static class Cas
 {
+    public static unsafe Block<byte> CompressData(Block<byte> inData, CompressionType inType, CompressionFlags inFlags)
+    {
+        int blockCount = (inData.Size + ProfilesLibrary.MaxBufferSize - 1) / ProfilesLibrary.MaxBufferSize;
+
+        Block<byte> outData = new(0);
+        using (BlockStream stream = new(outData, true))
+        {
+            for (int i = 0; i < blockCount; i++)
+            {
+                int decompressedSize = Math.Min(ProfilesLibrary.MaxBufferSize, inData.Size);
+                Block<byte> data = new(inData.Ptr, decompressedSize);
+                data.MarkMemoryAsFragile();
+
+                ICompressionFormat? compressor = null;
+                switch (inType)
+                {
+                    case CompressionType.None:
+                        break;
+                    case CompressionType.ZStd:
+                        compressor = new CompressionZStd();
+                        break;
+                    case CompressionType.LZ4:
+                        compressor = new CompressionLZ4();
+                        break;
+                    case CompressionType.ZLib:
+                        compressor = new CompressionZLib();
+                        break;
+                    case CompressionType.OodleKraken:
+                        compressor = new CompressionOodle();
+                        inFlags = CompressionFlags.OodleKraken;
+                        break;
+                    case CompressionType.OodleSelkie:
+                        compressor = new CompressionOodle();
+                        inFlags = CompressionFlags.OodleSelkie;
+                        break;
+                    case CompressionType.OodleLeviathan:
+                        compressor = new CompressionOodle();
+                        inFlags = CompressionFlags.OodleLeviathan;
+                        break;
+                    default:
+                        throw new UnknownValueException<CompressionType>("CompressionType", inType);
+                }
+
+                int compSize = compressor?.GetCompressBounds(decompressedSize, inFlags) ?? decompressedSize;
+                Block<byte> compBuffer = inType == CompressionType.None ? data : new(compSize);
+
+                int compressedSize = compressor?.Compress(data, ref compBuffer, inFlags) ?? decompressedSize;
+
+                long packed = ((inFlags == CompressionFlags.ZStdUseDicts ? 1L : 0) << 56) | ((long)decompressedSize << 32) | ((byte)inType << 24) | (0x7 << 20) | compressedSize;
+                stream.WriteInt64(packed, Endian.Big);
+                stream.Write(compBuffer.ToSpan(0, compressedSize));
+                compBuffer.Dispose();
+                data.Dispose();
+                inData.Shift(decompressedSize);
+            }
+        }
+        inData.ResetShift();
+
+        return outData;
+    }
+
     public static Block<byte> DecompressData(DataStream inStream, int inOriginalSize)
     {
         Block<byte> outBuffer = new(inOriginalSize);
@@ -419,12 +482,43 @@ public static class Cas
         return decompressedSize;
     }
 
-    public static long GetUncompressedSize(DataStream inDeltaStream, DataStream? inBaseStream)
+    public static long GetOriginalSize(DataStream inStream)
+    {
+        long uncompressedSize = 0;
+
+        while (inStream.Position < inStream.Length)
+        {
+            ulong packed = inStream.ReadUInt64(Endian.Big);
+
+            if (packed == 0)
+            {
+                return 0;
+            }
+
+            int decompressedSize = (int)((packed >> 32) & 0x00FFFFFF);
+            CompressionType compressionType = (CompressionType)(packed >> 24);
+            Debug.Assert(((packed >> 20) & 0xF) == 7, "Invalid cas data");
+            int bufferSize = (int)(packed & 0x000FFFFF);
+
+            if ((compressionType & ~CompressionType.Obfuscated) == CompressionType.None)
+            {
+                bufferSize = decompressedSize;
+            }
+
+            inStream.Position += bufferSize;
+
+            uncompressedSize += decompressedSize;
+        }
+
+        return uncompressedSize;
+    }
+
+    public static long GetOriginalSize(DataStream inDeltaStream, DataStream? inBaseStream)
     {
         throw new NotImplementedException();
     }
 
-    public static long GetUncompressedSize(DataStream inDeltaStream, DataStream? inBaseStream, int inMidInstructionSize)
+    public static long GetOriginalSize(DataStream inDeltaStream, DataStream? inBaseStream, int inMidInstructionSize)
     {
         throw new NotImplementedException();
     }
@@ -567,24 +661,24 @@ public static class Cas
             }
         }
 
+        ICompressionFormat? decompressor = null;
         switch (inCompressionType & ~CompressionType.Obfuscated)
         {
             case CompressionType.None:
                 // we already read the data into the outBuffer so nothing to do
                 break;
             case CompressionType.ZLib:
-                CompressionZLib zlib = new();
-                zlib.Decompress(inCompressedBuffer, ref outBuffer);
+                decompressor = new CompressionZLib();
                 break;
             case CompressionType.ZStd:
-                CompressionZStd zstd = new();
-                zstd.Decompress(inCompressedBuffer, ref outBuffer, inFlags != 0 ? CompressionFlags.ZStdUseDicts : CompressionFlags.None);
+                decompressor = new CompressionZStd();
                 break;
             case CompressionType.LZ4:
-                CompressionLZ4 lz4 = new();
-                lz4.Decompress(inCompressedBuffer, ref outBuffer);
+                decompressor = new CompressionLZ4();
                 break;
             case CompressionType.OodleKraken:
+            case CompressionType.OodleSelkie:
+            case CompressionType.OodleLeviathan:
             {
                 CompressionOodle oodle = new();
                 // oodle being annoying, it throws an error when the buffer is bigger than the original size
@@ -592,30 +686,11 @@ public static class Cas
                 actualSizedOutBuffer.MarkMemoryAsFragile();
                 oodle.Decompress(inCompressedBuffer, ref actualSizedOutBuffer, CompressionFlags.OodleKraken);
                 actualSizedOutBuffer.Dispose();
-                break;
-            }
-            case CompressionType.OodleSelkie:
-            {
-                CompressionOodle oodle = new();
-                // oodle being annoying, it throws an error when the buffer is bigger than the original size
-                Block<byte> actualSizedOutBuffer = new(outBuffer.Ptr, inDecompressedSize);
-                actualSizedOutBuffer.MarkMemoryAsFragile();
-                oodle.Decompress(inCompressedBuffer, ref actualSizedOutBuffer, CompressionFlags.OodleSelkie);
-                actualSizedOutBuffer.Dispose();
-                break;
-            }
-            case CompressionType.OodleLeviathan:
-            {
-                CompressionOodle oodle = new();
-                // oodle being annoying, it throws an error when the buffer is bigger than the original size
-                Block<byte> actualSizedOutBuffer = new(outBuffer.Ptr, inDecompressedSize);
-                actualSizedOutBuffer.MarkMemoryAsFragile();
-                oodle.Decompress(inCompressedBuffer, ref actualSizedOutBuffer, CompressionFlags.OodleLeviathan);
-                actualSizedOutBuffer.Dispose();
-                break;
+                return;
             }
             default:
                 throw new NotImplementedException($"Compression type: {inCompressionType}");
         }
+        decompressor?.Decompress(inCompressedBuffer, ref outBuffer, inFlags != 0 ? CompressionFlags.ZStdUseDicts : CompressionFlags.None);
     }
 }
