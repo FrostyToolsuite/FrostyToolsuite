@@ -81,15 +81,21 @@ public sealed unsafe partial class MemoryReader
         }
     }
 
-    public nint ReadPtr()
+    public nint ReadPtr(bool pad = true)
     {
         if (m_is32Bit)
         {
-            Pad(sizeof(int));
+            if (pad)
+            {
+                Pad(sizeof(int));
+            }
             return (nint)ReadInt();
         }
 
-        Pad(sizeof(long));
+        if (pad)
+        {
+            Pad(sizeof(long));
+        }
         return (nint)ReadLong();
     }
 
