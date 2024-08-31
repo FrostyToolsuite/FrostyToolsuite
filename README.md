@@ -15,6 +15,13 @@
   </a>
 </p>
 
+> [!WARNING]
+> This Project is in development and doesn't have a release yet.
+> 
+> **Use at your own risk.**
+> 
+> For a stable release use [FrostyToolsuite v1.0.6.3](https://github.com/CadeEvs/FrostyToolsuite/releases/latest).
+
 # About
 The FrostyToolsuite is a modding tool for games running on DICE's Frostbite game engine.
 
@@ -32,6 +39,10 @@ A GUI application which is used to create mods.
 
 ### FrostyModManager
 A GUI application which is used to select what mods to apply to the game.
+
+### FrostyCLI
+A CLI application which is used to create, update and apply mods. 
+See [Readme](https://github.com/FrostyToolsuite/FrostyToolsuite/blob/master/FrostyCli/README.md).
 
 ### FrostySdk
 A library which is used to access data from the game.
