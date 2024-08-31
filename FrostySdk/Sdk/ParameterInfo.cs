@@ -16,11 +16,11 @@ internal class ParameterInfo
     public void Read(MemoryReader reader)
     {
         m_name = reader.ReadNullTerminatedString();
-        p_typeInfo = reader.ReadLong();
+        p_typeInfo = reader.ReadPtr();
         m_type = reader.ReadByte();
         if (TypeInfo.Version > 3)
         {
-            p_defaultValue = reader.ReadLong();
+            p_defaultValue = reader.ReadPtr();
         }
     }
 

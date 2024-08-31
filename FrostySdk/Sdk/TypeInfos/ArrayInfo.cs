@@ -31,7 +31,7 @@ internal class ArrayInfo : TypeInfo
 
     public override string ReadDefaultValue(MemoryReader reader)
     {
-        long p = reader.ReadLong();
+        long p = reader.ReadPtr();
         reader.Position = p - 4;
         int count = reader.ReadInt();
         if (count != 0)

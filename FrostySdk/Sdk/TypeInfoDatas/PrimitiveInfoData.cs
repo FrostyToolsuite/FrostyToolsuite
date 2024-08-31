@@ -46,7 +46,7 @@ internal class PrimitiveInfoData : TypeInfoData
             case TypeFlags.TypeEnum.ResourceRef:
                 return $"new Frosty.Sdk.Ebx.ResourceRef({reader.ReadULong().ToString()})";
             case TypeFlags.TypeEnum.TypeRef:
-                long ptr = reader.ReadLong();
+                long ptr = reader.ReadPtr();
                 if (!TypeInfo.TypeInfoMapping!.TryGetValue(ptr, out TypeInfo? type))
                 {
                     return "default";
@@ -54,8 +54,8 @@ internal class PrimitiveInfoData : TypeInfoData
 
                 return $"new Frosty.Sdk.Ebx.TypeRef(typeof({type.GetFullName()}))";
             case TypeFlags.TypeEnum.BoxedValueRef:
-                ptr = reader.ReadLong();
-                long valuePtr = reader.ReadLong();
+                ptr = reader.ReadPtr();
+                long valuePtr = reader.ReadPtr();
                 if (!TypeInfo.TypeInfoMapping!.TryGetValue(ptr, out type))
                 {
                     return "default";

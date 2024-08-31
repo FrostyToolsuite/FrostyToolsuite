@@ -65,10 +65,12 @@ public sealed unsafe partial class MemoryReader
     public long Position { get; set; }
 
     private readonly Process m_process;
+    private readonly bool m_is32Bit;
 
-    public MemoryReader(Process inProcess)
+    public MemoryReader(Process inProcess, bool inIs32Bit)
     {
         m_process = inProcess;
+        m_is32Bit = inIs32Bit;
     }
 
     public void Pad(int alignment)
@@ -77,6 +79,18 @@ public sealed unsafe partial class MemoryReader
         {
             Position += alignment - Position % alignment;
         }
+    }
+
+    public nint ReadPtr()
+    {
+        if (m_is32Bit)
+        {
+            Pad(sizeof(int));
+            return (nint)ReadInt();
+        }
+
+        Pad(sizeof(long));
+        return (nint)ReadLong();
     }
 
     public byte ReadByte()
@@ -187,14 +201,9 @@ public sealed unsafe partial class MemoryReader
         return new Sha1(span);
     }
 
-    public string ReadNullTerminatedString(bool pad = true)
+    public string ReadNullTerminatedString()
     {
-        if (pad)
-        {
-            Pad(sizeof(long));
-        }
-
-        long offset = ReadLong();
+        long offset = ReadPtr();
         long orig = Position;
         Position = offset;
 

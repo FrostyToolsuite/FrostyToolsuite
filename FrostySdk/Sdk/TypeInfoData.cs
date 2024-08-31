@@ -129,7 +129,7 @@ internal class TypeInfoData
             m_guid = reader.ReadGuid();
         }
 
-        long nameSpaceOffset = reader.ReadLong();
+        long nameSpaceOffset = reader.ReadPtr();
         long curPos = reader.Position;
         reader.Position = nameSpaceOffset;
         m_nameSpace = reader.ReadNullTerminatedString();
@@ -137,7 +137,7 @@ internal class TypeInfoData
 
         if (TypeInfo.Version > 2)
         {
-            p_arrayInfo = reader.ReadLong();
+            p_arrayInfo = reader.ReadPtr();
         }
 
         m_alignment = reader.ReadByte();

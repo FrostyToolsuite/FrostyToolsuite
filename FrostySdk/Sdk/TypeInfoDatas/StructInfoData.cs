@@ -22,21 +22,21 @@ internal class StructInfoData : TypeInfoData
 
         if (TypeInfo.Version > 2)
         {
-            reader.ReadLong();
-            reader.ReadLong();
+            reader.ReadPtr();
+            reader.ReadPtr();
             if (TypeInfo.Version > 3)
             {
-                reader.ReadLong();
-                reader.ReadLong();
+                reader.ReadPtr();
+                reader.ReadPtr();
                 if (TypeInfo.Version > 4)
                 {
-                    reader.ReadLong();
+                    reader.ReadPtr();
                 }
             }
         }
 
-        p_defaultValue = reader.ReadLong();
-        long pFieldInfos = reader.ReadLong();
+        p_defaultValue = reader.ReadPtr();
+        long pFieldInfos = reader.ReadPtr();
 
         reader.Position = pFieldInfos;
         for (int i = 0; i < m_fieldCount; i++)
