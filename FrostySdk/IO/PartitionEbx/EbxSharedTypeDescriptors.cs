@@ -58,6 +58,11 @@ public static class EbxSharedTypeDescriptors
         return new EbxTypeDescriptor(s_typeKeyMapping[inTypeDescriptor.NameHash]);
     }
 
+    public static EbxTypeDescriptor GetSharedTypeDescriptor(uint inNameHash)
+    {
+        return s_typeDescriptors[s_keyTypeMapping[s_typeKeyMapping[inNameHash]]];
+    }
+
     private static void Read(Block<byte> file)
     {
         using (BlockStream stream = new(file))
@@ -106,11 +111,6 @@ public static class EbxSharedTypeDescriptors
                     SecondSize = stream.ReadUInt16(),
                     Index = s_typeDescriptors.Count
                 };
-
-                if (typeDescriptor.Index == 6459)
-                {
-
-                }
 
                 typeDescriptor.Name = TypeLibrary.GetType(typeDescriptor.NameHash)?.Name ?? string.Empty;
 
