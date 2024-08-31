@@ -55,30 +55,13 @@ public class TypeSdkGenerator
             }
         }
 
-        if (offset == nint.Zero)
-        {
-            return -1;
-        }
-
-        reader.Position = offset + 3;
-
-        // absolute offset in 32 bit
-        if (ProfilesLibrary.FrostbiteVersion < "2013.2")
-        {
-            reader.Position = reader.ReadInt(false);
-        }
-        else
-        {
-            int newValue = reader.ReadInt(false);
-            reader.Position = offset + 3 + newValue + 4;
-        }
-        return reader.ReadPtr(false);
+        return offset;
     }
 
     public bool DumpTypes(Process process)
     {
         long typeInfoOffset = FindTypeInfoOffset(process);
-        if (typeInfoOffset == -1)
+        if (typeInfoOffset == 0)
         {
             FrostyLogger.Logger?.LogError("No offset found for TypeInfo, maybe try a different TypeInfoSignature");
             return false;
