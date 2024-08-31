@@ -17,7 +17,7 @@ internal class FieldInfo : IComparable
     private string m_name = string.Empty;
     private uint m_nameHash;
     private TypeFlags m_flags;
-    private ushort m_offset;
+    private uint m_offset;
     private long p_typeInfo;
 
     private string? m_defaultValue;
@@ -54,7 +54,14 @@ internal class FieldInfo : IComparable
         }
 
         m_flags = reader.ReadUShort();
-        m_offset = reader.ReadUShort();
+        if (TypeInfo.Version > 6)
+        {
+            m_offset = reader.ReadUInt();
+        }
+        else
+        {
+            m_offset = reader.ReadUShort();
+        }
 
         p_typeInfo = reader.ReadLong();
 
