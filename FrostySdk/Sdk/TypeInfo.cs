@@ -41,10 +41,17 @@ internal class TypeInfo
                 // 2017.3, 2017.7, 2018.0, 2018.2
                 return 5;
             }
+            if (ProfilesLibrary.FrostbiteVersion <= "2021.2.3")
+            {
+                // Prev TypeInfo and Signature as uint in TypeInfoData
+                // 2019.0, 2020.0, 2021.1.1, 2021.2.0, 2021.2.3
+                return 6;
+            }
 
-            // Prev TypeInfo and Signature as uint in TypeInfoData
-            // 2019.0, 2020.0, 2021.1.1, 2021.2.0, 2021.2.3
-            return 6;
+            // Field offset as uint
+            // madden 25 doesnt have buildinfo
+            // 2022.2.1
+            return 7;
         }
     }
 

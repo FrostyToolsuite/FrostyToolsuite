@@ -424,7 +424,10 @@ public static class AssetManager
             entry.Bundles.Add(bundleId);
             if (entry.ResRid != 0)
             {
-                s_resRidMapping.Add(entry.ResRid, entry);
+                if (!s_resRidMapping.TryAdd(entry.ResRid, entry))
+                {
+                    FrostyLogger.Logger?.LogWarning($"Duplicate ResRid using {s_resRidMapping[entry.ResRid].Name} instead of {entry.Name}");
+                }
             }
             s_resNameMapping.Add(entry.Name, entry);
         }
