@@ -216,7 +216,7 @@ internal class Manifest2019 : IDisposable
                 int index = chunkData.Count;
 
                 int flag;
-                if (chunk.Identifier.InstallChunkIndex > byte.MaxValue)
+                if ((chunk.Identifier.InstallChunkIndex & ~byte.MaxValue) != 0)
                 {
                     ulong b = CasFileIdentifier.ToFileIdentifierLong(chunk.Identifier);
                     chunkData.Add((uint)(b >> 32));
@@ -575,7 +575,7 @@ internal class Manifest2019 : IDisposable
                 }
                 else
                 {
-                    if (file.Item1.InstallChunkIndex > byte.MaxValue)
+                    if ((file.Item1.InstallChunkIndex & ~byte.MaxValue) != 0)
                     {
                         fileFlags[j] = 0x80;
                         bundleWriter.WriteUInt64(CasFileIdentifier.ToFileIdentifierLong(file.Item1), Endian.Big);

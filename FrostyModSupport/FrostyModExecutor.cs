@@ -629,7 +629,7 @@ public partial class FrostyModExecutor
         }
         else
         {
-            superBundle = Frosty.Sdk.Utils.Utils.HashString(bundle.Parent.Name, true);
+            superBundle = bundle.Parent.Id;
         }
 
         return GetSuperBundleModInfo(superBundle);
