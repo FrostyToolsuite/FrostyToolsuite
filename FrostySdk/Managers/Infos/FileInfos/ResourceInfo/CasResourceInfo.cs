@@ -135,7 +135,7 @@ public class CasResourceInfo
 
     protected static void SerializeInternal(DataStream stream, CasResourceInfo info)
     {
-        stream.WriteUInt32(CasFileIdentifier.ToFileIdentifier(info.m_casFileIdentifier));
+        stream.WriteUInt64(CasFileIdentifier.ToFileIdentifierLong(info.m_casFileIdentifier), Endian.Big);
         stream.WriteUInt32(info.m_offset);
         stream.WriteUInt32(info.m_size);
         stream.WriteUInt32(info.m_logicalOffset);
@@ -143,7 +143,7 @@ public class CasResourceInfo
 
     private static CasResourceInfo DeserializeInternal(DataStream stream)
     {
-        CasFileIdentifier file = CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32());
+        CasFileIdentifier file = CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big));
         uint offset = stream.ReadUInt32();
         uint size = stream.ReadUInt32();
         uint logicalOffset = stream.ReadUInt32();
