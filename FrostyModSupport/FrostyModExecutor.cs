@@ -168,7 +168,14 @@ public partial class FrostyModExecutor
             }
         }
 
-        // TODO: dispose of in memory data
+        foreach (Block<byte> data in m_memoryData.Values)
+        {
+            data.Dispose();
+        }
+        foreach (InstallChunkWriter installChunkWriter in m_installChunkWriters.Values)
+        {
+            installChunkWriter.Dispose();
+        }
 
         // create symbolic links for everything that is in gamePatchPath but not in modDataPath
         foreach (string file in Directory.EnumerateFiles(m_gamePatchPath, string.Empty, SearchOption.AllDirectories))
