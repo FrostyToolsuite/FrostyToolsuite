@@ -447,9 +447,23 @@ internal class Manifest2019 : IDisposable
                 sbStream?.Dispose();
             }
 
-            foreach (BundleModInfo bundleModInfo in inModInfo.Added.Bundles.Values)
+            foreach (KeyValuePair<int, BundleModInfo> addedBundle in inModInfo.Added.Bundles)
             {
-                FrostyLogger.Logger?.LogError("Adding bundles not yet implemented.");
+                BundleModInfo bundleModInfo = addedBundle.Value;
+                long newOffset = inModifiedStream.Position;
+                (Block<byte> BundleMeta, List<(CasFileIdentifier, uint, uint)> Files, bool IsInline) bundle =
+                    AddBundle(bundleModInfo, inInstallChunkWriter);
+
+                Block<byte> data = WriteModifiedBundle(bundle, inInstallChunkWriter);
+                inModifiedStream.Write(data);
+                inModifiedStream.Pad(4);
+                uint newBundleSize = (uint)data.Size;
+                data.Dispose();
+
+                // remove bundle so we dont add it again when loading a potential base superbundle
+                inModInfo.Added.Bundles.Remove(addedBundle.Key);
+                // add new bundle to toc
+                inBundles.Add((inStringHelper.AddString(bundleModInfo.Name!), newBundleSize, newOffset));
             }
 
             if (chunksCount != 0)
@@ -717,6 +731,44 @@ internal class Manifest2019 : IDisposable
         fileIdentifierFlags.Dispose();
 
         inStream.Position = curPos;
+
+        return (bundleMeta, files, inlineBundle);
+    }
+
+    private (Block<byte>, List<(CasFileIdentifier, uint, uint)>, bool) AddBundle(BundleModInfo inModInfo,
+        InstallChunkWriter inInstallChunkWriter)
+    {
+        List<(CasFileIdentifier, uint, uint)> files =
+            new(inModInfo.Added.Ebx.Count + inModInfo.Added.Res.Count + inModInfo.Added.Chunks.Count);
+
+        foreach (string name in inModInfo.Added.Ebx)
+        {
+            EbxModEntry entry = m_modifiedEbx[name];
+            files.Add(inInstallChunkWriter.GetFileInfo(entry.Sha1));
+        }
+
+        foreach (string name in inModInfo.Added.Res)
+        {
+            ResModEntry entry = m_modifiedRes[name];
+            files.Add(inInstallChunkWriter.GetFileInfo(entry.Sha1));
+        }
+
+        foreach (Guid id in inModInfo.Added.Chunks)
+        {
+            ChunkModEntry entry = m_modifiedChunks[id];
+            (CasFileIdentifier File, uint Offset, uint Size) file = inInstallChunkWriter.GetFileInfo(entry.Sha1);
+            if (entry.FirstMip > 0)
+            {
+                file.Offset += entry.RangeStart;
+                file.Size = entry.RangeEnd - entry.RangeStart;
+            }
+            files.Add(file);
+        }
+
+        bool inlineBundle = ProfilesLibrary.FrostbiteVersion < "2019";
+
+        Block<byte> bundleMeta = BinaryBundle.Create(inlineBundle ? Endian.Big : Endian.Little, inModInfo.Added.Ebx, inModInfo.Added.Res, inModInfo.Added.Chunks,
+            m_modifiedEbx, m_modifiedRes, m_modifiedChunks);
 
         return (bundleMeta, files, inlineBundle);
     }

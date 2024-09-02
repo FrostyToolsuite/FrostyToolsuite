@@ -336,4 +336,150 @@ public static class BinaryBundle
 
         return retVal;
     }
+
+    public static Block<byte> Create(Endian inEndian, IEnumerable<string> inEbx, IEnumerable<string> inRes,
+        IEnumerable<Guid> inChunks, Dictionary<string, EbxModEntry> inModifiedEbx,
+        Dictionary<string, ResModEntry> inModifiedRes, Dictionary<Guid, ChunkModEntry> inModifiedChunks)
+    {
+        Sdk.IO.BinaryBundle.Magic magic = Sdk.IO.BinaryBundle.GetMagic();
+        bool containsSha1 = magic == Sdk.IO.BinaryBundle.Magic.Standard;
+
+        Dictionary<string, uint> strings = new();
+        List<Sha1> sha1 = new();
+        List<EbxModEntry> ebx = new();
+        List<ResModEntry> res = new();
+        List<ChunkModEntry> chunks = new();
+        uint offset = 0;
+
+        foreach (string name in inEbx)
+        {
+            EbxModEntry entry = inModifiedEbx[name];
+            sha1.Add(entry.Sha1);
+            ebx.Add(entry);
+
+            if (strings.TryAdd(name, offset))
+            {
+                offset += (uint)name.Length + 1;
+            }
+        }
+
+        foreach (string name in inRes)
+        {
+            ResModEntry entry = inModifiedRes[name];
+            sha1.Add(entry.Sha1);
+            res.Add(entry);
+
+            if (strings.TryAdd(name, offset))
+            {
+                offset += (uint)name.Length + 1;
+            }
+        }
+
+        DbObjectList? chunkMeta = null;
+        foreach (Guid id in inChunks)
+        {
+            ChunkModEntry entry = inModifiedChunks[id];
+            sha1.Add(entry.Sha1);
+            chunks.Add(entry);
+
+            chunkMeta ??= DbObject.CreateList(1);
+            DbObjectDict meta = DbObject.CreateDict(2);
+            meta.Set("h32", entry.H32);
+            if (entry.FirstMip != -1)
+            {
+                DbObjectDict firstMip = DbObject.CreateDict("meta", 1);
+                firstMip.Set("firstMip", entry.FirstMip);
+                meta.Set("meta", firstMip);
+            }
+            chunkMeta.Add(meta);
+        }
+
+        // write new bundle
+        long stringsOffset = 32 + (containsSha1 ? sha1.Count * 20 : 0) + ebx.Count * 8 + res.Count * 36 +
+                        chunks.Count * 24;
+        Block<byte> retVal = new((int)(stringsOffset + offset));
+        using (BlockStream stream = new(retVal, true))
+        {
+            stream.WriteUInt32(0xDEADBEEF, Endian.Big);
+
+            stream.WriteUInt32((uint)magic ^ Sdk.IO.BinaryBundle.GetSalt(), inEndian);
+
+            stream.WriteInt32(sha1.Count, inEndian);
+            stream.WriteInt32(ebx.Count, inEndian);
+            stream.WriteInt32(res.Count, inEndian);
+            stream.WriteInt32(chunks.Count, inEndian);
+
+            stream.WriteUInt32(0xDEADBEEF, inEndian);
+            stream.WriteUInt32(0xDEADBEEF, inEndian);
+            stream.WriteUInt32(0xDEADBEEF, inEndian);
+
+            foreach (Sha1 value in sha1)
+            {
+                stream.WriteSha1(value);
+            }
+
+            foreach (EbxModEntry entry in ebx)
+            {
+                stream.WriteUInt32(strings[entry.Name], inEndian);
+                stream.WriteUInt32((uint)entry.OriginalSize, inEndian);
+            }
+
+            long resTypeOffset = stream.Position + res.Count * 2 * sizeof(uint);
+            long resMetaOffset = stream.Position + res.Count * 2 * sizeof(uint) + res.Count * sizeof(uint);
+            long resRidOffset = stream.Position + res.Count * 2 * sizeof(uint) + res.Count * sizeof(uint) + res.Count * 0x10;
+            for (int i = 0; i < res.Count; i++)
+            {
+                ResModEntry entry = res[i];
+                stream.WriteUInt32(strings[entry.Name], inEndian);
+                stream.WriteUInt32((uint)entry.OriginalSize, inEndian);
+
+                long currentPos = stream.Position;
+                stream.Position = resTypeOffset + i * sizeof(uint);
+                stream.WriteUInt32(entry.ResType, inEndian);
+
+                stream.Position = resMetaOffset + i * 0x10;
+                stream.Write(entry.ResMeta);
+
+                stream.Position = resRidOffset + i * sizeof(ulong);
+                stream.WriteUInt64(entry.ResRid, inEndian);
+                stream.Position = currentPos;
+            }
+
+            stream.Position = resRidOffset + res.Count * sizeof(ulong);
+
+            foreach (ChunkModEntry entry in chunks)
+            {
+                stream.WriteGuid(entry.Id, inEndian);
+                stream.WriteUInt32(entry.LogicalOffset, inEndian);
+                stream.WriteUInt32(entry.LogicalSize, inEndian);
+            }
+
+            uint chunkMetaOffset = (uint)stream.Position - 4;
+            if (chunkMeta is not null)
+            {
+                DbObject.Serialize(stream, chunkMeta);
+            }
+            uint chunkMetaSize = (uint)(stream.Position - 4 - chunkMetaOffset);
+
+            foreach (KeyValuePair<string,uint> pair in strings)
+            {
+                stream.WriteNullTerminatedString(pair.Key);
+            }
+
+            while ((stream.Position & 15) != 0)
+            {
+                stream.WriteByte(0);
+            }
+
+            stream.Position = 0;
+            stream.WriteUInt32((uint)stream.Length - 4, Endian.Big);
+
+            stream.Position = 0x18;
+            stream.WriteUInt32(chunkMetaOffset + chunkMetaSize, inEndian);
+            stream.WriteUInt32(chunkMetaOffset, inEndian);
+            stream.WriteUInt32(chunkMetaSize, inEndian);
+        }
+
+        return retVal;
+    }
 }

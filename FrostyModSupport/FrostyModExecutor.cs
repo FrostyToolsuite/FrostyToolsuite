@@ -272,7 +272,7 @@ public partial class FrostyModExecutor
                 {
                     SuperBundleModInfo sb = GetSuperBundleModInfo(bundle.SuperBundleHash);
 
-                    sb.Added.Bundles.TryAdd(bundle.BundleHash, new BundleModInfo());
+                    sb.Added.Bundles.TryAdd(bundle.BundleHash, new BundleModInfo { Name = bundle.Name });
                     m_bundleToSuperBundleMapping.TryAdd(bundle.BundleHash, bundle.SuperBundleHash);
                     break;
                 }

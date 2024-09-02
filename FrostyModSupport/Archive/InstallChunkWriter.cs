@@ -70,7 +70,7 @@ public class InstallChunkWriter : IDisposable
         return retVal;
     }
 
-    public (CasFileIdentifier, uint, uint) GetFileInfo(Sha1 inSha1)
+    public (CasFileIdentifier File, uint Offset, uint Size) GetFileInfo(Sha1 inSha1)
     {
         return m_data[inSha1];
     }
