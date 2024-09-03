@@ -460,8 +460,6 @@ internal class Manifest2019 : IDisposable
                 uint newBundleSize = (uint)data.Size;
                 data.Dispose();
 
-                // remove bundle so we dont add it again when loading a potential base superbundle
-                inModInfo.Added.Bundles.Remove(addedBundle.Key);
                 // add new bundle to toc
                 inBundles.Add((inStringHelper.AddString(bundleModInfo.Name!), newBundleSize, newOffset));
             }

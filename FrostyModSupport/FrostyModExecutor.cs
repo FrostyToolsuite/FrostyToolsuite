@@ -540,7 +540,7 @@ public partial class FrostyModExecutor
                     sb.Data.Add(resource.Sha1);
                 }
 
-                if (!sb.Modified.Bundles.TryGetValue(addedBundle, out BundleModInfo? modInfo))
+                if (!sb.Added.Bundles.TryGetValue(addedBundle, out BundleModInfo? modInfo) && !sb.Modified.Bundles.TryGetValue(addedBundle, out modInfo))
                 {
                     modInfo = new BundleModInfo();
                     sb.Modified.Bundles.Add(addedBundle, modInfo);
