@@ -738,8 +738,14 @@ internal class Manifest2019 : IDisposable
     private (Block<byte>, List<(CasFileIdentifier, uint, uint)>, bool) AddBundle(BundleModInfo inModInfo,
         InstallChunkWriter inInstallChunkWriter)
     {
+        bool inlineBundle = ProfilesLibrary.FrostbiteVersion < "2019";
         List<(CasFileIdentifier, uint, uint)> files =
-            new(inModInfo.Added.Ebx.Count + inModInfo.Added.Res.Count + inModInfo.Added.Chunks.Count);
+            new((inlineBundle ? 0 : 1) + inModInfo.Added.Ebx.Count + inModInfo.Added.Res.Count + inModInfo.Added.Chunks.Count);
+
+        if (inlineBundle)
+        {
+            files.Add(default);
+        }
 
         foreach (string name in inModInfo.Added.Ebx)
         {
@@ -764,8 +770,6 @@ internal class Manifest2019 : IDisposable
             }
             files.Add(file);
         }
-
-        bool inlineBundle = ProfilesLibrary.FrostbiteVersion < "2019";
 
         Block<byte> bundleMeta = BinaryBundle.Create(inlineBundle ? Endian.Big : Endian.Little, inModInfo.Added.Ebx, inModInfo.Added.Res, inModInfo.Added.Chunks,
             m_modifiedEbx, m_modifiedRes, m_modifiedChunks);
