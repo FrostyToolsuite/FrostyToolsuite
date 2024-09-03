@@ -742,7 +742,7 @@ internal class Manifest2019 : IDisposable
         List<(CasFileIdentifier, uint, uint)> files =
             new((inlineBundle ? 0 : 1) + inModInfo.Added.Ebx.Count + inModInfo.Added.Res.Count + inModInfo.Added.Chunks.Count);
 
-        if (inlineBundle)
+        if (!inlineBundle)
         {
             files.Add(default);
         }
