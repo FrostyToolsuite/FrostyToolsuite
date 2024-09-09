@@ -19,7 +19,10 @@ internal static partial class Program
 
     private static int Main(string[] args)
     {
-        RootCommand rootCommand = new("CLI app to load and mod games made with the Frostbite Engine.");
+        RootCommand rootCommand = new("CLI app to load and mod games made with the Frostbite Engine.")
+        {
+            key1Option, key2Option, key3Option
+        };
 
         AddLoadCommand(rootCommand);
 
@@ -29,19 +32,24 @@ internal static partial class Program
 
         AddCreateModCommand(rootCommand);
 
-        rootCommand.SetHandler(InteractiveMode);
+        rootCommand.SetHandler(InteractiveMode, key1Option, key2Option, key3Option);
 
         return rootCommand.InvokeAsync(args).Result;
     }
 
-    private static void InteractiveMode()
+    private static void InteractiveMode(FileInfo? initFsKey, FileInfo? bundleKey, FileInfo? casKey)
     {
         Assembly assembly = Assembly.GetExecutingAssembly();
-
+#if DEBUG || NIGHTLY
         Logger.LogInfoInternal(
-            $"FrostyCli v{assembly.GetName().Version}-{assembly.GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "GitHash")?.Value}");
+            $"FrostyCli v{assembly.GetName().Version?.ToString(2)}-{assembly.GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "GitHash")?.Value}");
+#else
+        Logger.LogInfoInternal($"FrostyCli v{assembly.GetName().Version?.ToString(3)}");
 
-        if (!LoadGame())
+#endif
+
+
+        if (!LoadGame(inInitFsKeyFileInfo: initFsKey, inBundleKeyFileInfo: bundleKey, inCasKeyFileInfo: casKey))
         {
             return;
         }
@@ -214,7 +222,7 @@ internal static partial class Program
 
             TypeSdkGenerator typeSdkGenerator = new();
 
-            Process process = Process.GetProcessById(pid);
+            using Process process = Process.GetProcessById(pid);
 
             if (!typeSdkGenerator.DumpTypes(process))
             {

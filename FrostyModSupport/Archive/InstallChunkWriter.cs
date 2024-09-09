@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
@@ -7,18 +8,17 @@ using Frosty.Sdk.Utils;
 
 namespace Frosty.ModSupport.Archive;
 
-public class InstallChunkWriter
+public class InstallChunkWriter : IDisposable
 {
     private const int c_maxCasFileSize = 1073741824;
 
-    private InstallChunkInfo m_installChunk;
-    private int m_installChunkIndex;
+    private readonly InstallChunkInfo m_installChunk;
+    private readonly int m_installChunkIndex;
     private int m_casIndex;
-    private bool m_isPatch;
-    private string m_dir;
-    private Dictionary<Sha1, (CasFileIdentifier, uint, uint)> m_data = new();
-    private BlockStream? m_currentStream;
-    private Block<byte>? m_currentBlock;
+    private readonly bool m_isPatch;
+    private readonly string m_dir;
+    private readonly Dictionary<Sha1, (CasFileIdentifier, uint, uint)> m_data = new();
+    private DataStream? m_currentStream;
 
     public InstallChunkWriter(InstallChunkInfo inInstallChunk, string inGamePatchPath, string inModDataPath, bool inIsPatch)
     {
@@ -66,8 +66,6 @@ public class InstallChunkWriter
             (uint)inData.Size);
         m_data.Add(inSha1, retVal);
         stream.Write(inData);
-
-        stream.Dispose();
 
         return retVal;
     }
@@ -173,20 +171,22 @@ public class InstallChunkWriter
         {
             m_casIndex++;
             currentFile = new FileInfo(Path.Combine(m_dir, $"cas_{m_casIndex:D2}.cas"));
+            Debug.Assert(!currentFile.Exists, "Trying to create new cas archive, even tho it already exists");
+            m_currentStream?.Dispose();
+            m_currentStream = new DataStream(currentFile.Create());
         }
-
-        DataStream stream;
-        if (!currentFile.Exists)
+        else if (m_currentStream is null)
         {
-            stream = new DataStream(currentFile.Create());
-        }
-        else
-        {
-            stream = new DataStream(currentFile.OpenWrite());
+            Debug.Assert(!currentFile.Exists, "First cas archive used should not exist");
+            m_currentStream = new DataStream(currentFile.Create());
+            m_currentStream.Seek(0, SeekOrigin.End);
         }
 
-        stream.Seek(0, SeekOrigin.End);
+        return m_currentStream;
+    }
 
-        return stream;
+    public void Dispose()
+    {
+        m_currentStream?.Dispose();
     }
 }

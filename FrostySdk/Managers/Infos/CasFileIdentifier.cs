@@ -30,7 +30,7 @@ public readonly struct CasFileIdentifier
 
     public static ulong ToFileIdentifierLong(CasFileIdentifier file)
     {
-        return (ulong)((file.IsPatch ? 1L << 16 : 0) | ((long)file.InstallChunkIndex << 16) | (uint)file.CasIndex);
+        return (ulong)((file.IsPatch ? 0x1000000000000L : 0) | ((long)file.InstallChunkIndex << 16) | (uint)file.CasIndex);
     }
 
     public static uint ToManifestFileIdentifier(CasFileIdentifier file)

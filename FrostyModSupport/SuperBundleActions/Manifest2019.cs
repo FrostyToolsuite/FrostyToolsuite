@@ -166,7 +166,7 @@ internal class Manifest2019 : IDisposable
                 stream.WriteUInt32(0xdeadbeef); // tableOffset
             }
 
-            List<int> hashMap = HashMap.CreateHashMapV2(ref bundles, (bundle, count, initial) =>
+            List<int> hashMap = HashMap.CreateHashMap(ref bundles, (bundle, count, initial) =>
             {
                 Span<byte> b = stackalloc byte[bundle.Item1.Value.Length];
                 Encoding.ASCII.GetBytes(bundle.Item1.Value.ToLower(), b);
@@ -191,7 +191,7 @@ internal class Manifest2019 : IDisposable
             stream.Pad(8);
             uint chunkHashMapOffset = (uint)stream.Position;
 
-            hashMap = HashMap.CreateHashMapV2(ref chunks, (chunk, count, initial) =>
+            hashMap = HashMap.CreateHashMap(ref chunks, (chunk, count, initial) =>
             {
                 Span<byte> b = chunk.Item1.ToByteArray();
                 return HashMap.GetIndex(b, count, initial);
@@ -216,10 +216,10 @@ internal class Manifest2019 : IDisposable
                 int index = chunkData.Count;
 
                 int flag;
-                if (chunk.Identifier.InstallChunkIndex > 0xFF)
+                if ((chunk.Identifier.InstallChunkIndex & ~byte.MaxValue) != 0)
                 {
                     ulong b = CasFileIdentifier.ToFileIdentifierLong(chunk.Identifier);
-                    chunkData.Add((uint)(b >> sizeof(uint)));
+                    chunkData.Add((uint)(b >> 32));
                     chunkData.Add((uint)(b & uint.MaxValue));
                     flag = 0x80;
                 }
@@ -575,7 +575,7 @@ internal class Manifest2019 : IDisposable
                 }
                 else
                 {
-                    if (file.Item1.InstallChunkIndex > byte.MaxValue)
+                    if ((file.Item1.InstallChunkIndex & ~byte.MaxValue) != 0)
                     {
                         fileFlags[j] = 0x80;
                         bundleWriter.WriteUInt64(CasFileIdentifier.ToFileIdentifierLong(file.Item1), Endian.Big);

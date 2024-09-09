@@ -2,5 +2,5 @@ namespace FrostyCli.Project;
 
 public abstract class Asset
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
