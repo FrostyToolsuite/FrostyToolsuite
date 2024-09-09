@@ -487,7 +487,7 @@ public class TypeSdkGenerator
         return metadataReferenceList;
     }
 
-    private static uint HashTypeName(string inName)
+    public static uint HashTypeName(string inName)
     {
         Span<byte> hash = stackalloc byte[32];
         ReadOnlySpan<byte> str = Encoding.ASCII.GetBytes(inName.ToLower() + ProfilesLibrary.TypeHashSeed);

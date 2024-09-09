@@ -82,7 +82,7 @@ public class EbxAsset
 
     public static void Serialize(DataStream ebxStream, EbxAsset asset)
     {
-        EbxWriter writer = EbxWriter.CreateWriter(ebxStream);
+        BaseEbxWriter writer = BaseEbxWriter.CreateWriter(ebxStream);
         writer.WriteAsset(asset);
     }
 
