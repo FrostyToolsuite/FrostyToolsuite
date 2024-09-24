@@ -1,4 +1,7 @@
-﻿namespace Frosty.ModSupport.ModInfos;
+﻿using System;
+using System.Collections.Generic;
+
+namespace Frosty.ModSupport.ModInfos;
 
 public class BundleModAction
 {

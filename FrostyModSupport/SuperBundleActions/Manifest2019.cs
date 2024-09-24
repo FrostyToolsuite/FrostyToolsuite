@@ -1,5 +1,8 @@
+using System;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using Frosty.ModSupport.Archive;
 using Frosty.ModSupport.ModEntries;

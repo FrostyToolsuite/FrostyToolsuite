@@ -117,8 +117,7 @@ internal static partial class Program
         };
         rootCommand.AddCommand(updateModCommand);
 
-        updateModCommand.SetHandler(
-            ((game, project, output, pid, key1, key2, key3) => CreateMod(game, pid, key1, key2, key3, project, output)),
-            gameArg, projectArg, outputOption, pidOption, key1Option, key2Option, key3Option);
+        updateModCommand.SetHandler(CreateMod, gameArg, pidOption, key1Option, key2Option, key3Option, projectArg,
+            outputOption);
     }
 }

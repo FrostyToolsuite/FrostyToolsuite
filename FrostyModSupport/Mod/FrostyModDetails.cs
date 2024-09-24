@@ -1,3 +1,5 @@
+using System;
+
 namespace Frosty.ModSupport.Mod;
 
 public sealed class FrostyModDetails
