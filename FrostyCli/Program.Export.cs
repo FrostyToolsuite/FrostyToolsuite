@@ -141,7 +141,10 @@ internal static partial class Program
         {
             using (FileStream stream = inFile.OpenWrite())
             {
-                stream.Write(inEntry.ResMeta);
+                if (inAddMeta)
+                {
+                    stream.Write(inEntry.ResMeta);
+                }
                 stream.Write(data);
             }
         }
