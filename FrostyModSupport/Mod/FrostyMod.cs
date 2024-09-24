@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using Frosty.ModSupport.Interfaces;
 using Frosty.ModSupport.Mod.Resources;
 using Frosty.Sdk;
@@ -84,7 +87,7 @@ public class FrostyMod : IResourceContainer
 
             if (ProfilesLibrary.ProfileName != stream.ReadNullTerminatedString())
             {
-                return null;
+                //return null;
             }
 
             uint head = stream.ReadUInt32();

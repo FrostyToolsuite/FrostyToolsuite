@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using Frosty.ModSupport.Archive;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;

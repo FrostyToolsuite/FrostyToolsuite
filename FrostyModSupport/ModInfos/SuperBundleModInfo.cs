@@ -1,4 +1,5 @@
-﻿using Frosty.Sdk;
+﻿using System.Collections.Generic;
+using Frosty.Sdk;
 
 namespace Frosty.ModSupport.ModInfos;
 

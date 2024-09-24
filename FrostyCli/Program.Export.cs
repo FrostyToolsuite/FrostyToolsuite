@@ -125,7 +125,7 @@ internal static partial class Program
 
         bool addMeta = Prompt.Confirm("Export the res with its meta as the first 16 bytes?");
 
-        FileInfo? file = RequestFile("Input where the ebx gets saved to", true, $"{entry.Filename}.{entry.ResType}");
+        FileInfo? file = RequestFile("Input where the res gets saved to", true, $"{entry.Filename}.{entry.ResType}");
 
         if (file is null)
         {
@@ -180,7 +180,7 @@ internal static partial class Program
             return;
         }
 
-        FileInfo? file = RequestFile("Input where the ebx gets saved to", true, entry.Filename);
+        FileInfo? file = RequestFile("Input where the chunk gets saved to", true, entry.Filename);
 
         if (file is null)
         {
