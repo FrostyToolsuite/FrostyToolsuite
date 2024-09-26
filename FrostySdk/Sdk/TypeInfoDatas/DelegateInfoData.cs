@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using Frosty.Sdk.Attributes;
+using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Sdk.TypeInfos;
 
@@ -32,70 +34,44 @@ internal class DelegateInfoData : TypeInfoData
     {
         base.CreateType(sb);
 
-        string returnType = "void";
-
-        StringBuilder inputParams = new();
-        bool hasReturn = false;
+        StringBuilder argumentTypes = new();
 
         foreach (ParameterInfo parameterInfo in m_parameterInfos)
         {
             TypeInfo type = parameterInfo.GetTypeInfo();
 
-            string typeName = type.GetFullName();
+            string typeName = type.GetName();
 
             if (type is ArrayInfo array)
             {
-                typeName = $"ObservableCollection<{array.GetTypeInfo().GetFullName()}>";
+                typeName = $"ObservableCollection<{array.GetTypeInfo().GetName()}>";
             }
 
             switch (parameterInfo.GetParameterType())
             {
                 case 0:
-                    inputParams.Append($"{typeName} {parameterInfo.GetName()}, ");
-                    break;
                 case 1:
-                    if (!hasReturn)
-                    {
-                        hasReturn = true;
-                    }
-                    else
-                    {
-
-                    }
-                    returnType = typeName;
+                    argumentTypes.Append($", \"{typeName}\"");
                     break;
                 case 2:
-                    inputParams.Append($"{typeName}* {parameterInfo.GetName()}, ");
-                    break;
                 case 3:
-                    if (!hasReturn)
-                    {
-                        hasReturn = true;
-                    }
-                    else
-                    {
-
-                    }
-                    returnType = $"{typeName}*";
+                    argumentTypes.Append($", \"{typeName}*\"");
                     break;
             }
         }
 
-        if (inputParams.Length > 0)
+        string arguments = argumentTypes.ToString();
+        if (arguments.Length > 0)
         {
-            inputParams.Remove(inputParams.Length - 2, 2);
+            arguments = arguments.Remove(0, 2);
         }
 
-        string name = CleanUpName();
-        int index = name.IndexOf('(');
-
-        if (index != -1)
-        {
-            name = name[..index];
-        }
-
-        name = name.Replace("delegate ", string.Empty);
-
-        sb.AppendLine($"public unsafe delegate {returnType} {name} ({inputParams});");
+        sb.AppendLine($$"""
+                        [{{nameof(FunctionAttribute)}}({{arguments}})]
+                        public struct {{CleanUpName()}} : {{nameof(IDelegate)}}
+                        {
+                            public Type? {{nameof(IDelegate.FunctionType)}} { get; set; }
+                        }
+                        """);
     }
 }

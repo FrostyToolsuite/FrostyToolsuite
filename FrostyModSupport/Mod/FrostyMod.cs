@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using Frosty.ModSupport.Interfaces;
 using Frosty.ModSupport.Mod.Resources;
 using Frosty.Sdk;
@@ -33,13 +36,16 @@ public class FrostyMod : IResourceContainer
 
     public uint Head { get; }
 
+    public Sha1 Sha1 { get; }
+
     private BaseModResource[] m_resources;
     private ResourceData[] m_data;
 
-    private FrostyMod(FrostyModDetails inModDetails, uint inHead, BaseModResource[] inResources, ResourceData[] inData)
+    private FrostyMod(FrostyModDetails inModDetails, uint inHead, Sha1 inSha1, BaseModResource[] inResources, ResourceData[] inData)
     {
         ModDetails = inModDetails;
         Head = inHead;
+        Sha1 = inSha1;
         m_resources = inResources;
         m_data = inData;
     }
@@ -57,7 +63,6 @@ public class FrostyMod : IResourceContainer
     /// <exception cref="Exception">When the mod file is corrupted.</exception>
     public static FrostyMod? Load(string inPath)
     {
-
         FileInfo fileInfo = new(inPath);
         if (!fileInfo.Exists)
         {
@@ -82,7 +87,7 @@ public class FrostyMod : IResourceContainer
 
             if (ProfilesLibrary.ProfileName != stream.ReadNullTerminatedString())
             {
-                return null;
+                //return null;
             }
 
             uint head = stream.ReadUInt32();
@@ -92,6 +97,7 @@ public class FrostyMod : IResourceContainer
                 stream.ReadNullTerminatedString());
 
             // read resources
+            Sha1 sha1 = stream.ReadSha1();
             int resourceCount = stream.ReadInt32();
             BaseModResource[] resources = new BaseModResource[resourceCount];
             for (int i = 0; i < resourceCount; i++)
@@ -134,7 +140,7 @@ public class FrostyMod : IResourceContainer
                 data[i] = new ResourceData(fileInfo.FullName, offset + stream.ReadInt64(), stream.ReadInt32());
             }
 
-            return new FrostyMod(modDetails, head, resources, data);
+            return new FrostyMod(modDetails, head, sha1, resources, data);
         }
     }
 
@@ -163,15 +169,14 @@ public class FrostyMod : IResourceContainer
                 return null;
             }
 
-            long dataOffset = stream.ReadInt64();
-            int dataCount = stream.ReadInt32();
+            stream.Position += sizeof(long) + sizeof(int);
 
             if (ProfilesLibrary.ProfileName != stream.ReadNullTerminatedString())
             {
                 return null;
             }
 
-            uint head = stream.ReadUInt32();
+            stream.Position += sizeof(uint);
 
             return new FrostyModDetails(stream.ReadNullTerminatedString(),
                 stream.ReadNullTerminatedString(), stream.ReadNullTerminatedString(), stream.ReadNullTerminatedString(),
@@ -200,7 +205,7 @@ public class FrostyMod : IResourceContainer
                    ProfilesLibrary.ProfileName.Length + 1 + sizeof(uint) +
                    inModDetails.Title.Length + 1 + inModDetails.Author.Length + 1 +
                    inModDetails.Version.Length + 1 + inModDetails.Description.Length + 1 +
-                   inModDetails.Category.Length + 1 + inModDetails.ModPageLink.Length + 1;
+                   inModDetails.Category.Length + 1 + inModDetails.ModPageLink.Length + 1 + 20;
 
         Block<byte> resources = new(sizeof(int) + inResources.Length * (4 + 10)); // we just estimate a min size (ResourceIndex + Name(low estimate of 9 chars))
         using (BlockStream stream = new(resources, true))
@@ -245,6 +250,8 @@ public class FrostyMod : IResourceContainer
             stream.WriteNullTerminatedString(inModDetails.Version);
             stream.WriteNullTerminatedString(inModDetails.Description);
             stream.WriteNullTerminatedString(inModDetails.ModPageLink);
+
+            stream.WriteSha1(Frosty.Sdk.Utils.Utils.GenerateSha1(resources));
 
             stream.Write(resources);
             resources.Dispose();

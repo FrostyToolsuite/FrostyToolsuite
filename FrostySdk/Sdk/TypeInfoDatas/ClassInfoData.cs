@@ -9,7 +9,7 @@ namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
 internal class ClassInfoData : TypeInfoData
 {
-    public ClassInfo GetSuperClassInfo() => (TypeInfo.TypeInfoMapping[p_superClass] as ClassInfo)!;
+    public ClassInfo GetSuperClassInfo() => (TypeInfo.TypeInfoMapping![p_superClass] as ClassInfo)!;
 
     private long p_superClass;
     private List<FieldInfo> m_fieldInfos = new();
@@ -115,4 +115,14 @@ internal class ClassInfoData : TypeInfoData
     }
 
     public int GetFieldCount() => m_fieldCount;
+
+    public override void UpdateName()
+    {
+        base.UpdateName();
+
+        foreach (FieldInfo fieldInfo in m_fieldInfos)
+        {
+            fieldInfo.UpdateName(m_nameHash);
+        }
+    }
 }

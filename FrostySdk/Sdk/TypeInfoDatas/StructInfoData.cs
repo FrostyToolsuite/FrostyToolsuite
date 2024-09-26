@@ -8,7 +8,7 @@ namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
 internal class StructInfoData : TypeInfoData
 {
-    private List<FieldInfo> m_fieldInfos = new List<FieldInfo>();
+    private List<FieldInfo> m_fieldInfos = new();
     private long p_defaultValue;
 
     public override void Read(MemoryReader reader)
@@ -110,6 +110,16 @@ internal class StructInfoData : TypeInfoData
         if (m_name.Contains("::"))
         {
             sb.AppendLine("}");
+        }
+    }
+
+    public override void UpdateName()
+    {
+        base.UpdateName();
+
+        foreach (FieldInfo fieldInfo in m_fieldInfos)
+        {
+            fieldInfo.UpdateName(m_nameHash);
         }
     }
 }

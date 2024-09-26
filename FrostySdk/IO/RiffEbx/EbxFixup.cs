@@ -21,7 +21,7 @@ internal struct EbxFixup
     public uint ArrayOffset;
     public uint BoxedValueRefOffset;
     public uint StringOffset;
-    // content/cinematic/stadiummultiset/prefab/sms_lockerroom_setdressing/sms_lockerroom_postmatchdressing
+
     public static EbxFixup ReadFixup(DataStream inStream)
     {
         EbxFixup fixup = new() { PartitionGuid = inStream.ReadGuid(), };

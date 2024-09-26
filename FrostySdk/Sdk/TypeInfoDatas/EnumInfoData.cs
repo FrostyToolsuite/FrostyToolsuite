@@ -18,6 +18,12 @@ internal class EnumInfoData : TypeInfoData
             m_name = $"Enum_{m_nameHash:x8}";
         }
 
+        if (TypeInfo.Version > 6)
+        {
+            // name again
+            reader.ReadLong();
+        }
+
         long pFieldInfos = reader.ReadLong();
 
         reader.Position = pFieldInfos;
@@ -53,5 +59,15 @@ internal class EnumInfoData : TypeInfoData
         }
 
         sb.AppendLine("}");
+    }
+
+    public override void UpdateName()
+    {
+        base.UpdateName();
+
+        foreach (FieldInfo fieldInfo in m_fieldInfos)
+        {
+            fieldInfo.UpdateName(m_nameHash);
+        }
     }
 }

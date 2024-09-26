@@ -1,5 +1,4 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
@@ -37,9 +36,9 @@ internal class PrimitiveInfoData : TypeInfoData
             case TypeFlags.TypeEnum.UInt64:
                 return reader.ReadULong().ToString();
             case TypeFlags.TypeEnum.Float32:
-                return $"{reader.ReadSingle().ToString(CultureInfo.CurrentCulture)}f";
+                return $"{reader.ReadSingle().ToString(CultureInfo.InvariantCulture)}f";
             case TypeFlags.TypeEnum.Float64:
-                return reader.ReadDouble().ToString(CultureInfo.CurrentCulture);
+                return reader.ReadDouble().ToString(CultureInfo.InvariantCulture);
             case TypeFlags.TypeEnum.Guid:
                 return $"System.Guid.Parse(\"{reader.ReadGuid().ToString()}\")";
             case TypeFlags.TypeEnum.Sha1:
@@ -48,7 +47,7 @@ internal class PrimitiveInfoData : TypeInfoData
                 return $"new Frosty.Sdk.Ebx.ResourceRef({reader.ReadULong().ToString()})";
             case TypeFlags.TypeEnum.TypeRef:
                 long ptr = reader.ReadLong();
-                if (!TypeInfo.TypeInfoMapping.TryGetValue(ptr, out TypeInfo? type))
+                if (!TypeInfo.TypeInfoMapping!.TryGetValue(ptr, out TypeInfo? type))
                 {
                     return "default";
                 }
@@ -57,7 +56,7 @@ internal class PrimitiveInfoData : TypeInfoData
             case TypeFlags.TypeEnum.BoxedValueRef:
                 ptr = reader.ReadLong();
                 long valuePtr = reader.ReadLong();
-                if (!TypeInfo.TypeInfoMapping.TryGetValue(ptr, out type))
+                if (!TypeInfo.TypeInfoMapping!.TryGetValue(ptr, out type))
                 {
                     return "default";
                 }
@@ -139,17 +138,17 @@ internal class PrimitiveInfoData : TypeInfoData
         }
 
         sb.AppendLine($$"""
-                        public struct {{m_name}} : IPrimitive
+                        public struct {{m_name}} : {{nameof(IPrimitive)}}
                         {
-                            private {{actualType}} m_value{{(isString ? " = string.Empty" : string.Empty)}};
+                            private {{actualType}}{{(isString ? "?" : string.Empty)}} m_value;
 
                             public {{m_name}}()
                             {
                             }
 
-                            public object ToActualType() => m_value;
+                            public object {{nameof(IPrimitive.ToActualType)}}() => m_value{{(isString ? " ?? string.Empty" : string.Empty)}};
 
-                            public void FromActualType(object value)
+                            public void {{nameof(IPrimitive.FromActualType)}}(object value)
                             {
                                 if (value is not {{actualType}})
                                 {
@@ -163,12 +162,12 @@ internal class PrimitiveInfoData : TypeInfoData
                             {
                                 if (obj is {{m_name}} a)
                                 {
-                                    return m_value.Equals(a.m_value);
+                                    return m_value == a.m_value;
                                 }
 
                                 if (obj is {{actualType}} b)
                                 {
-                                    return m_value.Equals(b);
+                                    return m_value == b;
                                 }
 
                                 return false;
@@ -176,14 +175,14 @@ internal class PrimitiveInfoData : TypeInfoData
 
                             public override int GetHashCode()
                             {
-                                return m_value.GetHashCode();
+                                return m_value{{(isString ? "?" : string.Empty)}}.GetHashCode(){{(isString ? " ?? 0" : string.Empty)}};
                             }
 
                             public static bool operator ==({{m_name}} a, object? b) => a.Equals(b);
 
                             public static bool operator !=({{m_name}} a, object? b) => !a.Equals(b);
 
-                            public static implicit operator {{actualType}}({{m_name}} value) => value.m_value;
+                            public static implicit operator {{actualType}}({{m_name}} value) => value.m_value{{(isString ? " ?? string.Empty" : string.Empty)}};
 
                             public static implicit operator {{m_name}}({{actualType}} value) => new() { m_value = value };
                         }

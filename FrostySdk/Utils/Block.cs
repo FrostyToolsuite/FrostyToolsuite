@@ -165,6 +165,14 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
     }
 
     /// <summary>
+    /// Clears the whole block.
+    /// </summary>
+    public void Clear()
+    {
+        NativeMemory.Clear(BasePtr, (nuint)BaseSize);
+    }
+
+    /// <summary>
     /// Resizes the block to the specified size.
     /// </summary>
     /// <param name="inNewSize">The new size of the block. Must be at least 1.</param>

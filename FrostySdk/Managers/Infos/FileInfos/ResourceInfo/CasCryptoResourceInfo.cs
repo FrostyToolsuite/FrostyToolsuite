@@ -1,4 +1,3 @@
-using System.IO;
 using System.Security.Cryptography;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Utils;
@@ -27,7 +26,7 @@ public class CasCryptoResourceInfo : CasResourceInfo
         int size = (int)GetSize();
         size = size + 15 & ~15;
 
-        using (BlockStream stream = BlockStream.FromFile(GetPath(), GetOffset(), size))
+        using (BlockStream stream = BlockStream.FromFile(m_path, GetOffset(), size))
         {
             stream.Decrypt(KeyManager.GetKey(m_keyId), PaddingMode.None);
 
@@ -42,7 +41,7 @@ public class CasCryptoResourceInfo : CasResourceInfo
         // we need to align the size to 16
         int size = (int)GetSize();
         size = size + 15 & ~15;
-        using (BlockStream stream = BlockStream.FromFile(GetPath(), GetOffset(), size))
+        using (BlockStream stream = BlockStream.FromFile(m_path, GetOffset(), size))
         {
             stream.Decrypt(KeyManager.GetKey(m_keyId), PaddingMode.None);
             stream.SetLength((int)GetSize());

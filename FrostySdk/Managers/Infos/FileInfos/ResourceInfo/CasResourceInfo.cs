@@ -7,6 +7,7 @@ namespace Frosty.Sdk.Managers.Infos.FileInfos.ResourceInfo;
 
 public class CasResourceInfo
 {
+    protected readonly string m_path;
     private readonly CasFileIdentifier m_casFileIdentifier;
     private readonly uint m_offset;
     private readonly uint m_size;
@@ -18,6 +19,7 @@ public class CasResourceInfo
         m_offset = inOffset;
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
+        m_path = FileSystemManager.GetFilePath(m_casFileIdentifier);
     }
 
     public CasResourceInfo(bool inIsPatch, int inInstallChunkIndex, int inCasIndex, uint inOffset, uint inSize, uint inLogicalOffset)
@@ -26,11 +28,10 @@ public class CasResourceInfo
         m_offset = inOffset;
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
+        m_path = FileSystemManager.GetFilePath(m_casFileIdentifier);
     }
 
     public bool IsComplete() => m_logicalOffset == 0;
-
-    public string GetPath() => FileSystemManager.GetFilePath(m_casFileIdentifier);
 
     protected uint GetOffset() => m_offset;
 
@@ -38,7 +39,7 @@ public class CasResourceInfo
 
     public virtual Block<byte> GetRawData()
     {
-        using (FileStream stream = new(GetPath(), FileMode.Open, FileAccess.Read))
+        using (FileStream stream = new(m_path, FileMode.Open, FileAccess.Read))
         {
             stream.Position = m_offset;
 
@@ -51,7 +52,7 @@ public class CasResourceInfo
 
     public virtual Block<byte> GetData(int inOriginalSize)
     {
-        using (BlockStream stream = BlockStream.FromFile(GetPath(), m_offset, (int)m_size))
+        using (BlockStream stream = BlockStream.FromFile(m_path, m_offset, (int)m_size))
         {
             return Cas.DecompressData(stream, inOriginalSize);
         }
@@ -134,7 +135,7 @@ public class CasResourceInfo
 
     protected static void SerializeInternal(DataStream stream, CasResourceInfo info)
     {
-        stream.WriteUInt32(CasFileIdentifier.ToFileIdentifier(info.m_casFileIdentifier));
+        stream.WriteUInt64(CasFileIdentifier.ToFileIdentifierLong(info.m_casFileIdentifier), Endian.Big);
         stream.WriteUInt32(info.m_offset);
         stream.WriteUInt32(info.m_size);
         stream.WriteUInt32(info.m_logicalOffset);
@@ -142,7 +143,7 @@ public class CasResourceInfo
 
     private static CasResourceInfo DeserializeInternal(DataStream stream)
     {
-        CasFileIdentifier file = CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32());
+        CasFileIdentifier file = CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big));
         uint offset = stream.ReadUInt32();
         uint size = stream.ReadUInt32();
         uint logicalOffset = stream.ReadUInt32();

@@ -11,7 +11,7 @@ namespace Frosty.Sdk.IO;
 
 public class BinaryBundle
 {
-    private enum Magic : uint
+    public enum Magic : uint
     {
         Standard = 0xED1CEDB8,
         Kelvin = 0xC3889333,
@@ -141,7 +141,7 @@ public class BinaryBundle
     /// <see cref="ProfileVersion.Battlefield5"/> is the only game that uses "arie".
     /// </summary>
     /// <returns>The salt, that the current game uses.</returns>
-    private static uint GetSalt()
+    public static uint GetSalt()
     {
         const uint pecm = 0x7065636D;
         const uint pecn = 0x7065636E;
@@ -164,7 +164,7 @@ public class BinaryBundle
     /// Only the games using the <see cref="BundleFormat.Kelvin"/> format have their own magic, the rest uses <see cref="Magic.Standard"/>.
     /// </summary>
     /// <returns>The magic the current game uses.</returns>
-    private static Magic GetMagic()
+    public static Magic GetMagic()
     {
         switch (FileSystemManager.BundleFormat)
         {
@@ -175,7 +175,7 @@ public class BinaryBundle
         }
     }
 
-    private static bool IsValidMagic(Magic magic) =>
+    public static bool IsValidMagic(Magic magic) =>
         magic == Magic.Standard || magic == Magic.Kelvin || magic == Magic.Encrypted;
 
     /// <summary>

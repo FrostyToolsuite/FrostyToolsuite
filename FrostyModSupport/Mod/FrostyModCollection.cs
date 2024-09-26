@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text.Json;
 using Frosty.Sdk.IO;
 
@@ -18,7 +21,7 @@ public class FrostyModCollection
     }
 
     public IEnumerable<FrostyMod> Mods => m_mods;
-    
+
     /// <summary>
     /// 'FCOL'
     /// </summary>
@@ -38,14 +41,14 @@ public class FrostyModCollection
         m_screenshots = inScreenshots;
         m_mods = inMods;
     }
-    
+
     public static FrostyModCollection? Load(string inPath)
     {
         if (!File.Exists(inPath))
         {
             return null;
         }
-        
+
         using (BlockStream stream = BlockStream.FromFile(inPath, false))
         {
             if (s_magic != stream.ReadUInt32())
@@ -57,7 +60,7 @@ public class FrostyModCollection
             {
                 return null;
             }
-            
+
             uint manifestOffset = stream.ReadUInt32();
             int manifestSize = stream.ReadInt32();
             ResourceData icon = new(inPath, stream.ReadUInt32(), stream.ReadInt32());
@@ -102,7 +105,7 @@ public class FrostyModCollection
             return new FrostyModCollection(modDetails, icon, screenshots, mods);
         }
     }
-    
+
     public static FrostyModDetails? GetModDetails(string inPath)
     {
         using (BlockStream stream = BlockStream.FromFile(inPath, false))
@@ -119,7 +122,7 @@ public class FrostyModCollection
 
             uint manifestOffset = stream.ReadUInt32();
             int manifestSize = stream.ReadInt32();
-            
+
             stream.Position = manifestOffset;
             Span<byte> utf8Json = new byte[manifestSize];
             stream.ReadExactly(utf8Json);
@@ -129,7 +132,7 @@ public class FrostyModCollection
             {
                 return null;
             }
-            
+
             return new FrostyModDetails(manifest.Title, manifest.Author, manifest.Category,
                 manifest.Version, manifest.Description, manifest.Link);
         }

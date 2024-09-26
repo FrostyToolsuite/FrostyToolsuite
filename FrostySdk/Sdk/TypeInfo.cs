@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Sdk.TypeInfoDatas;
 using Frosty.Sdk.Sdk.TypeInfos;
@@ -42,14 +41,21 @@ internal class TypeInfo
                 // 2017.3, 2017.7, 2018.0, 2018.2
                 return 5;
             }
+            if (ProfilesLibrary.FrostbiteVersion <= "2021.2.3")
+            {
+                // Prev TypeInfo and Signature as uint in TypeInfoData
+                // 2019.0, 2020.0, 2021.1.1, 2021.2.0, 2021.2.3
+                return 6;
+            }
 
-            // Prev TypeInfo and Signature as uint in TypeInfoData
-            // 2019.0, 2020.0, 2021.1.1, 2021.2.0, 2021.2.3
-            return 6;
+            // Field offset as uint
+            // madden 25 doesnt have buildinfo
+            // 2022.2.1
+            return 7;
         }
     }
 
-    public static readonly Dictionary<long, TypeInfo> TypeInfoMapping = new();
+    public static Dictionary<long, TypeInfo>? TypeInfoMapping;
 
     protected long p_this;
     protected TypeInfoData m_data;
@@ -82,7 +88,7 @@ internal class TypeInfo
         retVal.p_this = startPos;
         retVal.Read(reader);
 
-        TypeInfoMapping.Add(startPos, retVal);
+        TypeInfoMapping!.Add(startPos, retVal);
 
         return retVal;
     }
@@ -172,7 +178,7 @@ internal class TypeInfo
     {
         m_data.CreateNamespace(sb);
 
-        if (Version < 3 && ArrayInfo.Mapping.TryGetValue(p_this, out long arrayInfoPtr))
+        if (Version < 3 && ArrayInfo.Mapping!.TryGetValue(p_this, out long arrayInfoPtr))
         {
             m_data.SetArrayInfoPtr(arrayInfoPtr);
         }
@@ -181,5 +187,10 @@ internal class TypeInfo
         m_data.CreateType(sb);
 
         sb.AppendLine("}");
+    }
+
+    public void UpdateName()
+    {
+        m_data.UpdateName();
     }
 }

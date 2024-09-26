@@ -177,8 +177,6 @@ public class HuffmanDecoder
     /// <param name="endian">The <see cref="Endian"/> in which the encoded data gets read.</param>
     public void ReadOddSizedEncodedData(DataStream stream, uint byteCount, Endian endian = Endian.Little)
     {
-
-
         uint intLength = byteCount / 4;
 
         m_data = new int[intLength + 1];

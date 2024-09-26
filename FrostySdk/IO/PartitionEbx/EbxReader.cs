@@ -49,7 +49,7 @@ public class EbxReader : BaseEbxReader
             EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(instance.TypeDescriptorRef);
             for (int i = 0; i < instance.Count; i++)
             {
-                m_objects.Add(TypeLibrary.CreateObject(typeDescriptor.NameHash) ?? throw new Exception());
+                m_objects.Add(CreateObject(typeDescriptor) ?? throw new Exception());
                 m_refCounts.Add(0);
             }
         }
@@ -91,7 +91,14 @@ public class EbxReader : BaseEbxReader
         {
             EbxFieldDescriptor fieldDescriptor = m_typeResolver.ResolveField(inTypeDescriptor.FieldIndex + i);
             PropertyInfo? propertyInfo = objType.GetProperties().FirstOrDefault(prop =>
-                prop.GetCustomAttribute<NameHashAttribute>()?.Hash == fieldDescriptor.NameHash);
+            {
+                if (string.IsNullOrEmpty(fieldDescriptor.Name))
+                {
+                    return prop.GetCustomAttribute<NameHashAttribute>()?.Hash == fieldDescriptor.NameHash;
+                }
+
+                return prop.GetName() == fieldDescriptor.Name;
+            });
 
             m_stream.Position = inStartOffset + fieldDescriptor.DataOffset;
 
@@ -141,7 +148,7 @@ public class EbxReader : BaseEbxReader
             }
         }
 
-        m_stream.Pad(inTypeDescriptor.GetAlignment());
+        m_stream.Position = inStartOffset + inTypeDescriptor.Size;
     }
 
     private void ReadField(EbxTypeDescriptor? inParentTypeDescriptor, TypeFlags.TypeEnum inType, ushort inTypeDescriptorRef, Action<object?> inAddFunc)
@@ -209,7 +216,7 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.Struct:
                 EbxTypeDescriptor structType = inParentTypeDescriptor.HasValue ? m_typeResolver.ResolveType(inParentTypeDescriptor.Value, inTypeDescriptorRef) : m_typeResolver.ResolveType(inTypeDescriptorRef);
                 m_stream.Pad(structType.GetAlignment());
-                object? obj = TypeLibrary.CreateObject(structType.NameHash);
+                object? obj = CreateObject(structType);
                 ReadType(structType, obj, m_stream.Position);
                 inAddFunc(obj);
                 break;
@@ -421,6 +428,21 @@ public class EbxReader : BaseEbxReader
 
     private Type GetType(EbxTypeDescriptor inTypeDescriptor)
     {
-        return TypeLibrary.GetType(inTypeDescriptor.NameHash) ?? throw new Exception();
+        if (string.IsNullOrEmpty(inTypeDescriptor.Name))
+        {
+            return TypeLibrary.GetType(inTypeDescriptor.NameHash) ?? throw new Exception();
+        }
+
+        return TypeLibrary.GetType(inTypeDescriptor.Name) ?? throw new Exception();
+    }
+
+    private object? CreateObject(EbxTypeDescriptor inTypeDescriptor)
+    {
+        if (string.IsNullOrEmpty(inTypeDescriptor.Name))
+        {
+            return TypeLibrary.CreateObject(inTypeDescriptor.NameHash);
+        }
+
+        return TypeLibrary.CreateObject(inTypeDescriptor.Name);
     }
 }

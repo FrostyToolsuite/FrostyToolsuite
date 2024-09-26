@@ -5,7 +5,7 @@ namespace Frosty.Sdk.Sdk.TypeInfos;
 
 internal class ClassInfo : TypeInfo
 {
-    public ClassInfo GetSuperClassInfo() => (TypeInfo.TypeInfoMapping[p_superClass] as ClassInfo)!;
+    public ClassInfo GetSuperClassInfo() => (TypeInfoMapping![p_superClass] as ClassInfo)!;
 
     private long p_superClass;
     private long p_defaultInstance;
