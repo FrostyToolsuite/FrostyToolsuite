@@ -65,7 +65,11 @@ Or as an alternative to the datapath launch command, you can use the `GAME_DATA_
 
 
 > [!NOTE]
-> For Linux users modding games of Frostbite version above 2014.4.11 (check Frosty server pinned messages or Info_Win64_retail.BuildSettings if available) 
-> 
-> Please copy the bcrypt.dll from the Thirdparty folder and paste it into the games files, and add the wine DLL override before the datapath command as such:
-> ```WINEDLLOVERRIDES="bcrypt=n,b" %command% -datapath '<mod data path>'```
+> Games of Frostbite version above 2014.4.11 require the following steps (check version in the games json file in the Profiles folder) 
+
+### On Linux
+Please copy the bcrypt.dll file from the ThirdParty folder and paste it into the games files, and add the wine DLL override before the datapath command as such:
+```WINEDLLOVERRIDES="bcrypt=n,b" %command% -datapath '<mod data path>'```
+
+### On Windows
+For Windows users, please copy the CryptBase.dll file from the ThirdParty folder and paste it into the games files.
