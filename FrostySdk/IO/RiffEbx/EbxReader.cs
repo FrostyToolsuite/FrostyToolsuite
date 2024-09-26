@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -19,7 +20,7 @@ public class EbxReader : BaseEbxReader
     private EbxFixup m_fixup;
     private readonly EbxTypeResolver m_typeResolver;
 
-    private readonly Dictionary<uint, EbxBoxedValue> m_boxedValues = new();
+    private readonly Dictionary<uint, EbxExtra> m_boxedValues = new();
 
     public EbxReader(DataStream inStream)
         : base(inStream)
@@ -73,7 +74,7 @@ public class EbxReader : BaseEbxReader
 
     protected override void InternalReadObjects()
     {
-        int[] typeRefs = new int[m_fixup.InstanceOffsets.Length];
+        int[] typeRefs = new int[m_fixup.InstanceOffsets.Count];
         int j = 0;
         foreach (uint offset in m_fixup.InstanceOffsets)
         {
@@ -87,7 +88,7 @@ public class EbxReader : BaseEbxReader
 
         m_stream.Position = m_payloadOffset;
 
-        for (int i = 0; i < m_fixup.InstanceOffsets.Length; i++)
+        for (int i = 0; i < m_fixup.InstanceOffsets.Count; i++)
         {
             EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(typeRefs[i]);
 
@@ -95,14 +96,11 @@ public class EbxReader : BaseEbxReader
 
             Guid instanceGuid = i < m_fixup.ExportedInstanceCount ? m_stream.ReadGuid(): Guid.Empty;
 
-            if (typeDescriptor.Alignment != 0x04)
-            {
-                m_stream.Position += 8;
-            }
+            Debug.Assert(m_stream.Position - m_payloadOffset == m_fixup.InstanceOffsets[i]);
 
             object obj = m_objects[i];
             ((dynamic)obj).SetInstanceGuid(new AssetClassGuid(instanceGuid, i));
-            ReadType(typeDescriptor, obj, m_stream.Position - 8);
+            ReadType(typeDescriptor, obj, m_stream.Position);
         }
     }
 
@@ -127,7 +125,7 @@ public class EbxReader : BaseEbxReader
 
         for (int i = 0; i < boxedValueCount; i++)
         {
-            EbxBoxedValue b = new()
+            EbxExtra b = new()
             {
                 Offset = inStream.ReadUInt32(),
                 Count = inStream.ReadInt32(),
@@ -135,6 +133,7 @@ public class EbxReader : BaseEbxReader
                 Flags = inStream.ReadUInt16(),
                 TypeDescriptorRef = inStream.ReadUInt16()
             };
+
             m_boxedValues.Add(b.Offset, b);
         }
     }
@@ -143,7 +142,7 @@ public class EbxReader : BaseEbxReader
     {
         if (obj is null)
         {
-            m_stream.Position += inTypeDescriptor.Size;
+            m_stream.Position = inStartOffset + inTypeDescriptor.Size;
             m_stream.Pad(inTypeDescriptor.Alignment);
             return;
         }
@@ -183,7 +182,9 @@ public class EbxReader : BaseEbxReader
                         @delegate.FunctionType = (Type)value;
                         value = @delegate;
                     }
-                    propertyInfo?.GetValue(obj)?.GetType().GetMethod("Add")?.Invoke(propertyInfo.GetValue(obj), new[] { value });
+
+                    IList? list = (IList?)propertyInfo?.GetValue(obj);
+                    list?.Add(value);
                 });
             }
             else
@@ -277,7 +278,7 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(m_stream.ReadFixedSizedString(32));
                 break;
             case TypeFlags.TypeEnum.CString:
-                inAddFunc(ReadString(m_stream.ReadUInt32()));
+                inAddFunc(ReadString(m_stream.ReadInt64()));
                 break;
             case TypeFlags.TypeEnum.FileRef:
                 inAddFunc(ReadFileRef());
@@ -364,7 +365,7 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(m_stream.ReadFixedSizedString(32));
                 break;
             case TypeFlags.TypeEnum.CString:
-                inAddFunc(ReadString(m_stream.ReadUInt32()));
+                inAddFunc(ReadString(m_stream.ReadInt64()));
                 break;
             case TypeFlags.TypeEnum.FileRef:
                 inAddFunc(ReadFileRef());
@@ -444,7 +445,7 @@ public class EbxReader : BaseEbxReader
         }
 
         long pos = m_stream.Position;
-        m_stream.Position += offset - 4;
+        m_stream.Position += offset - 8;
 
         string retStr = m_stream.ReadNullTerminatedString();
         m_stream.Position = pos;
@@ -456,14 +457,12 @@ public class EbxReader : BaseEbxReader
 
     private FileRef ReadFileRef()
     {
-        uint index = (uint)m_stream.ReadUInt64();
-
-        return new FileRef(ReadString(index));
+        return new FileRef(ReadString(m_stream.ReadInt64()));
     }
 
     private PointerRef ReadPointerRef()
     {
-        int index = m_stream.ReadInt32();
+        int index = (int)m_stream.ReadInt64();
 
         if (index == 0)
         {
@@ -475,7 +474,7 @@ public class EbxReader : BaseEbxReader
             return new PointerRef(m_fixup.Imports[index >> 1]);
         }
 
-        long instanceOffset = m_stream.Position - 4 + index - m_payloadOffset;
+        long instanceOffset = m_stream.Position - 8 + index - m_payloadOffset;
         int objIndex = m_fixup.InstanceMapping[(uint)instanceOffset];
 
         m_refCounts[objIndex]++;
@@ -485,7 +484,7 @@ public class EbxReader : BaseEbxReader
     private TypeRef ReadTypeRef()
     {
         uint packed = m_stream.ReadUInt32();
-        m_stream.Position += 4;
+        m_stream.Position += 4; // index, 0 (index in packed) or -1 (primitive)
 
         if (packed == 0)
         {
@@ -549,7 +548,7 @@ public class EbxReader : BaseEbxReader
         }
         else
         {
-            EbxBoxedValue b = m_boxedValues[(uint)(m_stream.Position - m_payloadOffset)];
+            EbxExtra b = m_boxedValues[(uint)(m_stream.Position - m_payloadOffset)];
             typeRef = (int)(packed >> 2);
             type = b.Flags.GetTypeEnum();
             category = b.Flags.GetCategoryEnum();
@@ -572,9 +571,9 @@ public class EbxReader : BaseEbxReader
                     primitive.FromActualType(obj);
                     obj = primitive;
                 }
-                fieldType.GetMethod("Add")?.Invoke(value, new[] { obj });
-            });
 
+                ((IList?)value)?.Add(obj);
+            });
         }
         else
         {

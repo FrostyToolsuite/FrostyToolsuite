@@ -1,14 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace Frosty.Sdk.IO.RiffEbx;
 
 internal class EbxTypeResolver
 {
-    private readonly Guid[] m_typeGuids;
-    private readonly uint[] m_typeSignatures;
+    private readonly IList<Guid> m_typeGuids;
+    private readonly IList<uint> m_typeSignatures;
 
-    internal EbxTypeResolver(Guid[] inTypeGuids, uint[] inTypeSignatures)
+    internal EbxTypeResolver(IList<Guid> inTypeGuids, IList<uint> inTypeSignatures)
     {
         EbxSharedTypeDescriptors.Initialize();
         m_typeGuids = inTypeGuids;

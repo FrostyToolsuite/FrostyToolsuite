@@ -25,7 +25,7 @@ public readonly struct PointerRef
 
     public PointerRef(Guid guid)
     {
-        External = new EbxImportReference { FileGuid = guid, ClassGuid = Guid.Empty };
+        External = new EbxImportReference { PartitionGuid = guid, InstanceGuid = Guid.Empty };
         Internal = null;
         Type = (guid != Guid.Empty) ? PointerRefType.External : PointerRefType.Null;
     }

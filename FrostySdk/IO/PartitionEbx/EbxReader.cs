@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -86,11 +87,12 @@ public class EbxReader : BaseEbxReader
         }
 
         Type objType = obj.GetType();
+        PropertyInfo[] properties = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
         for (int i = 0; i < inTypeDescriptor.GetFieldCount(); i++)
         {
             EbxFieldDescriptor fieldDescriptor = m_typeResolver.ResolveField(inTypeDescriptor.FieldIndex + i);
-            PropertyInfo? propertyInfo = objType.GetProperties().FirstOrDefault(prop =>
+            PropertyInfo? propertyInfo = properties.FirstOrDefault(prop =>
             {
                 if (string.IsNullOrEmpty(fieldDescriptor.Name))
                 {
@@ -124,7 +126,9 @@ public class EbxReader : BaseEbxReader
                             primitive.FromActualType(value);
                             value = primitive;
                         }
-                        propertyInfo?.GetValue(obj)?.GetType().GetMethod("Add")?.Invoke(propertyInfo.GetValue(obj), new[] { value });
+
+                        IList? list = (IList?)propertyInfo?.GetValue(obj);
+                        list?.Add(value);
                     });
                     break;
                 default:

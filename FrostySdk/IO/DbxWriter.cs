@@ -386,10 +386,10 @@ public sealed class DbxWriter : IDisposable
         }
         else if (value.Type == PointerRefType.External)
         {
-            EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(value.External.FileGuid);
+            EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(value.External.PartitionGuid);
             if (entry is not null)
             {
-                m_xmlWriter!.WriteAttributeString("ref", $"{entry.Name}\\{value.External.ClassGuid}");
+                m_xmlWriter!.WriteAttributeString("ref", $"{entry.Name}\\{value.External.InstanceGuid}");
                 m_xmlWriter.WriteAttributeString("partitionGuid", entry.Guid.ToString());
             }
             else

@@ -7,5 +7,5 @@ public abstract class Resource
 {
     public abstract void Deserialize(DataStream inStream, ReadOnlySpan<byte> inResMeta);
 
-    public abstract void Serialize(DataStream stream, Span<byte> resMeta);
+    public abstract void Serialize(DataStream inStream, Span<byte> resMeta);
 }

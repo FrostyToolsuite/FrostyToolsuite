@@ -253,7 +253,7 @@ public class EbxAsset
                 }
                 else if (pr.Type == PointerRefType.External)
                 {
-                    externalProps.Add(new Tuple<object, Guid>(classObj, pr.External.FileGuid));
+                    externalProps.Add(new Tuple<object, Guid>(classObj, pr.External.PartitionGuid));
                 }
             }
 
@@ -281,7 +281,7 @@ public class EbxAsset
                             }
                             else if (pr.Type == PointerRefType.External)
                             {
-                                externalProps.Add(new Tuple<object, Guid>(classObj, pr.External.FileGuid));
+                                externalProps.Add(new Tuple<object, Guid>(classObj, pr.External.PartitionGuid));
                             }
                         }
                     }

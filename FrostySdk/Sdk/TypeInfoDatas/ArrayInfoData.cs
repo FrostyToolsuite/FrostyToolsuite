@@ -36,6 +36,11 @@ internal class ArrayInfoData : TypeInfoData
         {
             sb.AppendLine($"[{nameof(ArrayGuidAttribute)}(\"{m_guid}\")]");
         }
+
+        if (m_signature != 0)
+        {
+            sb.AppendLine($"[{nameof(ArraySignatureAttribute)}({m_signature})]");
+        }
         sb.AppendLine($"[{nameof(ArrayHashAttribute)}({m_nameHash})]");
         sb.AppendLine($"[{nameof(EbxArrayMetaAttribute)}({(ushort)m_flags})]");
     }

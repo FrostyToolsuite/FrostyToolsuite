@@ -264,7 +264,7 @@ public sealed class DbxReader
         {
             Guid extGuid = Guid.Parse(refGuid.Split('\\')[1]);
             Guid ebxFileGuid = Guid.Parse(refEbxGuid);
-            EbxImportReference import = new() { ClassGuid = extGuid, FileGuid = ebxFileGuid };
+            EbxImportReference import = new() { InstanceGuid = extGuid, PartitionGuid = ebxFileGuid };
             m_ebx!.AddDependency(ebxFileGuid);
             return new PointerRef(import);
         }

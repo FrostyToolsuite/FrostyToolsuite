@@ -5,6 +5,7 @@ using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
+using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO;
 
@@ -34,6 +35,12 @@ public abstract class BaseEbxWriter
     protected HashSet<EbxImportReference> m_imports = new();
     protected Dictionary<EbxImportReference, int> m_importOrderFw = new();
     protected Dictionary<int, EbxImportReference> m_importOrderBw = new();
+
+    //protected readonly List<Block<byte>> m_arrayData = new();
+    protected Block<byte>? m_arrayData;
+    protected DataStream? m_arrayWriter;
+    protected Block<byte>? m_boxedValueData;
+    protected DataStream? m_boxedValueWriter;
 
     protected BaseEbxWriter(DataStream inStream)
     {
@@ -186,5 +193,22 @@ public abstract class BaseEbxWriter
         }
 
         return offset;
+    }
+
+    protected int FindExistingType(Type inType)
+    {
+        uint hash;
+        if (inType.Name.Equals(s_collectionName))
+        {
+            Type elementType = inType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : inType.GenericTypeArguments[0];
+
+            hash = elementType.GetCustomAttribute<ArrayHashAttribute>()!.Hash;
+        }
+        else
+        {
+            hash = inType.GetCustomAttribute<NameHashAttribute>()!.Hash;
+        }
+
+        return m_typeToDescriptor.GetValueOrDefault(hash, -1);
     }
 }
