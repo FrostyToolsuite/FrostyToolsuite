@@ -63,6 +63,7 @@ public class EbxWriter : BaseEbxWriter
 
         // align data of EBXD chunk to 16 bytes
         using Block<byte> data = new(payload.Size + 12);
+        data.Clear();
         data.Shift(12);
         payload.CopyTo(data, payload.Size);
         data.ResetShift();
