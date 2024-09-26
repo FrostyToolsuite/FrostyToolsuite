@@ -25,7 +25,7 @@
 # About
 The FrostyToolsuite is a modding tool for games running on DICE's Frostbite game engine.
 
-This is a rewrite of the FrostyToolsuite in .NET 7, which is in early development and has no functional UI yet.
+This is a rewrite of the FrostyToolsuite in .NET 8, which is in early development and has no functional UI yet.
 
 The old repository can be found at https://github.com/CadeEvs/FrostyToolsuite.
 
