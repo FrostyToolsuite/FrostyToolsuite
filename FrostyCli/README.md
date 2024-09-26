@@ -3,12 +3,12 @@
 ## Build from source
 
 ### Install dependencies
-This project requires [.NET 7.0](https://learn.microsoft.com/en-us/dotnet/core/install/)
+This project requires [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/)
 
 ### Build instructions
 Follow the [build instructions](https://github.com/FrostyToolsuite/FrostyToolsuite?tab=readme-ov-file#from-source).
 
-The compiled executable will be in the `FrostyCLI/bin/Debug/net7.0/` directory.
+The compiled executable will be in the `FrostyCLI/bin/Debug/net8.0/` directory.
 
 ## Nightly builds
 Grab the latest CLI build for Windows or Linux from the [Github Actions](https://github.com/FrostyToolsuite/FrostyToolsuite/actions), compiled from the latest commit.
@@ -64,4 +64,12 @@ Or as an alternative to the datapath launch command, you can use the `GAME_DATA_
 ```GAME_DATA_DIR=<mod data path>```
 
 
+> [!NOTE]
+> Games of Frostbite version above 2014.4.11 require the following steps (check version in the games json file in the Profiles folder) 
 
+### On Linux
+Please copy the bcrypt.dll file from the ThirdParty folder and paste it into the games files, and add the wine DLL override before the datapath command as such:
+```WINEDLLOVERRIDES="bcrypt=n,b" %command% -datapath '<mod data path>'```
+
+### On Windows
+For Windows users, please copy the CryptBase.dll file from the ThirdParty folder and paste it into the games files.
