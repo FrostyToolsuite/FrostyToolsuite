@@ -201,13 +201,18 @@ public unsafe class DataStream : IDisposable
     public virtual string ReadNullTerminatedString(Encoding? inEncoding = null)
     {
         int i = 0;
-        m_buffer ??= new Block<byte>(255);
+        m_buffer ??= new Block<byte>(Environment.SystemPageSize);
         while (true)
         {
             byte c = ReadByte();
             if (c == 0)
             {
                 return (inEncoding ?? Encoding.UTF8).GetString(m_buffer.Ptr, i);
+            }
+
+            if (i > m_buffer.Size)
+            {
+                m_buffer.Resize(m_buffer.Size + Environment.SystemPageSize);
             }
 
             m_buffer[i++] = c;
@@ -543,6 +548,7 @@ public unsafe class DataStream : IDisposable
     public virtual void Dispose()
     {
         m_stream.Dispose();
+        m_buffer?.Dispose();
     }
 
     public virtual DataStream CreateSubStream(long inStartOffset, int inSize)
