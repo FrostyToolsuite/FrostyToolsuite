@@ -82,7 +82,7 @@ public class RiffStream
     public void Fixup()
     {
         m_stream.Position = m_curPos + sizeof(uint);
-        m_stream.WriteUInt32((uint)(m_stream.Length - m_stream.Position - 8));
+        m_stream.WriteUInt32((uint)(m_stream.Length - m_stream.Position - 4));
         m_stream.Position = m_stream.Length;
     }
 }

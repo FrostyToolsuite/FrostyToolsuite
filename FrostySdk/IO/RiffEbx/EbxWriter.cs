@@ -111,23 +111,22 @@ public class EbxWriter : BaseEbxWriter
         stream.Fixup();
     }
 
-    private ushort ProcessType(Type objType)
+    private void ProcessType(Type objType, bool inAddType = true)
     {
-        int index = FindExistingType(objType);
-        if (index != -1)
+        if (FindExistingType(objType) != -1)
         {
-            return (ushort)index;
+            return;
         }
 
         if (objType.IsEnum)
         {
-            index = AddClass(objType);
+            AddClass(objType);
         }
         else if (objType.Name.Equals(s_collectionName))
         {
             Type elementType = objType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : objType.GenericTypeArguments[0];
 
-            index = AddClass(objType);
+            AddClass(objType);
 
             if (!typeof(IPrimitive).IsAssignableFrom(elementType))
             {
@@ -138,12 +137,15 @@ public class EbxWriter : BaseEbxWriter
         {
             if (objType.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
             {
-                ProcessType(objType.BaseType);
+                ProcessType(objType.BaseType, false);
             }
 
             PropertyInfo[] allProps = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
-            index = AddClass(objType);
+            if (inAddType)
+            {
+                AddClass(objType);
+            }
 
             foreach (PropertyInfo pi in allProps)
             {
@@ -172,7 +174,7 @@ public class EbxWriter : BaseEbxWriter
         {
             PropertyInfo[] allProps = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
-            index = AddClass(objType);
+            AddClass(objType);
 
             foreach (PropertyInfo pi in allProps)
             {
@@ -197,8 +199,6 @@ public class EbxWriter : BaseEbxWriter
                 }
             }
         }
-
-        return (ushort)index;
     }
 
     private Block<byte> ProcessData()
@@ -280,12 +280,14 @@ public class EbxWriter : BaseEbxWriter
 
                 writer.WriteUInt32((uint)flags);
 
-                WriteType(m_objsSorted[i], type, writer, classStartOffset);
+                WriteType(m_objsSorted[i], m_typeResolver.ResolveType(FindExistingType(type)), writer, classStartOffset);
             }
 
             writer.Pad(16);
 
             m_fixup.ArrayOffset = (uint)writer.Position;
+            ReadOnlySpan<byte> emptyArray = stackalloc byte[32];
+            writer.Write(emptyArray);
             if (m_arrayData is not null)
             {
                 m_arrayWriter?.Dispose();
@@ -316,7 +318,6 @@ public class EbxWriter : BaseEbxWriter
 
     private int AddClass(Type inType, bool inAddSignature = true)
     {
-        string name = inType.GetName();
         m_typeToDescriptor.Add(inType.GetNameHash(), m_fixup.TypeGuids.Count);
 
         m_fixup.TypeGuids.Add(inType.GetGuid());
@@ -329,36 +330,42 @@ public class EbxWriter : BaseEbxWriter
         return m_fixup.TypeGuids.Count - 1;
     }
 
-    private void WriteType(object obj, Type objType, DataStream writer, long startPos)
+    private void WriteType(object obj, EbxTypeDescriptor type, DataStream writer, long startPos)
     {
-        bool inherited = false;
-        if (objType.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
-        {
-            WriteType(obj, objType.BaseType, writer, startPos);
-            inherited = true;
-        }
+        Type objType = obj.GetType();
+        PropertyInfo[] properties = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-        PropertyInfo[] properties = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-        EbxTypeDescriptor type = m_typeResolver.ResolveType(FindExistingType(objType));
-
-        for (int i = inherited ? 1 : 0; i < type.FieldCount; i++)
+        for (int i = 0; i < type.FieldCount; i++)
         {
             EbxFieldDescriptor field = m_typeResolver.ResolveField(type.FieldIndex + i);
             PropertyInfo? ebxProperty = properties.FirstOrDefault(p => p.GetNameHash() == field.NameHash);
-            if (ebxProperty is null)
-            {
-                continue;
-            }
 
             writer.Position = startPos + field.DataOffset;
 
             if (field.Flags.GetCategoryEnum() == TypeFlags.CategoryEnum.Array)
             {
+                if (ebxProperty is null)
+                {
+                    continue;
+                }
                 WriteArray(ebxProperty.GetValue(obj)!, writer);
             }
             else
             {
-                WriteField(ebxProperty.GetValue(obj)!, field.Flags.GetTypeEnum(), writer);
+                switch (field.Flags.GetTypeEnum())
+                {
+                    case TypeFlags.TypeEnum.Inherited:
+                        WriteType(obj, m_typeResolver.ResolveType(field.TypeDescriptorRef), writer, startPos);
+                        break;
+                    default:
+                        if (ebxProperty is null)
+                        {
+                            continue;
+                        }
+                        WriteField(ebxProperty.GetValue(obj)!, field.Flags.GetTypeEnum(), writer);
+                        break;
+
+                }
             }
         }
 
@@ -403,12 +410,10 @@ public class EbxWriter : BaseEbxWriter
             }
             case TypeFlags.TypeEnum.Struct:
             {
-                Type structType = ebxObj.GetType();
+                EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(FindExistingType(ebxObj.GetType()));
+                writer.Pad(typeDescriptor.Alignment);
 
-                EbxTypeDescriptor structClassType = m_typeResolver.ResolveType(FindExistingType(structType));
-                writer.Pad(structClassType.Alignment);
-
-                WriteType(ebxObj, structType, writer, writer.Position);
+                WriteType(ebxObj, typeDescriptor, writer, writer.Position);
                 break;
             }
             case TypeFlags.TypeEnum.Enum:
@@ -569,7 +574,7 @@ public class EbxWriter : BaseEbxWriter
                     Count = count,
                     TypeDescriptorRef = (ushort)typeIndex,
                     Flags = typeDescriptor.Flags,
-                    Offset = (uint)m_arrayWriter.Position
+                    Offset = (uint)m_arrayWriter.Position + 32
                 });
 
             for (int i = 0; i < count; i++)
@@ -602,41 +607,47 @@ public class EbxWriter : BaseEbxWriter
             writer.Position += sizeof(int);
             writer.Position += sizeof(int);
 
-            FixupType(m_objsSorted[i], type, writer, m_fixup.InstanceOffsets[i]);
+            FixupType(m_objsSorted[i], typeDescriptor, writer, m_fixup.InstanceOffsets[i]);
         }
     }
 
-    private void FixupType(object obj, Type objType, DataStream writer, long startPos)
+    private void FixupType(object obj, EbxTypeDescriptor type, DataStream writer, long startPos)
     {
         // sweep through the EBX data after writing it to patch pointers/offsets
-        bool inherited = false;
-        if (objType.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
-        {
-            FixupType(obj, objType.BaseType, writer, startPos);
-            inherited = true;
-        }
+        Type objType = obj.GetType();
+        PropertyInfo[] properties = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-        PropertyInfo[] properties = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-        EbxTypeDescriptor type = m_typeResolver.ResolveType(FindExistingType(objType));
-
-        for (int i = inherited ? 1 : 0; i < type.FieldCount; i++)
+        for (int i = 0; i < type.FieldCount; i++)
         {
             EbxFieldDescriptor field = m_typeResolver.ResolveField(type.FieldIndex + i);
             PropertyInfo? ebxProperty = properties.FirstOrDefault(p => p.GetNameHash() == field.NameHash);
-            if (ebxProperty is null)
-            {
-                continue;
-            }
 
             writer.Position = startPos + field.DataOffset;
 
             if (field.Flags.GetCategoryEnum() == TypeFlags.CategoryEnum.Array)
             {
+                if (ebxProperty is null)
+                {
+                    continue;
+                }
                 FixupArray(ebxProperty.GetValue(obj)!, writer);
             }
             else
             {
-                FixupField(ebxProperty.GetValue(obj)!, field.Flags.GetTypeEnum(), writer);
+                switch (field.Flags.GetTypeEnum())
+                {
+                    case TypeFlags.TypeEnum.Inherited:
+                        FixupType(obj, m_typeResolver.ResolveType(field.TypeDescriptorRef), writer, startPos);
+                        break;
+                    default:
+                        if (ebxProperty is null)
+                        {
+                            continue;
+                        }
+                        FixupField(ebxProperty.GetValue(obj)!, field.Flags.GetTypeEnum(), writer);
+                        break;
+
+                }
             }
         }
 
@@ -675,12 +686,10 @@ public class EbxWriter : BaseEbxWriter
                 break;
             case TypeFlags.TypeEnum.Struct:
             {
-                Type structType = obj.GetType();
+                EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(FindExistingType(obj.GetType()));
+                writer.Pad(typeDescriptor.Alignment);
 
-                EbxTypeDescriptor structClassType = m_typeResolver.ResolveType(FindExistingType(structType));
-                writer.Pad(structClassType.Alignment);
-
-                FixupType(obj, structType, writer, writer.Position);
+                FixupType(obj, typeDescriptor, writer, writer.Position);
                 break;
             }
             case TypeFlags.TypeEnum.ResourceRef:

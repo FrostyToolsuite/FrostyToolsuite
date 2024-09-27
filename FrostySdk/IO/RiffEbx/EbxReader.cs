@@ -22,6 +22,8 @@ public class EbxReader : BaseEbxReader
 
     private readonly Dictionary<uint, EbxExtra> m_boxedValues = new();
 
+    public static HashSet<string> Types = new();
+
     public EbxReader(DataStream inStream)
         : base(inStream)
     {
