@@ -22,19 +22,19 @@ public unsafe class DataStream : IDisposable
     public long Length => m_stream.Length;
 
     protected Stream m_stream;
-    private readonly StringBuilder m_stringBuilder;
     private readonly Stack<long> m_steps = new();
+    private Block<byte>? m_buffer;
 
     protected DataStream()
     {
         m_stream = Stream.Null;
-        m_stringBuilder = new StringBuilder();
+        new StringBuilder();
     }
 
     public DataStream(Stream inStream)
     {
         m_stream = inStream;
-        m_stringBuilder = new StringBuilder();
+        new StringBuilder();
     }
 
     /// <inheritdoc cref="Stream.Seek"/>
@@ -197,33 +197,34 @@ public unsafe class DataStream : IDisposable
 
     #region -- Strings --
 
-    public virtual string ReadNullTerminatedString()
+    public virtual string ReadNullTerminatedString(Encoding? inEncoding = null)
     {
-        m_stringBuilder.Clear();
+        int i = 0;
+        m_buffer ??= new Block<byte>(255);
         while (true)
         {
-            char c = ReadChar();
+            byte c = ReadByte();
             if (c == 0)
             {
-                return m_stringBuilder.ToString();
+                return (inEncoding ?? Encoding.UTF8).GetString(m_buffer.Ptr, i);
             }
 
-            m_stringBuilder.Append(c);
+            m_buffer[i++] = c;
         }
     }
 
-    public string ReadFixedSizedString(int size)
+    public string ReadFixedSizedString(int size, Encoding? inEncoding = null)
     {
         using (Block<byte> buffer = new(size))
         {
             m_stream.ReadExactly(buffer);
-            return Encoding.ASCII.GetString(buffer).TrimEnd((char)0);
+            return (inEncoding ?? Encoding.UTF8).GetString(buffer).TrimEnd((char)0);
         }
     }
 
-    public string ReadSizedString()
+    public string ReadSizedString(Encoding? inEncoding = null)
     {
-        return ReadFixedSizedString(Read7BitEncodedInt32());
+        return ReadFixedSizedString(Read7BitEncodedInt32(), inEncoding);
     }
 
     #endregion
@@ -435,21 +436,21 @@ public unsafe class DataStream : IDisposable
 
     #region -- Strings --
 
-    public void WriteNullTerminatedString(string value)
+    public void WriteNullTerminatedString(string value, Encoding? inEncoding = null)
     {
-        using (Block<byte> buffer = new(value.Length + 1))
+        using (Block<byte> buffer = new((inEncoding ?? Encoding.UTF8).GetByteCount(value) + 1))
         {
-            Encoding.ASCII.GetBytes(value, buffer);
-            buffer[value.Length] = 0;
+            (inEncoding ?? Encoding.UTF8).GetBytes(value, buffer);
+            buffer[buffer.Size - 1] = 0;
             Write(buffer);
         }
     }
 
-    public void WriteFixedSizedString(string value, int size)
+    public void WriteFixedSizedString(string value, int size, Encoding? inEncoding = null)
     {
         using (Block<byte> buffer = new(size))
         {
-            Encoding.ASCII.GetBytes(value, buffer);
+            (inEncoding ?? Encoding.UTF8).GetBytes(value, buffer);
             for (int i = value.Length; i < size; i++)
             {
                 buffer[i] = 0;
@@ -458,11 +459,11 @@ public unsafe class DataStream : IDisposable
         }
     }
 
-    public void WriteSizedString(string value)
+    public void WriteSizedString(string value, Encoding? inEncoding = null)
     {
-        int size = value.Length + 1;
+        int size = (inEncoding ?? Encoding.UTF8).GetByteCount(value) + 1;
         Write7BitEncodedInt32(size);
-        WriteFixedSizedString(value, size);
+        WriteFixedSizedString(value, size, inEncoding);
     }
 
     #endregion

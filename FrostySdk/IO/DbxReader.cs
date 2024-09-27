@@ -102,6 +102,8 @@ public sealed class DbxReader
 
     private static object GetValueFromString(Type propType, string propValue, TypeEnum? frostbiteType = null)
     {
+        propValue = XmlConvert.DecodeName(propValue);
+
         if (propType.IsPrimitive)
         {
             return Convert.ChangeType(propValue, propType);
