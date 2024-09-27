@@ -364,7 +364,7 @@ public sealed class DbxWriter : IDisposable
     {
         WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
         // temp? remove potential garbage from strings before writing them
-        m_xmlWriter!.WriteValue(value is not null ? Regex.Replace(value, @"[^\u001F-\u007F]+", string.Empty) : value);
+        m_xmlWriter!.WriteValue(value is not null ? XmlConvert.EncodeName(value) : value);
         WriteFieldEnd();
     }
 
