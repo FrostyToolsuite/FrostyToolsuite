@@ -1,8 +1,11 @@
+using System;
+
 namespace Frosty.Sdk.Ebx;
 
-public readonly struct ResourceRef
+public readonly struct ResourceRef : IEquatable<ResourceRef>
 {
-    public static ResourceRef Zero = new(0);
+    public static readonly ResourceRef Zero = new(0);
+
     private readonly ulong m_resourceId;
 
     public ResourceRef(ulong value)
@@ -20,7 +23,7 @@ public readonly struct ResourceRef
         {
             return Equals(a);
         }
-            
+
         if (obj is ulong b)
         {
             return Equals(b);

@@ -2,7 +2,7 @@ using System;
 
 namespace Frosty.Sdk.Ebx;
 
-public readonly struct TypeRef
+public readonly struct TypeRef : IEquatable<TypeRef>
 {
     public string? Name => m_type?.GetName();
     public Guid Guid => m_type?.GetGuid() ?? Guid.Empty;

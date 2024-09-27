@@ -1,6 +1,8 @@
+using System;
+
 namespace Frosty.Sdk.Ebx;
 
-public readonly struct FileRef
+public readonly struct FileRef : IEquatable<FileRef>
 {
     private readonly string? m_fileName;
 

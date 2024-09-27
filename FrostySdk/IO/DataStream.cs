@@ -28,13 +28,11 @@ public unsafe class DataStream : IDisposable
     protected DataStream()
     {
         m_stream = Stream.Null;
-        new StringBuilder();
     }
 
     public DataStream(Stream inStream)
     {
         m_stream = inStream;
-        new StringBuilder();
     }
 
     /// <inheritdoc cref="Stream.Seek"/>
