@@ -102,8 +102,6 @@ public sealed class DbxReader
 
     private static object GetValueFromString(Type propType, string propValue, TypeEnum? frostbiteType = null)
     {
-        propValue = XmlConvert.DecodeName(propValue);
-
         if (propType.IsPrimitive)
         {
             return Convert.ChangeType(propValue, propType);
@@ -369,12 +367,7 @@ public sealed class DbxReader
                 string typeGuid = GetAttributeValue(node, "typeGuid")!;
 
                 Type? type = TypeLibrary.GetType(typeGuid) ?? TypeLibrary.GetType(GetAttributeValue(node, "typeName")!);
-                if (type is null)
-                {
-                    throw new ArgumentException("TypeRef references a null type");
-                }
-
-                TypeRef typeRef = new(Guid.Parse(typeGuid));
+                TypeRef typeRef = type is null ? new TypeRef() : new TypeRef(type);
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(typeRef, s_typeRefType!));
                 break;
             }

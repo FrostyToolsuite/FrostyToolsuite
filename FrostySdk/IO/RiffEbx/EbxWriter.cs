@@ -789,8 +789,6 @@ public class EbxWriter : BaseEbxWriter
         m_fixup.PointerOffsets.Add((uint)fieldOffset);
         int arrayIdx = (int)writer.ReadInt64();
         writer.Position = fieldOffset;
-        EbxExtra array = m_arrays[arrayIdx];
-        array.Offset += m_fixup.ArrayOffset;
 
         IList arrayObj = (IList)obj;
         if (arrayObj.Count == 0)
@@ -803,6 +801,8 @@ public class EbxWriter : BaseEbxWriter
         }
         else
         {
+            EbxExtra array = m_arrays[arrayIdx];
+            array.Offset += m_fixup.ArrayOffset;
             long offset = array.Offset;
             offset -= writer.Position;
             // file pointers only use 32 bits, but runtime pointers need 64 bits when being patched

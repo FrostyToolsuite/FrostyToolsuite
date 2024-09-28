@@ -96,9 +96,7 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter.WriteAttributeString("id", id);
         }
-        m_xmlWriter.WriteAttributeString("guid", classGuid.IsExported
-            ? classGuid.ExportedGuid.ToString()
-            : CreateGuidFromInternalId(classGuid.InternalId).ToString());
+        m_xmlWriter.WriteAttributeString("guid", classGuid.ToString());
 
         m_xmlWriter.WriteAttributeString("type", type);
         m_xmlWriter.WriteAttributeString("exported", classGuid.IsExported.ToString());
@@ -364,7 +362,7 @@ public sealed class DbxWriter : IDisposable
     {
         WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
         // temp? remove potential garbage from strings before writing them
-        m_xmlWriter!.WriteValue(value is not null ? XmlConvert.EncodeName(value) : value);
+        m_xmlWriter!.WriteValue(value);
         WriteFieldEnd();
     }
 
@@ -381,8 +379,7 @@ public sealed class DbxWriter : IDisposable
         if (value.Type == PointerRefType.Internal)
         {
             AssetClassGuid classGuid = ((dynamic)value.Internal!).GetInstanceGuid();
-            Guid guid = classGuid.IsExported ? classGuid.ExportedGuid : CreateGuidFromInternalId(classGuid.InternalId);
-            m_xmlWriter!.WriteAttributeString("ref", guid.ToString());
+            m_xmlWriter!.WriteAttributeString("ref", classGuid.ToString());
         }
         else if (value.Type == PointerRefType.External)
         {
