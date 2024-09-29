@@ -788,14 +788,15 @@ public class EbxWriter : BaseEbxWriter
 
                 if (count > 0)
                 {
+                    m_arrayWriter ??= new BlockStream(m_arrayData = new Block<byte>(1), true);
+
                     // make sure the array data is padded correctly for the first item
                     byte alignment = m_typeDescriptors[arrayFieldType.TypeDescriptorRef].GetAlignment();
-                    if ((m_stream.Position + 4) % alignment != 0)
+                    if ((m_arrayWriter.Position + 4) % alignment != 0)
                     {
-                        m_stream.Position += alignment - (m_stream.Position + 4) % alignment;
+                        m_arrayWriter.Position += alignment - (m_arrayWriter.Position + 4) % alignment;
                     }
 
-                    m_arrayWriter ??= new BlockStream(m_arrayData = new Block<byte>(1), true);
                     m_arrayWriter.WriteInt32(count);
 
                     arrayIdx = m_arrays.Count;

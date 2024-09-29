@@ -482,19 +482,18 @@ public class EbxWriter : BaseEbxWriter
         TypeRef typeRef = type is null ? new TypeRef() : new TypeRef(type);
         (ushort, ushort) tiPair = WriteTypeRef(typeRef, inWriter, true);
 
-
         int index = m_boxedValues.Count;
         if (inBoxedValueRef.Value is not null)
         {
+            m_boxedValueWriter ??= new BlockStream(m_boxedValueData = new Block<byte>(1), true);
             EbxExtra boxedValue = new()
             {
                 Count = 1,
-                Offset = (uint)(m_boxedValueWriter?.Position ?? 0),
+                Offset = (uint)m_boxedValueWriter.Position,
                 Flags = tiPair.Item1,
                 TypeDescriptorRef = tiPair.Item2
             };
             m_boxedValues.Add(boxedValue);
-            m_boxedValueWriter ??= new BlockStream(m_boxedValueData = new Block<byte>(1), true);
             WriteField(inBoxedValueRef.Value, inBoxedValueRef.Type, m_boxedValueWriter);
         }
         else
@@ -565,6 +564,14 @@ public class EbxWriter : BaseEbxWriter
         if (count > 0)
         {
             m_arrayWriter ??= new BlockStream(m_arrayData = new Block<byte>(1), true);
+
+            // make sure the array data is padded correctly for the first item
+            ushort alignment = typeDescriptor.Alignment;
+            if ((m_arrayWriter.Position + 4) % alignment != 0)
+            {
+                m_arrayWriter.Position += alignment - (m_arrayWriter.Position + 4) % alignment;
+            }
+
             m_arrayWriter.WriteInt32(count);
 
             arrayIdx = m_arrays.Count;
