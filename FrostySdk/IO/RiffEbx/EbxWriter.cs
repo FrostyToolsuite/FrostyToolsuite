@@ -485,7 +485,7 @@ public class EbxWriter : BaseEbxWriter
         int index = m_boxedValues.Count;
         if (inBoxedValueRef.Value is not null)
         {
-            m_boxedValueWriter ??= new BlockStream(m_boxedValueData = new Block<byte>(1), true);
+            m_boxedValueWriter ??= new BlockStream(m_boxedValueData = new Block<byte>(0), true);
             EbxExtra boxedValue = new()
             {
                 Count = 1,
@@ -515,9 +515,9 @@ public class EbxWriter : BaseEbxWriter
 
         Type typeRefType = typeRef.Type!;
         int typeIdx = FindExistingType(typeRefType);
-        EbxTypeMetaAttribute? meta = typeRefType.GetCustomAttribute<EbxTypeMetaAttribute>();
+        EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(typeIdx);
 
-        TypeFlags type = meta?.Flags ?? new TypeFlags();
+        TypeFlags type = typeDescriptor.Flags;
 
         (ushort, ushort) tiPair;
         tiPair.Item1 = type;
@@ -563,7 +563,7 @@ public class EbxWriter : BaseEbxWriter
 
         if (count > 0)
         {
-            m_arrayWriter ??= new BlockStream(m_arrayData = new Block<byte>(1), true);
+            m_arrayWriter ??= new BlockStream(m_arrayData = new Block<byte>(0), true);
 
             // make sure the array data is padded correctly for the first item
             ushort alignment = typeDescriptor.Alignment;

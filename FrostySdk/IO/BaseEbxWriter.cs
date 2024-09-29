@@ -168,21 +168,22 @@ public abstract class BaseEbxWriter
 
     protected uint AddString(string stringToAdd)
     {
-        if (stringToAdd == "")
+        // TODO: check if this breaks non riff ebx
+        //if (string.IsNullOrEmpty(stringToAdd))
         {
-            return 0xFFFFFFFF;
+            //return 0xFFFFFFFF;
         }
 
         uint offset = 0;
         if (m_strings.Contains(stringToAdd))
         {
-            for (int i = 0; i < m_strings.Count; i++)
+            foreach (string s in m_strings)
             {
-                if (m_strings[i] == stringToAdd)
+                if (s == stringToAdd)
                 {
                     break;
                 }
-                offset += (uint)(m_strings[i].Length + 1);
+                offset += (uint)(s.Length + 1);
             }
         }
         else
