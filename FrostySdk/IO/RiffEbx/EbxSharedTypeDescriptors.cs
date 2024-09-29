@@ -44,6 +44,7 @@ internal static class EbxSharedTypeDescriptors
 
     private static void Read(Block<byte> inFile)
     {
+        File.WriteAllBytes("/home/jona/std.ebx", inFile.ToArray());
         using (BlockStream stream = new(inFile))
         {
             RiffStream riffStream = new(stream);
@@ -63,7 +64,7 @@ internal static class EbxSharedTypeDescriptors
 
     private static void ProcessChunk(DataStream inStream, FourCC inFourCc, uint inSize)
     {
-        if (inFourCc != "REFL")
+        if (inFourCc != "REFL" && inFourCc != "RFL2")
         {
             return;
         }
@@ -103,6 +104,26 @@ internal static class EbxSharedTypeDescriptors
                 Flags = inStream.ReadUInt16(),
                 TypeDescriptorRef = (ushort)(inStream.ReadUInt16() + startTypes)
             });
+        }
+
+        int unkCount = inStream.ReadInt32();
+        for (int i = 0; i < unkCount; i++)
+        {
+            int index1 = inStream.ReadInt32();
+            int one = inStream.ReadInt32();
+            int index2 = inStream.ReadInt32();
+        }
+
+        int unk2Count = inStream.ReadInt32();
+        for (int i = 0; i < unk2Count; i++)
+        {
+            uint hash = inStream.ReadUInt32();
+            int index = inStream.ReadInt32();
+        }
+
+        if (inFourCc == "RFL2")
+        {
+            int unk3Count = inStream.ReadInt32();
         }
     }
 }
