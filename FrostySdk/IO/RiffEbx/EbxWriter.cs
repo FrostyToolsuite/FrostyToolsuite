@@ -300,7 +300,7 @@ public class EbxWriter : BaseEbxWriter
             if (m_boxedValueData is not null)
             {
                 m_boxedValueWriter?.Dispose();
-                m_stream.Write(m_boxedValueData);
+                writer.Write(m_boxedValueData);
                 m_boxedValueData.Dispose();
             }
 
@@ -580,7 +580,7 @@ public class EbxWriter : BaseEbxWriter
                 {
                     Count = count,
                     TypeDescriptorRef = (ushort)typeIndex,
-                    Flags = typeDescriptor.Flags,
+                    Flags = (ushort)((typeDescriptor.Flags >> 1) << 1),
                     Offset = (uint)m_arrayWriter.Position + 32
                 });
 
