@@ -827,6 +827,7 @@ public class EbxWriter : BaseEbxWriter
             }
 
             writer.Position = oldPos;
+            m_arrays[arrayIdx] = array;
         }
     }
 
