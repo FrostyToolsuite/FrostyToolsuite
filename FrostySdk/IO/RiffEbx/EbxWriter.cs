@@ -126,8 +126,6 @@ public class EbxWriter : BaseEbxWriter
         {
             Type elementType = objType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : objType.GenericTypeArguments[0];
 
-            AddClass(objType);
-
             if (!typeof(IPrimitive).IsAssignableFrom(elementType))
             {
                 ProcessType(elementType);
@@ -140,64 +138,14 @@ public class EbxWriter : BaseEbxWriter
                 ProcessType(objType.BaseType, false);
             }
 
-            PropertyInfo[] allProps = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-
             if (inAddType)
             {
                 AddClass(objType);
             }
-
-            foreach (PropertyInfo pi in allProps)
-            {
-                // ignore transients if saving to project
-                if (pi.GetCustomAttribute<IsTransientAttribute>() is not null)
-                {
-                    continue;
-                }
-
-                EbxFieldMetaAttribute? fieldMeta = pi.GetCustomAttribute<EbxFieldMetaAttribute>();
-                TypeFlags.TypeEnum ebxType = fieldMeta!.Flags.GetTypeEnum();
-
-                Type propType = pi.PropertyType;
-
-                switch (ebxType)
-                {
-                    case TypeFlags.TypeEnum.Array:
-                    case TypeFlags.TypeEnum.Struct:
-                    case TypeFlags.TypeEnum.Enum:
-                        ProcessType(propType);
-                        break;
-                }
-            }
         }
         else if (objType.IsValueType)
         {
-            PropertyInfo[] allProps = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-
             AddClass(objType);
-
-            foreach (PropertyInfo pi in allProps)
-            {
-                // ignore transients
-                if (pi.GetCustomAttribute<IsTransientAttribute>() is not null)
-                {
-                    continue;
-                }
-
-                EbxFieldMetaAttribute? fieldMeta = pi.GetCustomAttribute<EbxFieldMetaAttribute>();
-                TypeFlags.TypeEnum ebxType = fieldMeta!.Flags.GetTypeEnum();
-
-                Type propType = pi.PropertyType;
-
-                switch (ebxType)
-                {
-                    case TypeFlags.TypeEnum.Array:
-                    case TypeFlags.TypeEnum.Struct:
-                    case TypeFlags.TypeEnum.Enum:
-                        ProcessType(propType);
-                        break;
-                }
-            }
         }
     }
 
@@ -549,24 +497,35 @@ public class EbxWriter : BaseEbxWriter
 
     private void WriteArray(object inObj, DataStream writer)
     {
-        Type type = inObj.GetType();
-        int typeIndex = FindExistingType(type.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : type.GenericTypeArguments[0]);
-        int arrayIdx = 0;
-
-        EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(typeIndex);
-
-        TypeFlags.TypeEnum ebxType = typeDescriptor.Flags.GetTypeEnum();
-
         // cast to IList to avoid having to invoke methods manually
         IList arrayObj = (IList)inObj;
         int count = arrayObj.Count;
+        int arrayIdx = 0;
 
         if (count > 0)
         {
+            Type type = inObj.GetType();
+            TypeFlags.TypeEnum ebxType;
+            ushort alignment;
+            int typeIndex;
+            if (type.GenericTypeArguments[0].Name != "PointerRef")
+            {
+                typeIndex = FindExistingType(type.GenericTypeArguments[0]);
+
+                EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(typeIndex);
+                ebxType = typeDescriptor.Flags.GetTypeEnum();
+                alignment = typeDescriptor.Alignment;
+            }
+            else
+            {
+                typeIndex = -1;
+                ebxType = TypeFlags.TypeEnum.Class;
+                alignment = 8;
+            }
+
             m_arrayWriter ??= new BlockStream(m_arrayData = new Block<byte>(0), true);
 
             // make sure the array data is padded correctly for the first item
-            ushort alignment = typeDescriptor.Alignment;
             if ((m_arrayWriter.Position + 4) % alignment != 0)
             {
                 m_arrayWriter.Position += alignment - (m_arrayWriter.Position + 4) % alignment;
@@ -580,7 +539,7 @@ public class EbxWriter : BaseEbxWriter
                 {
                     Count = count,
                     TypeDescriptorRef = (ushort)typeIndex,
-                    Flags = (ushort)((typeDescriptor.Flags >> 1) << 1),
+                    Flags = new TypeFlags(ebxType, TypeFlags.CategoryEnum.Array),
                     Offset = (uint)m_arrayWriter.Position + 32
                 });
 

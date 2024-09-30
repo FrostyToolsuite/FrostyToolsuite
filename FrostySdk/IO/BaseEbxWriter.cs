@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using Frosty.Sdk.Attributes;
@@ -80,7 +81,7 @@ public abstract class BaseEbxWriter
             return;
         }
 
-        if (type.BaseType != s_objectType && type.BaseType != s_valueType)
+        if (type.IsClass && type.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
         {
             ExtractType(type.BaseType!, obj, false);
         }
@@ -125,7 +126,7 @@ public abstract class BaseEbxWriter
         }
 
         // structs
-        else if (type.BaseType == s_valueType && type.Namespace!.StartsWith(s_ebxNamespace))
+        else if (type.IsValueType)
         {
             object structObj = obj;
             ExtractType(structObj.GetType(), structObj);
@@ -135,11 +136,11 @@ public abstract class BaseEbxWriter
         else if (type.Name.Equals(s_collectionName))
         {
             Type arrayType = type;
-            int count = (int)arrayType.GetMethod("get_Count")!.Invoke(obj, null)!;
+            IList list = (IList)obj;
 
-            for (int arrayIter = 0; arrayIter < count; arrayIter++)
+            foreach (object o in list)
             {
-                ExtractField(arrayType.GenericTypeArguments[0], arrayType.GetMethod("get_Item")!.Invoke(obj, new object[] { arrayIter })!);
+                ExtractField(arrayType.GenericTypeArguments[0], o);
             }
         }
 
