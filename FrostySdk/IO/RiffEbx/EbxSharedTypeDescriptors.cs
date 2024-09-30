@@ -44,7 +44,6 @@ internal static class EbxSharedTypeDescriptors
 
     private static void Read(Block<byte> inFile)
     {
-        File.WriteAllBytes("/home/jona/std.ebx", inFile.ToArray());
         using (BlockStream stream = new(inFile))
         {
             RiffStream riffStream = new(stream);
