@@ -539,7 +539,7 @@ public class EbxWriter : BaseEbxWriter
                 {
                     Count = count,
                     TypeDescriptorRef = (ushort)typeIndex,
-                    Flags = new TypeFlags(ebxType, TypeFlags.CategoryEnum.Array),
+                    Flags = new TypeFlags(ebxType, TypeFlags.CategoryEnum.Array, unk: 0),
                     Offset = (uint)m_arrayWriter.Position + 32
                 });
 
