@@ -42,7 +42,7 @@ public class EbxWriter : BaseEbxWriter
     {
     }
 
-    protected override void InternalWriteEbx(Guid inPartitionGuid)
+    protected override void InternalWriteEbx(Guid inPartitionGuid, int inExportedInstanceCount)
     {
         foreach (Type objTypes in m_typesToProcess)
         {
@@ -493,46 +493,7 @@ public class EbxWriter : BaseEbxWriter
 
     private void ProcessData()
     {
-        HashSet<Type> uniqueTypes = new(m_objs.Count);
-        List<object> exportedObjs = new(m_objs.Count);
-        List<object> otherObjs = new(m_objs.Count);
-
-        for (int i = 0; i < m_objs.Count; i++)
-        {
-            dynamic obj = m_objs[i];
-            AssetClassGuid guid = obj.GetInstanceGuid();
-            if (guid.IsExported)
-            {
-                exportedObjs.Add(obj);
-            }
-            else
-            {
-                otherObjs.Add(obj);
-            }
-        }
-
-        object root = exportedObjs[0];
-        exportedObjs.RemoveAt(0);
-
-        exportedObjs.Sort((dynamic a, dynamic b) =>
-        {
-            AssetClassGuid guidA = a.GetInstanceGuid();
-            AssetClassGuid guidB = b.GetInstanceGuid();
-
-            byte[] bA = guidA.ExportedGuid.ToByteArray();
-            byte[] bB = guidB.ExportedGuid.ToByteArray();
-
-            uint idA = (uint)(bA[0] << 24 | bA[1] << 16 | bA[2] << 8 | bA[3]);
-            uint idB = (uint)(bB[0] << 24 | bB[1] << 16 | bB[2] << 8 | bB[3]);
-
-            return idA.CompareTo(idB);
-        });
-
-        otherObjs.Sort((a, b) => string.Compare(a.GetType().Name, b.GetType().Name, StringComparison.Ordinal));
-
-        m_objsSorted.Add(root);
-        m_objsSorted.AddRange(exportedObjs);
-        m_objsSorted.AddRange(otherObjs);
+        HashSet<Type> uniqueTypes = new(m_objsSorted.Count);
 
         m_data = new Block<byte>(10);
         using (BlockStream writer = new(m_data, true))

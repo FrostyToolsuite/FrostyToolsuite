@@ -13,13 +13,13 @@ namespace Frosty.Sdk.IO;
 public abstract class BaseEbxWriter
 {
     protected readonly DataStream m_stream;
-    protected readonly List<object> m_objs = new();
     protected readonly List<object> m_objsSorted = new();
 
     protected static readonly Type s_pointerType = typeof(PointerRef);
     protected static readonly Type s_valueType = typeof(ValueType);
     protected static readonly Type s_objectType = typeof(object);
     protected static readonly Type s_dataContainerType = TypeLibrary.GetType("DataContainer")!;
+    protected static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef");
     protected static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef");
 
     protected static readonly string s_ebxNamespace = "Frostbite";
@@ -55,19 +55,66 @@ public abstract class BaseEbxWriter
 
     public void WriteAsset(EbxAsset inAsset)
     {
-        foreach (object ebxObj in inAsset.Objects)
+        List<object> exportedObjs = new(inAsset.objects.Count);
+        List<object> otherObjs = new(inAsset.objects.Count);
+
+        foreach (dynamic obj in inAsset.Objects)
+        {
+            AssetClassGuid guid = obj.GetInstanceGuid();
+            if (guid.IsExported)
+            {
+                exportedObjs.Add(obj);
+            }
+            else
+            {
+                otherObjs.Add(obj);
+            }
+        }
+
+        int exportedInstanceCount = exportedObjs.Count;
+        object root = exportedObjs[0];
+        exportedObjs.RemoveAt(0);
+
+        exportedObjs.Sort((dynamic a, dynamic b) =>
+        {
+            AssetClassGuid guidA = a.GetInstanceGuid();
+            AssetClassGuid guidB = b.GetInstanceGuid();
+
+            byte[] bA = guidA.ExportedGuid.ToByteArray();
+            byte[] bB = guidB.ExportedGuid.ToByteArray();
+
+            uint idA = (uint)(bA[0] << 24 | bA[1] << 16 | bA[2] << 8 | bA[3]);
+            uint idB = (uint)(bB[0] << 24 | bB[1] << 16 | bB[2] << 8 | bB[3]);
+
+            return idA.CompareTo(idB);
+        });
+
+        otherObjs.Sort((a, b) =>
+        {
+            byte[] bA = a.GetType().GetGuid().ToByteArray();
+            byte[] bB = b.GetType().GetGuid().ToByteArray();
+
+            uint idA = (uint)(bA[0] << 24 | bA[1] << 16 | bA[2] << 8 | bA[3]);
+            uint idB = (uint)(bB[0] << 24 | bB[1] << 16 | bB[2] << 8 | bB[3]);
+
+            return idA.CompareTo(idB);
+        });
+
+        m_objsSorted.Add(root);
+        m_objsSorted.AddRange(exportedObjs);
+        m_objsSorted.AddRange(otherObjs);
+        foreach (object ebxObj in m_objsSorted)
         {
             ExtractType(ebxObj.GetType(), ebxObj);
-            m_objs.Insert(0, ebxObj);
         }
 
         GenerateImportOrder();
-        InternalWriteEbx(inAsset.PartitionGuid);
+        InternalWriteEbx(inAsset.PartitionGuid, exportedInstanceCount);
     }
 
-    protected abstract void InternalWriteEbx(Guid inPartitionGuid);
+    protected abstract void InternalWriteEbx(Guid inPartitionGuid, int inExportedInstanceCount);
 
-    private void ExtractType(Type type, object obj, bool add = true)
+    protected void ExtractType(Type type, object obj, bool add = true)
     {
         if (typeof(IPrimitive).IsAssignableFrom(type))
         {
@@ -75,49 +122,22 @@ public abstract class BaseEbxWriter
             return;
         }
 
-        if (add && !m_processedObjects.Add(obj))
+        if (typeof(IDelegate).IsAssignableFrom(type))
         {
-            // dont get caught in a infinite loop
-            return;
-        }
+            IDelegate @delegate = (IDelegate)obj;
 
-        if (type.IsClass && type.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
-        {
-            ExtractType(type.BaseType!, obj, false);
-        }
-
-        if (add)
-        {
-            int hash = type.GetHashCode();
-            if (!m_typesToProcessSet.Contains(hash))
+            if (@delegate.FunctionType is not null && m_typesToProcessSet.Add(@delegate.FunctionType.GetHashCode()))
             {
-                m_typesToProcess.Add(type);
-                m_typesToProcessSet.Add(hash);
+                m_typesToProcess.Add(@delegate.FunctionType);
             }
         }
 
-        PropertyInfo[] ebxObjFields = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-
-        foreach (PropertyInfo ebxField in ebxObjFields)
-        {
-            if (ebxField.GetCustomAttribute<IsTransientAttribute>() is not null)
-            {
-                // transient field, do not write
-                continue;
-            }
-            ExtractField(ebxField.PropertyType, ebxField.GetValue(obj)!);
-        }
-    }
-
-    private void ExtractField(Type type, object obj)
-    {
-        // pointerRefs
         if (type == s_pointerType)
         {
             PointerRef value = (PointerRef)obj;
             if (value.Type == PointerRefType.Internal)
             {
-                ExtractType(value.Internal!.GetType(), value.Internal);
+                //ExtractType(value.Internal!.GetType(), value.Internal);
             }
             else if (value.Type == PointerRefType.External)
             {
@@ -125,22 +145,25 @@ public abstract class BaseEbxWriter
             }
         }
 
-        // structs
-        else if (type.IsValueType)
-        {
-            object structObj = obj;
-            ExtractType(structObj.GetType(), structObj);
-        }
-
         // arrays (stored as ObservableCollections in the sdk)
         else if (type.Name.Equals(s_collectionName))
         {
-            Type arrayType = type;
             IList list = (IList)obj;
 
             foreach (object o in list)
             {
-                ExtractField(arrayType.GenericTypeArguments[0], o);
+                ExtractType(o.GetType(), o);
+            }
+        }
+
+        // type refs
+        else if (type == s_typeRefType)
+        {
+            TypeRef typeRef = (TypeRef)((IPrimitive)obj).ToActualType();
+
+            if (typeRef.Type is not null && m_typesToProcessSet.Add(typeRef.Type.GetHashCode()))
+            {
+                m_typesToProcess.Add(typeRef.Type);
             }
         }
 
@@ -152,6 +175,57 @@ public abstract class BaseEbxWriter
             if (boxedValueRef.Value is not null)
             {
                 ExtractType(boxedValueRef.Value!.GetType(), boxedValueRef.Value);
+            }
+        }
+
+        // structs
+        else if (type.IsValueType)
+        {
+            if (add && m_typesToProcessSet.Add(type.GetHashCode()))
+            {
+                m_typesToProcess.Add(type);
+            }
+
+            PropertyInfo[] ebxObjFields = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+
+            for (int i = ebxObjFields.Length - 1; i >= 0 ; i--)
+            {
+                PropertyInfo ebxField = ebxObjFields[i];
+                if (ebxField.GetCustomAttribute<IsTransientAttribute>() is not null)
+                {
+                    // transient field, do not write
+                    continue;
+                }
+
+                ExtractType(ebxField.PropertyType, ebxField.GetValue(obj)!, false);
+            }
+        }
+
+        // structs
+        else if (type.IsClass)
+        {
+            if (add && m_typesToProcessSet.Add(type.GetHashCode()))
+            {
+                m_typesToProcess.Add(type);
+            }
+
+            PropertyInfo[] ebxObjFields = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+
+            for (int i = ebxObjFields.Length - 1; i >= 0 ; i--)
+            {
+                PropertyInfo ebxField = ebxObjFields[i];
+                if (ebxField.GetCustomAttribute<IsTransientAttribute>() is not null)
+                {
+                    // transient field, do not write
+                    continue;
+                }
+
+                ExtractType(ebxField.PropertyType, ebxField.GetValue(obj)!, false);
+            }
+
+            if (type.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
+            {
+                ExtractType(type.BaseType!, obj, false);
             }
         }
     }

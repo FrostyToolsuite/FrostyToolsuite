@@ -20,7 +20,7 @@ public sealed class DbxWriter : IDisposable
     private static readonly string s_instanceGuidName = "__InstanceGuid";
     private static readonly string s_instanceIdName = "__Id";
 
-    private readonly XmlWriterSettings m_settings = new() { Indent = true, IndentChars = "\t" };
+    private readonly XmlWriterSettings m_settings = new() { Indent = true, IndentChars = "\t", NewLineChars = "\n"};
 
     private string m_filePath;
     private XmlWriter? m_xmlWriter;

@@ -93,7 +93,10 @@ internal struct EbxFixup
         fixup.ArrayOffset = inStream.ReadUInt32();
         fixup.BoxedValueRefOffset = inStream.ReadUInt32();
         fixup.StringOffset = inStream.ReadUInt32();
-        inStream.ReadUInt32();
+        if (ProfilesLibrary.FrostbiteVersion >= "2021")
+        {
+            inStream.ReadUInt32();
+        }
 
         return fixup;
     }
@@ -162,7 +165,10 @@ internal struct EbxFixup
             stream.WriteUInt32(inFixup.ArrayOffset);
             stream.WriteUInt32(inFixup.BoxedValueRefOffset);
             stream.WriteUInt32(inFixup.StringOffset);
-            stream.WriteUInt32(0);
+            if (ProfilesLibrary.FrostbiteVersion >= "2021")
+            {
+                stream.WriteUInt32(0);
+            }
         }
 
         return retVal;
