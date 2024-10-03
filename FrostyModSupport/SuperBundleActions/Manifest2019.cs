@@ -552,6 +552,10 @@ internal class Manifest2019 : IDisposable
             bundleWriter.WriteUInt32(0xDEADBEEF, Endian.Big); // unused
             bundleWriter.WriteUInt32(0xDEADBEEF, Endian.Big); // unused
             bundleWriter.WriteUInt32(0, Endian.Big); // unused
+            if (ProfilesLibrary.FrostbiteVersion >= "2023")
+            {
+                bundleWriter.WriteUInt32(0, Endian.Big); // unknown
+            }
 
             if (inBundle.IsInline)
             {
