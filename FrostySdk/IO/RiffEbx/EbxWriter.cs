@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
@@ -78,6 +77,12 @@ public class EbxWriter : BaseEbxWriter
         {
             m_fixup.Imports[i++] = import;
         }
+
+        (m_fixup.InstanceOffsets as List<uint>)!.Sort();
+        (m_fixup.PointerOffsets as List<uint>)!.Sort();
+        (m_fixup.ResourceRefOffsets as List<uint>)!.Sort();
+        (m_fixup.ImportOffsets as List<uint>)!.Sort();
+        (m_fixup.TypeInfoOffsets as List<uint>)!.Sort();
 
         using Block<byte> fixup = EbxFixup.WriteFixup(m_fixup);
         stream.WriteChunk("EFIX", fixup);
@@ -154,8 +159,6 @@ public class EbxWriter : BaseEbxWriter
 
     private Block<byte> ProcessData()
     {
-
-
         Block<byte> data = new(1);
         using (BlockStream writer = new(data, true))
         {
@@ -164,8 +167,8 @@ public class EbxWriter : BaseEbxWriter
                 AssetClassGuid guid = ((dynamic)m_objsSorted[i]).GetInstanceGuid();
 
                 Type type = m_objsSorted[i].GetType();
-                int classIdx = FindExistingType(type);
-                EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(classIdx);
+                int typeDescriptorRef = FindExistingType(type);
+                EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(typeDescriptorRef);
 
                 writer.Pad(typeDescriptor.Alignment);
 
@@ -176,7 +179,7 @@ public class EbxWriter : BaseEbxWriter
                 m_fixup.InstanceOffsets.Add((uint)writer.Position);
                 long classStartOffset = writer.Position;
 
-                writer.WriteInt64(classIdx);
+                writer.WriteInt64(typeDescriptorRef);
                 if (typeDescriptor.Alignment != 0x04)
                 {
                     writer.WriteUInt64(0);
@@ -192,7 +195,7 @@ public class EbxWriter : BaseEbxWriter
 
                 writer.WriteUInt32((uint)flags);
 
-                WriteType(m_objsSorted[i], m_typeResolver.ResolveType(FindExistingType(type)), writer, classStartOffset);
+                WriteType(m_objsSorted[i], m_typeResolver.ResolveType(typeDescriptorRef), writer, classStartOffset);
             }
 
             writer.Pad(16);
@@ -318,11 +321,6 @@ public class EbxWriter : BaseEbxWriter
                 }
 
                 writer.WriteUInt64(pointerIndex);
-                break;
-            }
-            case TypeFlags.TypeEnum.Struct:
-            {
-
                 break;
             }
             case TypeFlags.TypeEnum.Enum:
@@ -532,7 +530,7 @@ public class EbxWriter : BaseEbxWriter
                 new EbxExtra
                 {
                     Count = count,
-                    TypeDescriptorRef = inTypeDescriptorRef,
+                    TypeDescriptorRef = (ushort)FindExistingType(inObj.GetType().GenericTypeArguments[0]),
                     Flags = new TypeFlags(inType, TypeFlags.CategoryEnum.Array, unk: 0),
                     Offset = (uint)m_arrayWriter.Position + 32
                 });

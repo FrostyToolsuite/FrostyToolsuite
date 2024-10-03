@@ -7,6 +7,7 @@ using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
+using Frosty.Sdk.Managers;
 using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO;
@@ -31,22 +32,23 @@ public abstract class BaseEbxWriter
 
     protected HashSet<int> m_typesToProcessSet = new();
     protected List<Type> m_typesToProcess = new();
-    protected HashSet<object> m_processedObjects = new();
     protected Dictionary<uint, int> m_typeToDescriptor = new();
 
     protected HashSet<EbxImportReference> m_imports = new();
     protected Dictionary<EbxImportReference, int> m_importOrderFw = new();
     protected Dictionary<int, EbxImportReference> m_importOrderBw = new();
 
-    //protected readonly List<Block<byte>> m_arrayData = new();
     protected Block<byte>? m_arrayData;
     protected DataStream? m_arrayWriter;
     protected Block<byte>? m_boxedValueData;
     protected DataStream? m_boxedValueWriter;
 
+    protected bool m_useSharedTypeDescriptors;
+
     protected BaseEbxWriter(DataStream inStream)
     {
         m_stream = inStream;
+        m_useSharedTypeDescriptors = FileSystemManager.HasFileInMemoryFs("SharedTypeDescriptors.ebx");
     }
 
     public static BaseEbxWriter CreateWriter(DataStream inStream)
@@ -136,11 +138,8 @@ public abstract class BaseEbxWriter
         if (type == s_pointerType)
         {
             PointerRef value = (PointerRef)obj;
-            if (value.Type == PointerRefType.Internal)
-            {
-                //ExtractType(value.Internal!.GetType(), value.Internal);
-            }
-            else if (value.Type == PointerRefType.External)
+
+            if (value.Type == PointerRefType.External)
             {
                 m_imports.Add(value.External);
             }
@@ -198,7 +197,7 @@ public abstract class BaseEbxWriter
                     continue;
                 }
 
-                ExtractType(ebxField.PropertyType, ebxField.GetValue(obj)!, false);
+                ExtractType(ebxField.PropertyType, ebxField.GetValue(obj)!, !m_useSharedTypeDescriptors);
             }
         }
 
@@ -221,7 +220,7 @@ public abstract class BaseEbxWriter
                     continue;
                 }
 
-                ExtractType(ebxField.PropertyType, ebxField.GetValue(obj)!, false);
+                ExtractType(ebxField.PropertyType, ebxField.GetValue(obj)!, !m_useSharedTypeDescriptors);
             }
 
             if (type.BaseType!.Namespace!.StartsWith(s_ebxNamespace))

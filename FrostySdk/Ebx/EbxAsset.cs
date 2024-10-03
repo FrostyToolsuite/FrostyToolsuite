@@ -44,9 +44,9 @@ public class EbxAsset
     {
         get
         {
-            for (int i = objects.Count - 1; i >= 0; i--)
+            foreach (object obj in objects)
             {
-                yield return objects[i];
+                yield return obj;
             }
         }
     }
@@ -67,7 +67,6 @@ public class EbxAsset
     }
     public object RootObject => objects[0];
     public bool IsValid => objects.Count != 0;
-    public bool TransientEdit { get; set; }
 
     internal Guid partitionGuid;
     internal List<object> objects = new();

@@ -250,9 +250,9 @@ public class EbxReader : BaseEbxReader
         long arrayPos = m_stream.Position;
         m_stream.Position = m_header.ArrayOffset + array.Offset;
 
+        EbxFieldDescriptor elementFieldDescriptor = m_typeResolver.ResolveField(arrayTypeDescriptor.FieldIndex);
         for (int i = 0; i < array.Count; i++)
         {
-            EbxFieldDescriptor elementFieldDescriptor = m_typeResolver.ResolveField(arrayTypeDescriptor.FieldIndex);
             ReadField(arrayTypeDescriptor, elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef, inAddFunc);
         }
         m_stream.Position = arrayPos;
