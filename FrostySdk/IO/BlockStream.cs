@@ -277,8 +277,15 @@ public class BlockStream : DataStream
         inStream.ReadExactly(stream.m_block);
 
         // deobfuscate the data
-        IDeobfuscator? deobfuscator = FileSystemManager.CreateDeobfuscator();
-        deobfuscator?.Deobfuscate(inHeader, stream.m_block);
+        if (ProfilesLibrary.FrostbiteVersion > "2014.4.11" || inHeader[3] == 0x03)
+        {
+            return true;
+        }
+
+        for (int i = 0; i < stream.m_block.Size; i++)
+        {
+            stream.m_block[i] ^= (byte)(0x7B ^ inHeader[0x128 + i % 0x101]);
+        }
 
         return true;
     }
