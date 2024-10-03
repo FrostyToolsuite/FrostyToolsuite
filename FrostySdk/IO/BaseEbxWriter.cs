@@ -27,7 +27,7 @@ public abstract class BaseEbxWriter
     protected static readonly string s_ebxNamespace = "Frostbite";
     protected static readonly string s_collectionName = "ObservableCollection`1";
 
-    protected uint m_stringsLength = 0;
+    protected uint m_stringsLength;
     protected List<string> m_strings = new();
 
     protected HashSet<int> m_typesToProcessSet = new();
@@ -36,7 +36,6 @@ public abstract class BaseEbxWriter
 
     protected HashSet<EbxImportReference> m_imports = new();
     protected Dictionary<EbxImportReference, int> m_importOrderFw = new();
-    protected Dictionary<int, EbxImportReference> m_importOrderBw = new();
 
     protected Block<byte>? m_arrayData;
     protected DataStream? m_arrayWriter;
@@ -236,7 +235,6 @@ public abstract class BaseEbxWriter
         foreach (EbxImportReference import in m_imports)
         {
             m_importOrderFw[import] = iter;
-            m_importOrderBw[iter] = import;
             iter++;
         }
     }
@@ -278,11 +276,11 @@ public abstract class BaseEbxWriter
         {
             Type elementType = inType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : inType.GenericTypeArguments[0];
 
-            hash = elementType.GetCustomAttribute<ArrayHashAttribute>()!.Hash;
+            hash = elementType.GetCustomAttribute<ArrayHashAttribute>()?.Hash ?? uint.MaxValue;
         }
         else
         {
-            hash = inType.GetCustomAttribute<NameHashAttribute>()!.Hash;
+            hash = inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? uint.MaxValue;
         }
 
         return m_typeToDescriptor.GetValueOrDefault(hash, -1);
