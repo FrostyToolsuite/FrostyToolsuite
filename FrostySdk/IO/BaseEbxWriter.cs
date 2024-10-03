@@ -258,14 +258,14 @@ public abstract class BaseEbxWriter
                 {
                     break;
                 }
-                offset += (uint)(s.Length + 1);
+                offset += (uint)(Encoding.UTF8.GetByteCount(s) + 1);
             }
         }
         else
         {
             offset = m_stringsLength;
             m_strings.Add(stringToAdd);
-            m_stringsLength += (uint)(stringToAdd.Length + 1);
+            m_stringsLength += (uint)(Encoding.UTF8.GetByteCount(stringToAdd) + 1);
         }
 
         return offset;
