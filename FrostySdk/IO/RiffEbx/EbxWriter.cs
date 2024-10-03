@@ -587,7 +587,7 @@ public class EbxWriter : BaseEbxWriter
                 {
                     continue;
                 }
-                FixupArray(ebxProperty.GetValue(obj)!, writer);
+                FixupArray(ebxProperty.GetValue(obj)!, field.Flags.GetTypeEnum(), field.TypeDescriptorRef, writer);
             }
             else
             {
@@ -739,7 +739,7 @@ public class EbxWriter : BaseEbxWriter
         writer.WriteInt32(0);
     }
 
-    private void FixupArray(object obj, DataStream writer)
+    private void FixupArray(object obj, TypeFlags.TypeEnum inType, ushort inTypeDescriptorRef, DataStream writer)
     {
         // array pointers need to be in the pointer list
         long fieldOffset = writer.Position;
@@ -772,8 +772,7 @@ public class EbxWriter : BaseEbxWriter
             for (int i = 0; i < array.Count; i++)
             {
                 object subValue = arrayObj[i]!;
-                TypeFlags.TypeEnum arrayType = array.Flags.GetTypeEnum();
-                FixupField(subValue, arrayType, array.TypeDescriptorRef, writer);
+                FixupField(subValue, inType, inTypeDescriptorRef, writer);
             }
 
             writer.Position = oldPos;
