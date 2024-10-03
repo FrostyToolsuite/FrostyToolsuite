@@ -21,7 +21,7 @@ internal class EbxTypeResolver
         return EbxSharedTypeDescriptors.GetTypeDescriptor(m_typeGuids[index], m_typeSignatures[index]);
     }
 
-    public EbxTypeDescriptor ResolveType(ushort inTypeDescriptorRef)
+    public EbxTypeDescriptor ResolveTypeFromField(ushort inTypeDescriptorRef)
     {
         return EbxSharedTypeDescriptors.GetTypeDescriptor(inTypeDescriptorRef);
     }

@@ -46,7 +46,7 @@ public class EbxWriter : BaseEbxWriter
     {
         foreach (Type objTypes in m_typesToProcess)
         {
-            ProcessClass(objTypes);
+            ProcessType(objTypes);
         }
 
         ProcessData();
@@ -204,25 +204,25 @@ public class EbxWriter : BaseEbxWriter
         m_stream.Position = stringsOffset + stringsAndDataLen;
     }
 
-    private ushort ProcessClass(Type objType)
+    private ushort ProcessType(Type inType)
     {
-        int index = FindExistingType(objType);
+        int index = FindExistingType(inType);
         if (index != -1)
         {
             return (ushort)index;
         }
 
-        EbxTypeMetaAttribute? typeMeta = objType.GetCustomAttribute<EbxTypeMetaAttribute>();
+        EbxTypeMetaAttribute? typeMeta = inType.GetCustomAttribute<EbxTypeMetaAttribute>();
 
-        if (objType.IsEnum)
+        if (inType.IsEnum)
         {
-            string[] enumNames = objType.GetEnumNames();
-            Array enumValues = objType.GetEnumValues();
+            string[] enumNames = inType.GetEnumNames();
+            Array enumValues = inType.GetEnumValues();
 
-            string name = objType.GetName();
+            string name = inType.GetName();
 
             index = AddType(name,
-                objType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? 0,
+                inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? 0,
                 m_fieldDescriptors.Count,
                 (byte)enumNames.Length,
                 4,
@@ -243,9 +243,9 @@ public class EbxWriter : BaseEbxWriter
                     (uint)enumValue, m_fieldDescriptors.Count - 1);
             }
         }
-        else if (objType.Name.Equals(s_collectionName))
+        else if (inType.Name.Equals(s_collectionName))
         {
-            Type elementType = objType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : objType.GenericTypeArguments[0];
+            Type elementType = inType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : inType.GenericTypeArguments[0];
 
             string name = elementType.GetName();
 
@@ -259,21 +259,21 @@ public class EbxWriter : BaseEbxWriter
 
             ReserveFields(1);
 
-            ushort arrayClassRef = typeof(IPrimitive).IsAssignableFrom(elementType) ? (ushort)0 : ProcessClass(elementType);
+            ushort arrayClassRef = typeof(IPrimitive).IsAssignableFrom(elementType) ? (ushort)0 : ProcessType(elementType);
 
             AddField("member", (uint)Utils.Utils.HashString("member"), elementType.GetCustomAttribute<EbxTypeMetaAttribute>()!.Flags, arrayClassRef, 0, 0, m_typeDescriptors[index].FieldIndex);
         }
-        else if (objType.IsClass)
+        else if (inType.IsClass)
         {
             bool inherited = false;
             ushort superClassRef = 0;
-            if (objType.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
+            if (inType.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
             {
-                superClassRef = ProcessClass(objType.BaseType);
+                superClassRef = ProcessType(inType.BaseType);
                 inherited = true;
             }
 
-            PropertyInfo[] allProps = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            PropertyInfo[] allProps = inType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
             List<PropertyInfo> classProperties = new();
 
             foreach (PropertyInfo pi in allProps)
@@ -287,10 +287,10 @@ public class EbxWriter : BaseEbxWriter
                 classProperties.Add(pi);
             }
 
-            string name = objType.GetName();
+            string name = inType.GetName();
 
             index = AddType(name,
-                objType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? 0,
+                inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? 0,
                 m_fieldDescriptors.Count,
                 (byte)classProperties.Count,
                 4,
@@ -348,9 +348,9 @@ public class EbxWriter : BaseEbxWriter
 
             m_typeDescriptors[index] = typeDesc;
         }
-        else if (objType.IsValueType)
+        else if (inType.IsValueType)
         {
-            PropertyInfo[] allProps = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            PropertyInfo[] allProps = inType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
             List<PropertyInfo> objProperties = new();
 
             foreach (PropertyInfo propertyInfo in allProps)
@@ -364,10 +364,10 @@ public class EbxWriter : BaseEbxWriter
                 objProperties.Add(propertyInfo);
             }
 
-            string name = objType.GetName();
+            string name = inType.GetName();
 
             index = AddType(name,
-                objType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name),
+                inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name),
                 m_fieldDescriptors.Count,
                 (byte)objProperties.Count,
                 1,
@@ -433,13 +433,13 @@ public class EbxWriter : BaseEbxWriter
                 alignment = 4;
                 break;
             case TypeEnum.Array:
-                classRef = ProcessClass(propType);
+                classRef = ProcessType(propType);
                 alignment = m_typeDescriptors[classRef].GetAlignment();
                 fieldSize = m_typeDescriptors[classRef].Size;
                 break;
             case TypeEnum.Struct:
             case TypeEnum.Enum:
-                classRef = ProcessClass(propType);
+                classRef = ProcessType(propType);
                 alignment = m_typeDescriptors[classRef].GetAlignment();
                 fieldSize = m_typeDescriptors[classRef].Size;
                 break;
@@ -559,7 +559,8 @@ public class EbxWriter : BaseEbxWriter
             FieldIndex = fieldIndex,
             Flags = typeFlags,
             Size = size,
-            SecondSize = secondSize
+            SecondSize = secondSize,
+            Index = -1,
         };
 
         typeDesc.SetFieldCount(fieldCount);

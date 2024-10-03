@@ -194,7 +194,7 @@ public class EbxReader : BaseEbxReader
                 switch (type)
                 {
                     case TypeFlags.TypeEnum.Inherited:
-                        ReadType(m_typeResolver.ResolveType(fieldDescriptor.TypeDescriptorRef), obj, inStartOffset);
+                        ReadType(m_typeResolver.ResolveTypeFromField(fieldDescriptor.TypeDescriptorRef), obj, inStartOffset);
                         break;
                     default:
                         ReadField(type, fieldDescriptor.TypeDescriptorRef, value =>
@@ -229,8 +229,7 @@ public class EbxReader : BaseEbxReader
         m_stream.Position = inStartOffset + inTypeDescriptor.Size;
     }
 
-    private void ReadField(TypeFlags.TypeEnum inType,
-        ushort inTypeDescriptorRef, Action<object?> inAddFunc)
+    private void ReadField(TypeFlags.TypeEnum inType, Action<object?> inAddFunc)
     {
         switch (inType)
         {
@@ -294,13 +293,6 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.BoxedValueRef:
                 inAddFunc(ReadBoxedValueRef());
                 break;
-            case TypeFlags.TypeEnum.Struct:
-                EbxTypeDescriptor structType = m_typeResolver.ResolveType(inTypeDescriptorRef);
-                m_stream.Pad(structType.Alignment);
-                object? obj = TypeLibrary.CreateObject(structType.NameHash);
-                ReadType(structType, obj, m_stream.Position);
-                inAddFunc(obj);
-                break;
             case TypeFlags.TypeEnum.Enum:
                 inAddFunc(m_stream.ReadInt32());
                 break;
@@ -316,69 +308,28 @@ public class EbxReader : BaseEbxReader
         }
     }
 
+    private void ReadField(TypeFlags.TypeEnum inType, ushort inTypeDescriptorRef, Action<object?> inAddFunc)
+    {
+        switch (inType)
+        {
+            case TypeFlags.TypeEnum.Struct:
+                EbxTypeDescriptor structType = m_typeResolver.ResolveTypeFromField(inTypeDescriptorRef);
+                m_stream.Pad(structType.Alignment);
+                object? obj = TypeLibrary.CreateObject(structType.NameHash);
+                ReadType(structType, obj, m_stream.Position);
+                inAddFunc(obj);
+                break;
+            default:
+                ReadField(inType, inAddFunc);
+                break;
+        }
+    }
+
     private void ReadField(TypeFlags.TypeEnum inType,
         int inTypeDescriptorRef, Action<object?> inAddFunc)
     {
         switch (inType)
         {
-            case TypeFlags.TypeEnum.Boolean:
-                inAddFunc(m_stream.ReadBoolean());
-                break;
-            case TypeFlags.TypeEnum.Int8:
-                inAddFunc((sbyte)m_stream.ReadByte());
-                break;
-            case TypeFlags.TypeEnum.UInt8:
-                inAddFunc(m_stream.ReadByte());
-                break;
-            case TypeFlags.TypeEnum.Int16:
-                inAddFunc(m_stream.ReadInt16());
-                break;
-            case TypeFlags.TypeEnum.UInt16:
-                inAddFunc(m_stream.ReadUInt16());
-                break;
-            case TypeFlags.TypeEnum.Int32:
-                inAddFunc(m_stream.ReadInt32());
-                break;
-            case TypeFlags.TypeEnum.UInt32:
-                inAddFunc(m_stream.ReadUInt32());
-                break;
-            case TypeFlags.TypeEnum.Int64:
-                inAddFunc(m_stream.ReadInt64());
-                break;
-            case TypeFlags.TypeEnum.UInt64:
-                inAddFunc(m_stream.ReadUInt64());
-                break;
-            case TypeFlags.TypeEnum.Float32:
-                inAddFunc(m_stream.ReadSingle());
-                break;
-            case TypeFlags.TypeEnum.Float64:
-                inAddFunc(m_stream.ReadDouble());
-                break;
-            case TypeFlags.TypeEnum.Guid:
-                inAddFunc(m_stream.ReadGuid());
-                break;
-            case TypeFlags.TypeEnum.ResourceRef:
-                inAddFunc(ReadResourceRef());
-                break;
-            case TypeFlags.TypeEnum.Sha1:
-                inAddFunc(m_stream.ReadSha1());
-                break;
-            case TypeFlags.TypeEnum.String:
-                inAddFunc(m_stream.ReadFixedSizedString(32));
-                break;
-            case TypeFlags.TypeEnum.CString:
-                inAddFunc(ReadString(m_stream.ReadInt64()));
-                break;
-            case TypeFlags.TypeEnum.FileRef:
-                inAddFunc(ReadFileRef());
-                break;
-            case TypeFlags.TypeEnum.Delegate:
-            case TypeFlags.TypeEnum.TypeRef:
-                inAddFunc(ReadTypeRef());
-                break;
-            case TypeFlags.TypeEnum.BoxedValueRef:
-                inAddFunc(ReadBoxedValueRef());
-                break;
             case TypeFlags.TypeEnum.Struct:
                 EbxTypeDescriptor structType = m_typeResolver.ResolveType(inTypeDescriptorRef);
                 m_stream.Pad(structType.Alignment);
@@ -386,18 +337,9 @@ public class EbxReader : BaseEbxReader
                 ReadType(structType, obj, m_stream.Position);
                 inAddFunc(obj);
                 break;
-            case TypeFlags.TypeEnum.Enum:
-                inAddFunc(m_stream.ReadInt32());
-                break;
-            case TypeFlags.TypeEnum.Class:
-                inAddFunc(ReadPointerRef());
-                break;
-            case TypeFlags.TypeEnum.Array:
-                throw new InvalidDataException("Array");
-            case TypeFlags.TypeEnum.DbObject:
-                throw new InvalidDataException("DbObject");
             default:
-                throw new InvalidDataException("Unknown");
+                ReadField(inType, inAddFunc);
+                break;
         }
     }
 

@@ -270,7 +270,7 @@ public class EbxWriter : BaseEbxWriter
                 switch (field.Flags.GetTypeEnum())
                 {
                     case TypeFlags.TypeEnum.Inherited:
-                        WriteType(obj, m_typeResolver.ResolveType(field.TypeDescriptorRef), writer, startPos);
+                        WriteType(obj, m_typeResolver.ResolveTypeFromField(field.TypeDescriptorRef), writer, startPos);
                         break;
                     default:
                         if (ebxProperty is null)
@@ -402,7 +402,7 @@ public class EbxWriter : BaseEbxWriter
     {
         if (ebxType == TypeFlags.TypeEnum.Struct)
         {
-            EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(inTypeDescriptorRef);
+            EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveTypeFromField(inTypeDescriptorRef);
             writer.Pad(typeDescriptor.Alignment);
 
             WriteType(ebxObj, typeDescriptor, writer, writer.Position);
@@ -498,7 +498,7 @@ public class EbxWriter : BaseEbxWriter
             switch (inType)
             {
                 case TypeFlags.TypeEnum.Struct:
-                    EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(inTypeDescriptorRef);
+                    EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveTypeFromField(inTypeDescriptorRef);
                     alignment = typeDescriptor.Alignment;
                     break;
                 case TypeFlags.TypeEnum.Float64:
@@ -594,7 +594,7 @@ public class EbxWriter : BaseEbxWriter
                 switch (field.Flags.GetTypeEnum())
                 {
                     case TypeFlags.TypeEnum.Inherited:
-                        FixupType(obj, m_typeResolver.ResolveType(field.TypeDescriptorRef), writer, startPos);
+                        FixupType(obj, m_typeResolver.ResolveTypeFromField(field.TypeDescriptorRef), writer, startPos);
                         break;
                     default:
                         if (ebxProperty is null)
@@ -643,7 +643,7 @@ public class EbxWriter : BaseEbxWriter
                 break;
             case TypeFlags.TypeEnum.Struct:
             {
-                EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(inTypeDescriptorRef);
+                EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveTypeFromField(inTypeDescriptorRef);
                 writer.Pad(typeDescriptor.Alignment);
 
                 FixupType(obj, typeDescriptor, writer, writer.Position);
