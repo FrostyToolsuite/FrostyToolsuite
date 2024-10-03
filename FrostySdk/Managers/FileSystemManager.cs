@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using Frosty.Sdk.DbObjectElements;
-using Frosty.Sdk.Deobfuscators;
-using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Utils;
@@ -42,7 +39,6 @@ public static class FileSystemManager
     private static readonly Dictionary<int, SuperBundleInstallChunk> s_sbIcMapping = new();
     private static readonly Dictionary<int, string> s_casFiles = new();
 
-    private static Type? s_deobfuscator;
     private static readonly Dictionary<string, Block<byte>> s_memoryFs = new();
 
     public static bool Initialize(string basePath)
@@ -67,9 +63,6 @@ public static class FileSystemManager
         BasePath = Path.GetFullPath(basePath);
 
         CacheName = Path.Combine(Utils.Utils.BaseDirectory, "Caches", $"{ProfilesLibrary.InternalName}");
-        s_deobfuscator = ProfilesLibrary.FrostbiteVersion > "2014.4.11"
-            ? typeof(SignatureDeobfuscator)
-            : typeof(LegacyDeobfuscator);
 
         if (Directory.Exists($"{BasePath}/Update"))
         {
@@ -220,8 +213,6 @@ public static class FileSystemManager
     {
         return s_casFiles[casIndex];
     }
-
-    public static IDeobfuscator? CreateDeobfuscator() => s_deobfuscator != null ? (IDeobfuscator?)Activator.CreateInstance(s_deobfuscator) : null;
 
     public static IEnumerable<SuperBundleInfo> EnumerateSuperBundles()
     {
