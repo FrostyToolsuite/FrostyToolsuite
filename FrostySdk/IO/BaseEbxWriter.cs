@@ -241,12 +241,6 @@ public abstract class BaseEbxWriter
 
     protected uint AddString(string stringToAdd)
     {
-        // TODO: check if this breaks non riff ebx
-        //if (string.IsNullOrEmpty(stringToAdd))
-        {
-            //return 0xFFFFFFFF;
-        }
-
         uint offset = 0;
         if (m_strings.Contains(stringToAdd))
         {
@@ -276,11 +270,18 @@ public abstract class BaseEbxWriter
         {
             Type elementType = inType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : inType.GenericTypeArguments[0];
 
-            hash = elementType.GetCustomAttribute<ArrayHashAttribute>()?.Hash ?? uint.MaxValue;
+            string name = elementType.GetCustomAttribute<ArrayNameAttribute>()?.Name ??
+                          $"{elementType.GetName()}-Array";
+            hash = m_useSharedTypeDescriptors
+                ? inType.GetCustomAttribute<ArrayHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
+                : (uint)Utils.Utils.HashString(name);
         }
         else
         {
-            hash = inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? uint.MaxValue;
+            string name = inType.GetName();
+            hash = m_useSharedTypeDescriptors
+                ? inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
+                : (uint)Utils.Utils.HashString(name);
         }
 
         return m_typeToDescriptor.GetValueOrDefault(hash, -1);

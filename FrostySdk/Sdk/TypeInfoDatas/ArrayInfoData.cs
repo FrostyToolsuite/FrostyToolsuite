@@ -27,9 +27,9 @@ internal class ArrayInfoData : TypeInfoData
 
     public override void CreateType(StringBuilder sb)
     {
-        if (TypeInfo.Version < 3)
+        if (m_nameHash != uint.MaxValue)
         {
-            m_nameHash = (uint)Utils.Utils.HashString($"{GetTypeInfo().GetName()}-Array");
+            sb.AppendLine($"[{nameof(ArrayHashAttribute)}({m_nameHash})]");
         }
 
         if (!m_guid.Equals(Guid.Empty))
@@ -41,7 +41,11 @@ internal class ArrayInfoData : TypeInfoData
         {
             sb.AppendLine($"[{nameof(ArraySignatureAttribute)}({m_signature})]");
         }
-        sb.AppendLine($"[{nameof(ArrayHashAttribute)}({m_nameHash})]");
+
+        if (!string.IsNullOrEmpty(m_name))
+        {
+            sb.AppendLine($"[{nameof(ArrayNameAttribute)}(\"{m_name}\")]");
+        }
         sb.AppendLine($"[{nameof(EbxArrayMetaAttribute)}({(ushort)m_flags})]");
     }
 }

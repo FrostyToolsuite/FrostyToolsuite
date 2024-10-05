@@ -221,8 +221,12 @@ public class EbxWriter : BaseEbxWriter
 
             string name = inType.GetName();
 
+            uint nameHash = m_useSharedTypeDescriptors
+                ? inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
+                : (uint)Utils.Utils.HashString(name);
+
             index = AddType(name,
-                inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? 0,
+                nameHash,
                 m_fieldDescriptors.Count,
                 (byte)enumNames.Length,
                 4,
@@ -239,18 +243,25 @@ public class EbxWriter : BaseEbxWriter
             {
                 ReserveFields(1);
                 int enumValue = (int)enumValues.GetValue(i)!;
-                AddField(enumNames[i], (uint)Utils.Utils.HashString(enumNames[i]), 0, 0, (uint)enumValue,
+                AddField(enumNames[i], (uint)Utils.Utils.HashString(enumNames[i]), new TypeFlags(TypeEnum.Int32, unk: 0), 0, (uint)enumValue,
                     (uint)enumValue, m_fieldDescriptors.Count - 1);
             }
         }
         else if (inType.Name.Equals(s_collectionName))
         {
-            Type elementType = inType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : inType.GenericTypeArguments[0];
+            Type elementType = inType.GenericTypeArguments[0].Name == "PointerRef"
+                ? s_dataContainerType
+                : inType.GenericTypeArguments[0];
 
-            string name = elementType.GetName();
+            string name = elementType.GetCustomAttribute<ArrayNameAttribute>()?.Name ??
+                          $"{elementType.GetName()}-Array";
 
-            index = AddType($"{name}-Array", elementType.GetCustomAttribute<ArrayHashAttribute>()?.Hash ?? 0,
-                m_fieldDescriptors.Count, 1, 4, elementType.GetCustomAttribute<EbxArrayMetaAttribute>()!.Flags, 4, 0);
+            uint nameHash = m_useSharedTypeDescriptors
+                ? inType.GetCustomAttribute<ArrayHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
+                : (uint)Utils.Utils.HashString(name);
+
+            index = AddType(name, nameHash, m_fieldDescriptors.Count, 1, 4,
+                elementType.GetCustomAttribute<EbxArrayMetaAttribute>()!.Flags, 4, 0);
 
             if (m_useSharedTypeDescriptors)
             {
@@ -289,14 +300,12 @@ public class EbxWriter : BaseEbxWriter
 
             string name = inType.GetName();
 
-            index = AddType(name,
-                inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? 0,
-                m_fieldDescriptors.Count,
-                (byte)classProperties.Count,
-                4,
-                typeMeta!.Flags,
-                8,
-                0);
+            uint nameHash = m_useSharedTypeDescriptors
+                ? inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
+                : (uint)Utils.Utils.HashString(name);
+
+            index = AddType(name, nameHash, m_fieldDescriptors.Count, (byte)classProperties.Count, 4, typeMeta!.Flags,
+                8, 0);
 
             if (m_useSharedTypeDescriptors)
             {
@@ -366,13 +375,11 @@ public class EbxWriter : BaseEbxWriter
 
             string name = inType.GetName();
 
-            index = AddType(name,
-                inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name),
-                m_fieldDescriptors.Count,
-                (byte)objProperties.Count,
-                1,
-                typeMeta!.Flags,
-                0,
+            uint nameHash = m_useSharedTypeDescriptors
+                ? inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
+                : (uint)Utils.Utils.HashString(name);
+
+            index = AddType(name, nameHash, m_fieldDescriptors.Count, (byte)objProperties.Count, 1, typeMeta!.Flags, 0,
                 0);
 
             if (m_useSharedTypeDescriptors)
@@ -453,7 +460,7 @@ public class EbxWriter : BaseEbxWriter
         // TODO: classes seem to not use the in memory offset from the typeinfo
         // set to 0 and hope that not that many errors occur
         AddField(objField.Name,
-            objField.GetCustomAttribute<NameHashAttribute>()!.Hash,
+            (uint)Utils.Utils.HashString(objField.Name),
             fieldMeta.Flags,
             classRef,
             typeDesc.Size,
@@ -845,5 +852,15 @@ public class EbxWriter : BaseEbxWriter
                 throw new InvalidDataException("Error");
             }
         }
+    }
+
+    private new uint AddString(string inValue)
+    {
+        if (string.IsNullOrEmpty(inValue))
+        {
+            return 0xFFFFFFFF;
+        }
+
+        return base.AddString(inValue);
     }
 }
