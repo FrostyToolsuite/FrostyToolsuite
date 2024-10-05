@@ -210,7 +210,7 @@ public unsafe class DataStream : IDisposable
                 return (inEncoding ?? Encoding.UTF8).GetString(m_buffer.Ptr, i);
             }
 
-            if (i > m_buffer.Size)
+            if (i >= m_buffer.Size)
             {
                 m_buffer.Resize(m_buffer.Size + Environment.SystemPageSize);
             }

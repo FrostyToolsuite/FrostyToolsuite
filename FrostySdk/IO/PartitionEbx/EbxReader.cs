@@ -87,7 +87,7 @@ public class EbxReader : BaseEbxReader
         }
 
         Type objType = obj.GetType();
-        PropertyInfo[] properties = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        PropertyInfo[] properties = objType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
         for (int i = 0; i < inTypeDescriptor.GetFieldCount(); i++)
         {
