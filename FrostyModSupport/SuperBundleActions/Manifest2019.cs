@@ -266,8 +266,6 @@ internal class Manifest2019 : IDisposable
 
             if (bundleLoadFlag == 1)
             {
-                stream.Pad(16);
-
                 long sbOffset = stream.Position;
                 stream.Write(modifiedSuperBundle);
 
@@ -337,7 +335,7 @@ internal class Manifest2019 : IDisposable
             if (flags.HasFlag(Manifest2019AssetLoader.Flags.HasCompressedNames))
             {
                 // TODO: encoding broken atm fix it then add this again
-                inStringHelper.EncodeStrings = true;
+                // inStringHelper.EncodeStrings = true;
                 huffmanDecoder = new HuffmanDecoder();
                 namesCount = stream.ReadUInt32(Endian.Big);
                 tableCount = stream.ReadUInt32(Endian.Big);
@@ -544,7 +542,7 @@ internal class Manifest2019 : IDisposable
         Block<byte> retVal = new(0);
         using (BlockStream bundleWriter = new(retVal, true))
         {
-            bundleWriter.WriteInt32(inBundle.IsInline ? 0x20 : 0, Endian.Big);
+            bundleWriter.WriteUInt32(inBundle.IsInline ? 0xDEADBEEF : 0, Endian.Big);
             bundleWriter.WriteInt32(inBundle.IsInline ? inBundle.BundleMeta.Size : 0, Endian.Big);
             bundleWriter.WriteUInt32(0xDEADBEEF, Endian.Big); // fileIdentifiedFlags offset
             bundleWriter.WriteInt32(inBundle.Files.Count, Endian.Big);
@@ -557,6 +555,7 @@ internal class Manifest2019 : IDisposable
                 bundleWriter.WriteUInt32(0, Endian.Big); // unknown
             }
 
+            uint bundleMetaOffset = (uint)bundleWriter.Position;
             if (inBundle.IsInline)
             {
                 bundleWriter.Write(inBundle.BundleMeta);
@@ -606,6 +605,11 @@ internal class Manifest2019 : IDisposable
                 bundleWriter.WriteByte(flag);
             }
 
+            if (inBundle.IsInline)
+            {
+                bundleWriter.Position = 0;
+                bundleWriter.WriteUInt32(bundleMetaOffset, Endian.Big);
+            }
             bundleWriter.Position = 8;
             bundleWriter.WriteUInt32((uint)fileFlagOffset, Endian.Big);
             bundleWriter.Position = 16;
@@ -646,7 +650,6 @@ internal class Manifest2019 : IDisposable
         inStream.Position = inOffset + dataOffset;
 
         CasFileIdentifier file = default;
-
 
         List<(CasFileIdentifier, uint, uint)> files = new(totalCount);
         for (int i = 0; i < totalCount; i++)
