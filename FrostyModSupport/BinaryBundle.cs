@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using Frosty.ModSupport.Interfaces;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
 using Frosty.Sdk;
@@ -194,7 +195,6 @@ public static class BinaryBundle
             chunkMeta = DbObject.Deserialize(inStream)!.AsList();
         }
 
-
         inStream.Position = resRidOffset + resCount * sizeof(ulong);
         for (int i = 0; i < chunkCount; i++, j++)
         {
@@ -323,7 +323,7 @@ public static class BinaryBundle
                 stream.WriteNullTerminatedString(pair.Key);
             }
 
-            while ((stream.Position & 15) != 0)
+            while (((stream.Position + 0x24) & 15) != 0)
             {
                 stream.WriteByte(0);
             }

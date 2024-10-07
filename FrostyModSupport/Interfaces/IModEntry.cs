@@ -1,7 +1,6 @@
-using Frosty.ModSupport.Interfaces;
 using Frosty.Sdk;
 
-namespace Frosty.ModSupport.ModEntries;
+namespace Frosty.ModSupport.Interfaces;
 
 public interface IModEntry
 {
