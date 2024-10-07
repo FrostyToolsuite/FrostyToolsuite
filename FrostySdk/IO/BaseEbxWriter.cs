@@ -200,7 +200,7 @@ public abstract class BaseEbxWriter
             }
         }
 
-        // structs
+        // class
         else if (type.IsClass)
         {
             if (add && m_typesToProcessSet.Add(type.GetHashCode()))

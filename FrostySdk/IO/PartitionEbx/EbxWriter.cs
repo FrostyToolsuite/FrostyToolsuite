@@ -11,6 +11,7 @@ using Frosty.Sdk.IO.Ebx;
 using Frosty.Sdk.Sdk;
 using Frosty.Sdk.Utils;
 using static Frosty.Sdk.Sdk.TypeFlags;
+using TypeInfo = Frosty.Sdk.Sdk.TypeInfo;
 
 namespace Frosty.Sdk.IO.PartitionEbx;
 
@@ -272,7 +273,9 @@ public class EbxWriter : BaseEbxWriter
 
             ushort arrayClassRef = typeof(IPrimitive).IsAssignableFrom(elementType) ? (ushort)0 : ProcessType(elementType);
 
-            AddField("member", (uint)Utils.Utils.HashString("member"), elementType.GetCustomAttribute<EbxTypeMetaAttribute>()!.Flags, arrayClassRef, 0, 0, m_typeDescriptors[index].FieldIndex);
+            AddField("member", (uint)Utils.Utils.HashString("member"),
+                elementType.GetCustomAttribute<EbxTypeMetaAttribute>()!.Flags,
+                arrayClassRef, 0, 0, m_typeDescriptors[index].FieldIndex);
         }
         else if (inType.IsClass)
         {
@@ -660,7 +663,7 @@ public class EbxWriter : BaseEbxWriter
         {
             case TypeEnum.TypeRef:
             {
-                writer.WriteUInt64(AddString((TypeRef)((IPrimitive)ebxObj).ToActualType()));
+                writer.WriteUInt64(AddString(TypeInfo.Version > 4 ? ((TypeRef)((IPrimitive)ebxObj).ToActualType()).Guid.ToString("X") : (TypeRef)((IPrimitive)ebxObj).ToActualType()));
                 break;
             }
             case TypeEnum.FileRef:

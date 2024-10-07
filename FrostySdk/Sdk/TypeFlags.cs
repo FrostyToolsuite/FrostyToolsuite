@@ -73,7 +73,7 @@ public struct TypeFlags
     private static readonly int s_typeShift = ProfilesLibrary.FrostbiteVersion >= "2016" ? 0x05 : 0x04;
     private static readonly int s_typeMask = 0x1F;
 
-    private static readonly int s_flagsShift = ProfilesLibrary.FrostbiteVersion >= "2016" ? 0x09 : 0x0A;
+    private static readonly int s_flagsShift = 0x0A;
 
 
     public TypeFlags(ushort inFlags)
