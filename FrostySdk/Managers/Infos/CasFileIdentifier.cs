@@ -2,7 +2,7 @@
 
 namespace Frosty.Sdk.Managers.Infos;
 
-public readonly struct CasFileIdentifier
+public readonly struct CasFileIdentifier : IEquatable<CasFileIdentifier>
 {
     public bool IsPatch { get; }
     public int InstallChunkIndex { get; }
@@ -30,7 +30,7 @@ public readonly struct CasFileIdentifier
 
     public static ulong ToFileIdentifierLong(CasFileIdentifier file)
     {
-        return (ulong)((file.IsPatch ? 0x1000000000000L : 0) | ((long)file.InstallChunkIndex << 16) | (uint)file.CasIndex);
+        return (file.IsPatch ? 0x1000000000000ul : 0) | ((ulong)(uint)file.InstallChunkIndex << 16) | (uint)file.CasIndex;
     }
 
     public static uint ToManifestFileIdentifier(CasFileIdentifier file)

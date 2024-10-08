@@ -23,10 +23,8 @@ namespace Frosty.Sdk.Sdk;
 
 public class TypeSdkGenerator
 {
-    private long FindTypeInfoOffset(Process process)
+    private long FindTypeInfoOffset(MemoryReader reader)
     {
-        MemoryReader reader = new(process);
-
         nint offset = nint.Zero;
 
         if (!string.IsNullOrEmpty(ProfilesLibrary.TypeInfoSignature))
@@ -68,7 +66,8 @@ public class TypeSdkGenerator
 
     public bool DumpTypes(Process process)
     {
-        long typeInfoOffset = FindTypeInfoOffset(process);
+        MemoryReader reader = new(process);
+        long typeInfoOffset = FindTypeInfoOffset(reader);
         if (typeInfoOffset == -1)
         {
             FrostyLogger.Logger?.LogError("No offset found for TypeInfo, maybe try a different TypeInfoSignature");
@@ -122,7 +121,7 @@ public class TypeSdkGenerator
             Strings.HasStrings = true;
         }
 
-        MemoryReader reader = new(process) { Position = typeInfoOffset };
+        reader.Position = typeInfoOffset;
         TypeInfo.TypeInfoMapping = new Dictionary<long, TypeInfo>();
         ArrayInfo.Mapping = new Dictionary<long, long>();
 

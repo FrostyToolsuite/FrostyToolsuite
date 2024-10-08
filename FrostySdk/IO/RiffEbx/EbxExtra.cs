@@ -2,7 +2,7 @@ using Frosty.Sdk.Sdk;
 
 namespace Frosty.Sdk.IO.RiffEbx;
 
-internal struct EbxBoxedValue
+internal struct EbxExtra
 {
     public uint Offset;
     public int Count;

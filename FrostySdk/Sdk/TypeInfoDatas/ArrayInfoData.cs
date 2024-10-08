@@ -27,16 +27,25 @@ internal class ArrayInfoData : TypeInfoData
 
     public override void CreateType(StringBuilder sb)
     {
-        if (TypeInfo.Version < 3)
+        if (m_nameHash != uint.MaxValue)
         {
-            m_nameHash = (uint)Utils.Utils.HashString($"{GetTypeInfo().GetName()}-Array");
+            sb.AppendLine($"[{nameof(ArrayHashAttribute)}({m_nameHash})]");
         }
 
         if (!m_guid.Equals(Guid.Empty))
         {
             sb.AppendLine($"[{nameof(ArrayGuidAttribute)}(\"{m_guid}\")]");
         }
-        sb.AppendLine($"[{nameof(ArrayHashAttribute)}({m_nameHash})]");
+
+        if (m_signature != 0)
+        {
+            sb.AppendLine($"[{nameof(ArraySignatureAttribute)}({m_signature})]");
+        }
+
+        if (!string.IsNullOrEmpty(m_name))
+        {
+            sb.AppendLine($"[{nameof(ArrayNameAttribute)}(\"{m_name}\")]");
+        }
         sb.AppendLine($"[{nameof(EbxArrayMetaAttribute)}({(ushort)m_flags})]");
     }
 }

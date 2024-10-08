@@ -30,7 +30,7 @@ public class FrostyProject
             using BlockStream stream = BlockStream.FromFile(Path.Combine(BasePath, $"{ebx.Name}.dbx"), false);
             DbxReader reader = new(stream);
             EbxAsset ebxAsset = reader.ReadAsset();
-            Block<byte> data = new(0);
+            using Block<byte> data = new(0);
             using (BlockStream dataStream = new(data, true))
             {
                 BaseEbxWriter writer = BaseEbxWriter.CreateWriter(dataStream);

@@ -2,7 +2,7 @@ using System;
 
 namespace Frosty.Sdk.Ebx;
 
-public readonly struct AssetClassGuid
+public readonly struct AssetClassGuid : IEquatable<AssetClassGuid>
 {
     public Guid ExportedGuid => m_exportedGuid;
     public int InternalId => m_internalId;
@@ -37,16 +37,21 @@ public readonly struct AssetClassGuid
             case null:
                 return false;
             case AssetClassGuid reference:
-                return (m_isExported == reference.m_isExported && m_exportedGuid == reference.m_exportedGuid && m_internalId == reference.m_internalId);
+                return Equals(reference);
             case Guid guid:
-                return (m_isExported && guid == m_exportedGuid);
+                return m_isExported && guid == m_exportedGuid;
             case int id:
-                return (m_internalId == id);
+                return m_internalId == id;
             default:
                 return false;
         }
     }
 
+
+    public bool Equals(AssetClassGuid other)
+    {
+        return m_exportedGuid.Equals(other.m_exportedGuid) && m_internalId == other.m_internalId && m_isExported == other.m_isExported;
+    }
     public override int GetHashCode()
     {
         unchecked

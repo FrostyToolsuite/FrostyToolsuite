@@ -5,7 +5,7 @@ using Frosty.Sdk.Sdk;
 
 namespace Frosty.Sdk.Ebx;
 
-public struct BoxedValueRef
+public struct BoxedValueRef : IEquatable<BoxedValueRef>
 {
     public object? Value => m_value;
     public TypeFlags.TypeEnum Type => m_type;

@@ -49,8 +49,7 @@ internal class TypeInfo
             }
 
             // Field offset as uint
-            // madden 25 doesnt have buildinfo
-            // 2022.2.1
+            // (2022.2.1? maybe v6), 2023.1.1, 2023.1.2
             return 7;
         }
     }

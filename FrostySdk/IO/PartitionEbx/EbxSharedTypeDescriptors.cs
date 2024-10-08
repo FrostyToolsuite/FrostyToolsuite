@@ -35,9 +35,6 @@ public static class EbxSharedTypeDescriptors
         s_isInitialized = true;
     }
 
-    public static bool Exists() => FileSystemManager.HasFileInMemoryFs("SharedTypeDescriptors.ebx") ||
-                                   FileSystemManager.HasFileInMemoryFs("SharedTypeDescriptors_patch.ebx");
-
     public static EbxTypeDescriptor GetTypeDescriptor(Guid key)
     {
         return s_typeDescriptors[s_keyTypeMapping[key]];
@@ -53,9 +50,9 @@ public static class EbxSharedTypeDescriptors
         return s_fieldDescriptors[index];
     }
 
-    public static EbxTypeDescriptor GetKey(EbxTypeDescriptor inTypeDescriptor)
+    public static EbxTypeDescriptor GetKey(uint inNameHash)
     {
-        return new EbxTypeDescriptor(s_typeKeyMapping[inTypeDescriptor.NameHash]);
+        return new EbxTypeDescriptor(s_typeKeyMapping[inNameHash]);
     }
 
     public static EbxTypeDescriptor GetSharedTypeDescriptor(uint inNameHash)

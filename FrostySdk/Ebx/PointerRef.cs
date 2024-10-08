@@ -3,7 +3,7 @@ using Frosty.Sdk.IO.Ebx;
 
 namespace Frosty.Sdk.Ebx;
 
-public readonly struct PointerRef
+public readonly struct PointerRef : IEquatable<PointerRef>
 {
     public EbxImportReference External { get; }
     public object? Internal { get; }
@@ -25,7 +25,7 @@ public readonly struct PointerRef
 
     public PointerRef(Guid guid)
     {
-        External = new EbxImportReference { FileGuid = guid, ClassGuid = Guid.Empty };
+        External = new EbxImportReference { PartitionGuid = guid, InstanceGuid = Guid.Empty };
         Internal = null;
         Type = (guid != Guid.Empty) ? PointerRefType.External : PointerRefType.Null;
     }
