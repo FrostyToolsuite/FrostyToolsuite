@@ -20,7 +20,7 @@ public class EbxWriter : BaseEbxWriter
     private const long c_headerStringsOffsetPos = 0x4;
     private const long c_headerTypeNamesLenPos = 0x1A;
     private const long c_headerDataLenPos = 0x24;
-    private const long c_headerBoxedValuesPos = 0x38;
+    private const long c_headerBoxedValuesPos = 0x3C;
 
     private readonly List<EbxArray> m_arrays = new();
     private readonly List<EbxBoxedValue> m_boxedValues = new();
@@ -56,7 +56,7 @@ public class EbxWriter : BaseEbxWriter
 
         if (ProfilesLibrary.EbxVersion >= 4)
         {
-            m_stream.WriteUInt32(0xDEADBEEF);
+            m_stream.WriteInt32(m_boxedValues.Count);
             m_stream.WriteUInt32(0xDEADBEEF);
         }
         else
@@ -110,22 +110,20 @@ public class EbxWriter : BaseEbxWriter
 
         m_stream.Pad(16);
 
-        long arraysOffset = m_stream.Position;
         for (int i = 0; i < m_arrays.Count; i++)
         {
-            m_stream.WriteInt32(0);
-            m_stream.WriteInt32(0);
-            m_stream.WriteInt32(0);
+            m_stream.WriteUInt32(m_arrays[i].Offset);
+            m_stream.WriteUInt32(m_arrays[i].Count);
+            m_stream.WriteInt32(m_arrays[i].TypeDescriptorRef);
         }
 
         m_stream.Pad(16);
 
-        long boxedValueRefOffset = m_stream.Position;
         for (int i = 0; i < m_boxedValues.Count; i++)
         {
-            m_stream.WriteUInt32(0);
-            m_stream.WriteUInt16(0);
-            m_stream.WriteUInt16(0);
+            m_stream.WriteUInt32(m_boxedValues[i].Offset);
+            m_stream.WriteUInt16(m_boxedValues[i].TypeDescriptorRef);
+            m_stream.WriteUInt16(m_boxedValues[i].Type);
         }
 
         m_stream.Pad(16);
@@ -179,27 +177,10 @@ public class EbxWriter : BaseEbxWriter
         m_stream.Position = c_headerDataLenPos;
         m_stream.WriteUInt32(dataLen);
 
-        m_stream.Position = arraysOffset;
-        for (int i = 0; i < m_arrays.Count; i++)
-        {
-            m_stream.WriteUInt32(m_arrays[i].Offset);
-            m_stream.WriteUInt32(m_arrays[i].Count);
-            m_stream.WriteInt32(m_arrays[i].TypeDescriptorRef);
-        }
-
         if (ProfilesLibrary.EbxVersion >= 4)
         {
             m_stream.Position = c_headerBoxedValuesPos;
-            m_stream.WriteInt32(m_boxedValues.Count);
             m_stream.WriteUInt32(boxedValueOffset);
-
-            m_stream.Position = boxedValueRefOffset;
-            for (int i = 0; i < m_boxedValues.Count; i++)
-            {
-                m_stream.WriteUInt32(m_boxedValues[i].Offset);
-                m_stream.WriteUInt16(m_boxedValues[i].TypeDescriptorRef);
-                m_stream.WriteUInt16(m_boxedValues[i].Type);
-            }
         }
 
         m_stream.Position = stringsOffset + stringsAndDataLen;
@@ -479,7 +460,7 @@ public class EbxWriter : BaseEbxWriter
     {
         HashSet<Type> uniqueTypes = new(m_objsSorted.Count);
 
-        m_data = new Block<byte>(10);
+        m_data = new Block<byte>(0);
         using (BlockStream writer = new(m_data, true))
         {
             Type type = m_objsSorted[0].GetType();
@@ -532,7 +513,7 @@ public class EbxWriter : BaseEbxWriter
                     writer.WriteUInt64(0);
                 }
 
-                WriteType(m_objsSorted[i], m_typeResolver.ResolveType(typeDescriptorRef), writer, writer.Position - 8);
+                WriteType(m_objsSorted[i], typeDescriptor, writer, writer.Position - 8);
                 count++;
             }
 
@@ -663,7 +644,7 @@ public class EbxWriter : BaseEbxWriter
         {
             case TypeEnum.TypeRef:
             {
-                writer.WriteUInt64(AddString(TypeInfo.Version > 4 ? ((TypeRef)((IPrimitive)ebxObj).ToActualType()).Guid.ToString("X") : (TypeRef)((IPrimitive)ebxObj).ToActualType()));
+                writer.WriteUInt64(AddString(TypeInfo.Version > 4 ? ((TypeRef)((IPrimitive)ebxObj).ToActualType()).Guid.ToString().ToUpper() : (TypeRef)((IPrimitive)ebxObj).ToActualType()));
                 break;
             }
             case TypeEnum.FileRef:
@@ -755,7 +736,6 @@ public class EbxWriter : BaseEbxWriter
 
                         WriteField(subValue, arrayTypeDescriptor, ebxType, elementFieldDescriptor.TypeDescriptorRef, m_arrayWriter);
                     }
-                    m_arrayWriter.Pad(16);
                 }
                 writer.WriteInt32(arrayIdx);
             }
