@@ -24,7 +24,7 @@ public readonly struct TypeRef : IEquatable<TypeRef>
         m_type = TypeLibrary.GetType(inGuid);
     }
 
-    public TypeRef(Type inType)
+    public TypeRef(Type? inType)
     {
         m_type = inType;
     }

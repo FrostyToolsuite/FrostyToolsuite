@@ -117,8 +117,7 @@ public sealed class DbxWriter : IDisposable
         Type ebxType = ebxObj.GetType();
 
         WriteInstanceStart(guid,
-            $"{ebxType.Namespace}.{ebxType.GetName()}",
-            ((dynamic)ebxObj).__Id);
+            $"{ebxType.Namespace}.{ebxType.GetName()}");
 
         if (ebxType.IsClass)
         {
@@ -133,14 +132,6 @@ public sealed class DbxWriter : IDisposable
     }
 
     #endregion
-
-    private static Guid CreateGuidFromInternalId(int internalId)
-    {
-        Span<byte> guid = stackalloc byte[16];
-        guid[15] = (byte)internalId;
-
-        return new Guid(guid);
-    }
 
     #region Field Writing
 
@@ -233,6 +224,9 @@ public sealed class DbxWriter : IDisposable
                 break;
             case TypeEnum.TypeRef:
                 WriteTypeRef(fieldName!, GetFieldValue<TypeRef>(obj));
+                break;
+            case TypeEnum.Delegate:
+                WriteDelegate(fieldName!, (IDelegate)obj);
                 break;
             case TypeEnum.BoxedValueRef:
                 WriteBoxedValueRef(fieldName!, GetFieldValue<BoxedValueRef>(obj));
@@ -362,7 +356,7 @@ public sealed class DbxWriter : IDisposable
     {
         WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
         // temp? remove potential garbage from strings before writing them
-        m_xmlWriter!.WriteValue(value);
+        m_xmlWriter!.WriteValue(value?.Replace("\v", string.Empty));
         WriteFieldEnd();
     }
 
@@ -541,6 +535,29 @@ public sealed class DbxWriter : IDisposable
         m_xmlWriter!.WriteAttributeString("typeName", typeRef.Name);
         m_xmlWriter.WriteAttributeString("typeGuid", typeRef.Guid.ToString("D"));
         WriteTypeRefEnd();
+    }
+
+    #endregion
+
+    #region Delegate Writing
+
+    private void WriteDelegateStart(string name)
+    {
+        m_xmlWriter!.WriteStartElement("delegate");
+        m_xmlWriter.WriteAttributeString("name", name);
+    }
+
+    private void WriteDelegateEnd()
+    {
+        m_xmlWriter!.WriteEndElement();
+    }
+
+    private void WriteDelegate(string name, IDelegate @delegate)
+    {
+        WriteDelegateStart(name);
+        m_xmlWriter!.WriteAttributeString("typeName", @delegate.FunctionType?.GetName());
+        m_xmlWriter.WriteAttributeString("typeGuid", @delegate.FunctionType?.GetGuid().ToString("D"));
+        WriteDelegateEnd();
     }
 
     #endregion

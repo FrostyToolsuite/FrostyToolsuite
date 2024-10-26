@@ -438,7 +438,7 @@ public class EbxReader : BaseEbxReader
         if ((packed & 0x80000000) != 0)
         {
             // primitive type
-            return new TypeRef(GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1));
+            return new TypeRef(GetTypeFromEbxField((TypeFlags)(packed & ~0x80000000), -1));
         }
 
         int typeRef = (int)(packed >> 2);
@@ -458,7 +458,7 @@ public class EbxReader : BaseEbxReader
         if ((packed & 0x80000000) != 0)
         {
             // primitive type
-            return GetTypeFromEbxField(((TypeFlags)(packed & ~0x80000000)).GetTypeEnum(), -1);
+            return GetTypeFromEbxField((TypeFlags)(packed & ~0x80000000), -1);
         }
 
         int typeRef = (int)(packed >> 2);
@@ -497,7 +497,7 @@ public class EbxReader : BaseEbxReader
             type = b.Flags.GetTypeEnum();
             category = b.Flags.GetCategoryEnum();
         }
-        Type fieldType = GetTypeFromEbxField(type, typeRef);
+        Type fieldType = GetTypeFromEbxField(new TypeFlags(type, category), typeRef)!;
 
         if (category == TypeFlags.CategoryEnum.Array)
         {
@@ -555,10 +555,15 @@ public class EbxReader : BaseEbxReader
         return new BoxedValueRef(value, type);
     }
 
-    private Type GetTypeFromEbxField(TypeFlags.TypeEnum inFlags, int inTypeDescriptorRef)
+    private Type? GetTypeFromEbxField(TypeFlags inFlags, int inTypeDescriptorRef)
     {
-        switch (inFlags)
+        if (inFlags.GetCategoryEnum() == TypeFlags.CategoryEnum.Array)
         {
+
+        }
+        switch (inFlags.GetTypeEnum())
+        {
+            case TypeFlags.TypeEnum.Inherited: return s_voidType;
             case TypeFlags.TypeEnum.Struct: return TypeLibrary.GetType(m_fixup.TypeGuids[inTypeDescriptorRef])!;
             case TypeFlags.TypeEnum.String: return s_stringType;
             case TypeFlags.TypeEnum.Int8: return s_sbyteType;
@@ -580,10 +585,6 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.FileRef: return s_fileRefType;
             case TypeFlags.TypeEnum.TypeRef: return s_typeRefType!;
             case TypeFlags.TypeEnum.BoxedValueRef: return s_boxedValueRefType!;
-            case TypeFlags.TypeEnum.Array:
-                EbxTypeDescriptor arrayTypeDescriptor = m_typeResolver.ResolveType(inTypeDescriptorRef);
-                EbxFieldDescriptor elementFieldDescriptor = m_typeResolver.ResolveField(arrayTypeDescriptor.FieldIndex);
-                return typeof(ObservableCollection<>).MakeGenericType(GetTypeFromEbxField(elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef));
             case TypeFlags.TypeEnum.Enum:
                 return TypeLibrary.GetType(m_fixup.TypeGuids[inTypeDescriptorRef])!;
 

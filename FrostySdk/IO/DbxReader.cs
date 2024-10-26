@@ -88,7 +88,7 @@ public sealed class DbxReader
     private static void SetPropertyFromStringValue(object obj, Type objType, string propName, string propValue)
     {
         PropertyInfo? property = objType.GetProperty(propName, s_propertyBindingFlags);
-        if (property != null && property.CanWrite)
+        if (property is not null && property.CanWrite)
         {
             object? value = GetValueFromString(property.PropertyType, propValue, property.GetCustomAttribute<EbxFieldMetaAttribute>()?.Flags.GetTypeEnum());
             if (value is null)
@@ -106,82 +106,80 @@ public sealed class DbxReader
         {
             return Convert.ChangeType(propValue, propType);
         }
-        else
+
+        switch (frostbiteType)
         {
-            switch (frostbiteType)
+            case TypeEnum.Boolean:
             {
-                case TypeEnum.Boolean:
-                {
-                    return ValueToPrimitive(bool.Parse(propValue), propType);
-                }
-                case TypeEnum.Float32:
-                {
-                    return ValueToPrimitive(float.Parse(propValue), propType);
-                }
-                case TypeEnum.Float64:
-                {
-                    return ValueToPrimitive(double.Parse(propValue), propType);
-                }
-                case TypeEnum.Int8:
-                {
-                    return ValueToPrimitive(sbyte.Parse(propValue), propType);
-                }
-                case TypeEnum.Int16:
-                {
-                    return ValueToPrimitive(short.Parse(propValue), propType);
-                }
-                case TypeEnum.Int32:
-                {
-                    return ValueToPrimitive(int.Parse(propValue), propType);
-                }
-                case TypeEnum.Int64:
-                {
-                    return ValueToPrimitive(long.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt8:
-                {
-                    return ValueToPrimitive(byte.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt16:
-                {
-                    return ValueToPrimitive(ushort.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt32:
-                {
-                    return ValueToPrimitive(uint.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt64:
-                {
-                    return ValueToPrimitive(ulong.Parse(propValue), propType);
-                }
-                case TypeEnum.Enum:
-                {
-                    return Enum.Parse(propType, propValue);
-                }
-                case TypeEnum.Guid:
-                {
-                    return ValueToPrimitive(Guid.Parse(propValue), propType);
-                }
-                case TypeEnum.FileRef:
-                {
-                    return ValueToPrimitive(new FileRef(propValue), propType);
-                }
-                case TypeEnum.String:
-                case TypeEnum.CString:
-                {
-                    return ValueToPrimitive(propValue, propType);
-                }
-                case TypeEnum.Class:
-                {
-                    return new PointerRef();
-                }
-                case TypeEnum.ResourceRef:
-                {
-                    return ValueToPrimitive(new ResourceRef(ulong.Parse(propValue, System.Globalization.NumberStyles.HexNumber)), propType);
-                }
-                default:
-                    throw new NotImplementedException("Unimplemented property type: " + frostbiteType);
+                return ValueToPrimitive(bool.Parse(propValue), propType);
             }
+            case TypeEnum.Float32:
+            {
+                return ValueToPrimitive(float.Parse(propValue), propType);
+            }
+            case TypeEnum.Float64:
+            {
+                return ValueToPrimitive(double.Parse(propValue), propType);
+            }
+            case TypeEnum.Int8:
+            {
+                return ValueToPrimitive(sbyte.Parse(propValue), propType);
+            }
+            case TypeEnum.Int16:
+            {
+                return ValueToPrimitive(short.Parse(propValue), propType);
+            }
+            case TypeEnum.Int32:
+            {
+                return ValueToPrimitive(int.Parse(propValue), propType);
+            }
+            case TypeEnum.Int64:
+            {
+                return ValueToPrimitive(long.Parse(propValue), propType);
+            }
+            case TypeEnum.UInt8:
+            {
+                return ValueToPrimitive(byte.Parse(propValue), propType);
+            }
+            case TypeEnum.UInt16:
+            {
+                return ValueToPrimitive(ushort.Parse(propValue), propType);
+            }
+            case TypeEnum.UInt32:
+            {
+                return ValueToPrimitive(uint.Parse(propValue), propType);
+            }
+            case TypeEnum.UInt64:
+            {
+                return ValueToPrimitive(ulong.Parse(propValue), propType);
+            }
+            case TypeEnum.Enum:
+            {
+                return Enum.Parse(propType, propValue);
+            }
+            case TypeEnum.Guid:
+            {
+                return ValueToPrimitive(Guid.Parse(propValue), propType);
+            }
+            case TypeEnum.FileRef:
+            {
+                return ValueToPrimitive(new FileRef(propValue), propType);
+            }
+            case TypeEnum.String:
+            case TypeEnum.CString:
+            {
+                return ValueToPrimitive(propValue, propType);
+            }
+            case TypeEnum.Class:
+            {
+                return new PointerRef();
+            }
+            case TypeEnum.ResourceRef:
+            {
+                return ValueToPrimitive(new ResourceRef(ulong.Parse(propValue, System.Globalization.NumberStyles.HexNumber)), propType);
+            }
+            default:
+                throw new NotImplementedException("Unimplemented property type: " + frostbiteType);
         }
     }
 
@@ -369,6 +367,19 @@ public sealed class DbxReader
                 Type? type = TypeLibrary.GetType(typeGuid) ?? TypeLibrary.GetType(GetAttributeValue(node, "typeName")!);
                 TypeRef typeRef = type is null ? new TypeRef() : new TypeRef(type);
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(typeRef, s_typeRefType!));
+                break;
+            }
+            case "delegate":
+            {
+                string typeGuid = GetAttributeValue(node, "typeGuid")!;
+
+                Type? type = TypeLibrary.GetType(typeGuid) ?? TypeLibrary.GetType(GetAttributeValue(node, "typeName")!);
+                PropertyInfo? property = objType.GetProperty(GetAttributeValue(node, "name")!, s_propertyBindingFlags);
+                if (property is not null && property.CanWrite)
+                {
+                    IDelegate del = (IDelegate)Activator.CreateInstance(property.PropertyType)!;
+                    del.FunctionType = type;
+                }
                 break;
             }
         }

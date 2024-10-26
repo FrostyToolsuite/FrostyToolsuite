@@ -355,37 +355,15 @@ public class TypeSdkGenerator
 
         foreach (TypeInfo typeInfo in TypeInfo.TypeInfoMapping.Values)
         {
-            switch (typeInfo.GetFlags().GetTypeEnum())
+            switch (typeInfo)
             {
-                case TypeFlags.TypeEnum.Struct:
-                case TypeFlags.TypeEnum.Class:
-                case TypeFlags.TypeEnum.Enum:
-                case TypeFlags.TypeEnum.Function:
-                case TypeFlags.TypeEnum.Interface:
-                case TypeFlags.TypeEnum.Delegate:
-                    typeInfo.CreateType(sb);
-                    break;
-
-                // primitive types
-                case TypeFlags.TypeEnum.String:
-                case TypeFlags.TypeEnum.CString:
-                case TypeFlags.TypeEnum.FileRef:
-                case TypeFlags.TypeEnum.Boolean:
-                case TypeFlags.TypeEnum.Int8:
-                case TypeFlags.TypeEnum.UInt8:
-                case TypeFlags.TypeEnum.Int16:
-                case TypeFlags.TypeEnum.UInt16:
-                case TypeFlags.TypeEnum.Int32:
-                case TypeFlags.TypeEnum.UInt32:
-                case TypeFlags.TypeEnum.Int64:
-                case TypeFlags.TypeEnum.UInt64:
-                case TypeFlags.TypeEnum.Float32:
-                case TypeFlags.TypeEnum.Float64:
-                case TypeFlags.TypeEnum.Guid:
-                case TypeFlags.TypeEnum.Sha1:
-                case TypeFlags.TypeEnum.ResourceRef:
-                case TypeFlags.TypeEnum.TypeRef:
-                case TypeFlags.TypeEnum.BoxedValueRef:
+                case ClassInfo:
+                case StructInfo:
+                case EnumInfo:
+                case InterfaceInfo:
+                case DelegateInfo:
+                case FunctionInfo:
+                case PrimitiveInfo:
                     typeInfo.CreateType(sb);
                     break;
             }
