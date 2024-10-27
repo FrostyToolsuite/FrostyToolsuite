@@ -1,7 +1,7 @@
-using System;
-using System.IO;
 using Frosty.Sdk.DbObjectElements;
 using Frosty.Sdk.IO;
+using System;
+using System.IO;
 
 namespace Frosty.Sdk;
 
@@ -22,10 +22,10 @@ public abstract class DbObject
         Guid = 15,
         Sha1 = 16,
         Blob = 19,
-        
+
         Anonymous = 1 << 7
     }
-    
+
     public string Name { get; private set; }
 
     private readonly Type m_type;
@@ -54,7 +54,7 @@ public abstract class DbObject
             Serialize(stream, value);
         }
     }
-    
+
     /// <summary>
     /// Serializes a <see cref="DbObject"/> to a <see cref="DataStream"/>.
     /// </summary>
@@ -63,12 +63,12 @@ public abstract class DbObject
     public static void Serialize(DataStream stream, DbObject value)
     {
         stream.WriteByte((byte)value.m_type);
-        
+
         if (!value.m_type.HasFlag(Type.Anonymous))
         {
             stream.WriteNullTerminatedString(value.Name);
         }
-        
+
         value.InternalSerialize(stream);
     }
 
@@ -93,33 +93,33 @@ public abstract class DbObject
     public static DbObject? Deserialize(DataStream stream)
     {
         Type type = (Type)stream.ReadByte();
-        
+
         DbObject? obj = CreateDbObject(type);
 
         if (obj is null)
         {
             return obj;
         }
-        
+
         if (!type.HasFlag(Type.Anonymous))
         {
             obj.Name = stream.ReadNullTerminatedString();
         }
-        
+
         obj.InternalDeserialize(stream);
 
         return obj;
     }
 
     public virtual bool IsDict() => false;
-    
+
     public virtual DbObjectDict AsDict()
     {
         throw new Exception();
     }
 
     public virtual bool IsList() => false;
-    
+
     public virtual DbObjectList AsList()
     {
         throw new Exception();
@@ -184,9 +184,9 @@ public abstract class DbObject
     public static DbObjectDict CreateDict(string name, int capacity = 0) => new(name, capacity);
     public static DbObjectList CreateList(int capacity = 0) => new(capacity);
     public static DbObjectList CreateList(string name, int capacity = 0) => new(name, capacity);
-    
+
     protected abstract void InternalSerialize(DataStream stream);
-    
+
     protected abstract void InternalDeserialize(DataStream stream);
 
     private static DbObject? CreateDbObject(Type type)

@@ -1,3 +1,4 @@
+using Frosty.Sdk.Utils;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
@@ -5,7 +6,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO;
 
@@ -42,6 +42,7 @@ public unsafe class DataStream : IDisposable
 
     /// <inheritdoc cref="Stream.CopyTo(Stream)"/>
     public void CopyTo(Stream destination) => CopyTo(destination, (int)(Length - Position));
+
     /// <inheritdoc cref="Stream.CopyTo(Stream, int)"/>
     public virtual void CopyTo(Stream destination, int bufferSize) => m_stream.CopyTo(destination, bufferSize);
 
@@ -235,19 +236,20 @@ public unsafe class DataStream : IDisposable
         for (int index = 0; index < 28; index += 7)
         {
             byte num2 = ReadByte();
-            num1 |= (uint) ((num2 & sbyte.MaxValue) << index);
+            num1 |= (uint)((num2 & sbyte.MaxValue) << index);
             if (num2 <= 127)
             {
-                return (int) num1;
+                return (int)num1;
             }
         }
+
         byte num3 = ReadByte();
         if (num3 > 15)
         {
             throw new FormatException();
         }
 
-        return (int) (num1 | (uint) num3 << 28);
+        return (int)(num1 | (uint)num3 << 28);
     }
 
     public long Read7BitEncodedInt64()
@@ -256,19 +258,20 @@ public unsafe class DataStream : IDisposable
         for (int index = 0; index < 63; index += 7)
         {
             byte num2 = ReadByte();
-            num1 |= (ulong) (((long) num2 & sbyte.MaxValue) << index);
+            num1 |= (ulong)(((long)num2 & sbyte.MaxValue) << index);
             if (num2 <= 127)
             {
-                return (long) num1;
+                return (long)num1;
             }
         }
+
         byte num3 = ReadByte();
         if (num3 > 1)
         {
             throw new FormatException();
         }
 
-        return (long) (num1 | (ulong) num3 << 63);
+        return (long)(num1 | (ulong)num3 << 63);
     }
 
     public Guid ReadGuid(Endian endian = Endian.Little)
@@ -455,6 +458,7 @@ public unsafe class DataStream : IDisposable
             {
                 buffer[i] = 0;
             }
+
             Write(buffer);
         }
     }
@@ -496,7 +500,7 @@ public unsafe class DataStream : IDisposable
     public void Write7BitEncodedInt32(int value)
     {
         uint num;
-        for (num = (uint) value; num > (uint) sbyte.MaxValue; num >>= 7)
+        for (num = (uint)value; num > (uint)sbyte.MaxValue; num >>= 7)
         {
             WriteByte((byte)(num | 0xFFFFFF80U));
         }
@@ -507,7 +511,7 @@ public unsafe class DataStream : IDisposable
     public void Write7BitEncodedInt64(long value)
     {
         ulong num;
-        for (num = (ulong) value; num > (ulong) sbyte.MaxValue; num >>= 7)
+        for (num = (ulong)value; num > (ulong)sbyte.MaxValue; num >>= 7)
         {
             WriteByte((byte)(num | 0xFFFFFFFFFFFFFF80UL));
         }

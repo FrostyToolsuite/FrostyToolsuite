@@ -1,13 +1,15 @@
+using Frosty.Sdk.IO;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using Frosty.Sdk.IO;
 
 namespace Frosty.Sdk.Ebx;
 
 public class EbxAsset
 {
     public Guid PartitionGuid => partitionGuid;
+
     public Guid RootInstanceGuid
     {
         get
@@ -27,6 +29,7 @@ public class EbxAsset
             }
         }
     }
+
     public IEnumerable<object> RootObjects
     {
         get
@@ -40,6 +43,7 @@ public class EbxAsset
             }
         }
     }
+
     public IEnumerable<object> Objects
     {
         get
@@ -50,6 +54,7 @@ public class EbxAsset
             }
         }
     }
+
     public IEnumerable<object> ExportedObjects
     {
         get
@@ -65,6 +70,7 @@ public class EbxAsset
             }
         }
     }
+
     public object RootObject => objects[0];
     public bool IsValid => objects.Count != 0;
     public bool TransientEdit { get; set; }
@@ -117,6 +123,7 @@ public class EbxAsset
                 return obj;
             }
         }
+
         return null;
     }
 
@@ -196,7 +203,7 @@ public class EbxAsset
             }
             else
             {
-                System.Collections.IList list = (System.Collections.IList)refProp.Item1.GetValue(refProp.Item2)!;
+                IList list = (IList)refProp.Item1.GetValue(refProp.Item2)!;
                 int count = list.Count;
                 bool requiresChange = false;
 
@@ -262,7 +269,7 @@ public class EbxAsset
             {
                 Type arrayType = pType.GenericTypeArguments[0];
 
-                System.Collections.IList list = (System.Collections.IList)pi.GetValue(obj)!;
+                IList list = (IList)pi.GetValue(obj)!;
                 int count = list.Count;
 
                 if (count > 0)

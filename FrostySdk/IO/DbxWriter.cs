@@ -1,17 +1,14 @@
+using Frosty.Sdk.Attributes;
+using Frosty.Sdk.Ebx;
+using Frosty.Sdk.Interfaces;
+using Frosty.Sdk.Managers;
+using Frosty.Sdk.Managers.Entries;
 using System;
 using System.Collections.Generic;
-using System.Xml;
-using System.Reflection;
-using System.Diagnostics;
-using Frosty.Sdk.Ebx;
-using Frosty.Sdk.Attributes;
-using Frosty.Sdk.Managers.Entries;
-using Frosty.Sdk.Managers;
-using Frosty.Sdk.Interfaces;
-using static Frosty.Sdk.Sdk.TypeFlags;
-using System.Text.RegularExpressions;
-using System.Globalization;
 using System.IO;
+using System.Reflection;
+using System.Xml;
+using static Frosty.Sdk.Sdk.TypeFlags;
 
 namespace Frosty.Sdk.IO;
 
@@ -73,6 +70,7 @@ public sealed class DbxWriter : IDisposable
     }
 
     #region Partition Writing
+
     private void WritePartitionStart(Guid inAssetGuid, Guid inPrimaryInstanceGuid)
     {
         m_xmlWriter!.WriteStartElement("partition");
@@ -96,6 +94,7 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter.WriteAttributeString("id", id);
         }
+
         m_xmlWriter.WriteAttributeString("guid", classGuid.IsExported
             ? classGuid.ExportedGuid.ToString()
             : CreateGuidFromInternalId(classGuid.InternalId).ToString());
@@ -158,6 +157,7 @@ public sealed class DbxWriter : IDisposable
         {
             return (T)obj;
         }
+
         return (T)primitive.ToActualType();
     }
 
@@ -243,6 +243,7 @@ public sealed class DbxWriter : IDisposable
                 throw new NotImplementedException($"DbxWriter: unimplemented field type {fieldType}");
         }
     }
+
     private void WriteFieldStart(string name, bool isArrayField, bool isTransient, bool isHidden)
     {
         m_xmlWriter!.WriteStartElement(isArrayField ? "item" : "field");
@@ -250,10 +251,12 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter.WriteAttributeString("name", name);
         }
+
         if (isTransient)
         {
             m_xmlWriter.WriteAttributeString("transient", isTransient.ToString());
         }
+
         if (isHidden)
         {
             m_xmlWriter.WriteAttributeString("hidden", isHidden.ToString());
@@ -402,12 +405,14 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter!.WriteAttributeString("ref", "null");
         }
+
         WriteFieldEnd();
     }
 
     #endregion
 
     #region Array Writing
+
     private void WriteArray(string arrayName, object arrayObj, Type arrayType, Type? arrayBaseType)
     {
         bool isRef = arrayType.GenericTypeArguments[0].Name == "PointerRef";
@@ -482,6 +487,7 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter.WriteAttributeString("type", type);
         }
+
         if (name is not null)
         {
             m_xmlWriter.WriteAttributeString("name", name);
@@ -520,6 +526,7 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter!.WriteValue("null");
         }
+
         WriteBoxedValueRefEnd();
     }
 

@@ -1,5 +1,4 @@
 using Frosty.Sdk.IO;
-using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Buffers.Binary;
 using System.Collections;
@@ -51,6 +50,7 @@ internal class HuffManConstructionNode : HuffmanNode, IComparable<HuffManConstru
         {
             cmp = GetRemainingDepth().CompareTo(other?.GetRemainingDepth());
         }
+
         return cmp;
     }
 
@@ -153,6 +153,7 @@ public class HuffmanEncodedTextArray<T> where T : notnull
         {
             m_positionsDictionary = new Dictionary<T, int>(this.EncodedTextPositions.Select(entry => KeyValuePair.Create(entry.Identifier, entry.Position)).ToList());
         }
+
         return m_positionsDictionary;
     }
 
@@ -244,7 +245,6 @@ public class HuffmanEncoder
     /// <returns>EncodingResult with the data.</returns>
     public static EncodingResult Encode(IEnumerable<string> texts, Endian inEndian = Endian.Little)
     {
-
         ISet<String> nonNullUniqueStrings = new HashSet<String>(texts);
 
         HuffmanEncoder encoder = new();
@@ -265,7 +265,6 @@ public class HuffmanEncoder
     /// <returns>the number of necessary bytes to store the given number of bits with the given padding option</returns>
     public static int GetDataLengthInBytes(int numberOfBits, bool usePadding)
     {
-
         int byteSize = Math.DivRem(numberOfBits, 8, out int remainder);
         if (remainder != 0)
         {
@@ -295,7 +294,6 @@ public class HuffmanEncoder
     /// <returns>A byte array with the given boolean list as byte representation</returns>
     public static byte[] GetByteArrayForBoolList(IList<bool> encodedTestsAsBools, Endian endian = Endian.Little, bool usePadding = true)
     {
-
         // BitArray is always little endian by default!
         if (endian != Endian.Big)
         {
@@ -329,6 +327,7 @@ public class HuffmanEncoder
                 intermediate[i] = littleEndianByteArray[index];
                 index++;
             }
+
             uint number = BitConverter.ToUInt32(intermediate);
             uint reverseNumber = BinaryPrimitives.ReverseEndianness(number);
 
@@ -393,7 +392,6 @@ public class HuffmanEncoder
     /// <exception cref="System.InvalidOperationException">If no encoding has been created yet.</exception>
     public HuffmanEncodedTextArray<T> EncodeTexts<T>(IEnumerable<Tuple<T, string>> textsPerIdentifier, Endian? endian, bool compressResults = false, bool usePadding = true) where T : notnull
     {
-
         HuffmanEncodedTextArray<T> byteListResult = EncodeTextsToBool(textsPerIdentifier, compressResults);
 
         if (endian != null)
@@ -427,7 +425,6 @@ public class HuffmanEncoder
 
         foreach (var textWithIdentifier in textsPerIdentifier)
         {
-
             T textIdentifier = textWithIdentifier.Item1;
             string text = textWithIdentifier.Item2 ?? "";
             int position = encodedTextBools.Count;
@@ -503,7 +500,6 @@ public class HuffmanEncoder
         uint nodeValue = 0;
         while (nodeList.Count > 1)
         {
-
             nodeList.Sort();
 
             HuffManConstructionNode left = nodeList[0];
@@ -511,10 +507,7 @@ public class HuffmanEncoder
 
             nodeList.RemoveRange(0, 2);
 
-            HuffManConstructionNode composite = new()
-            {
-                Value = nodeValue++,
-            };
+            HuffManConstructionNode composite = new() { Value = nodeValue++, };
             composite.SetLeftNode(left);
             composite.SetRightNode(right);
 
@@ -531,7 +524,6 @@ public class HuffmanEncoder
     /// <returns>Dictionary of char - code values</returns>
     private static IDictionary<char, IList<bool>> GetCharEncoding(IList<HuffmanNode> encodingNodes)
     {
-
         Dictionary<char, IList<bool>> charEncodings = new();
 
         foreach (HuffmanNode node in encodingNodes)
@@ -544,6 +536,7 @@ public class HuffmanEncoder
                 charEncodings.Add(c, path);
             }
         }
+
         return charEncodings;
     }
 
@@ -656,7 +649,6 @@ public class HuffmanEncoder
 
     private static IList<bool> TryGetCharacterEncoding(char c, IDictionary<char, IList<bool>> charEncoding)
     {
-
         bool found = charEncoding.TryGetValue(c, out IList<bool>? encodedChar);
         if (found)
         {
@@ -698,5 +690,4 @@ public class HuffmanEncoder
             throw new InvalidOperationException("Cannot encode texts before the Huffman tree was built! Call 'BuildHuffmanEncodingTree' on the encoder before attempting to encode a string!");
         }
     }
-
 }

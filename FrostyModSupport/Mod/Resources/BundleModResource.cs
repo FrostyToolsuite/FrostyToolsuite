@@ -1,6 +1,6 @@
-using System.Linq;
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
+using System.Linq;
 
 namespace Frosty.ModSupport.Mod.Resources;
 

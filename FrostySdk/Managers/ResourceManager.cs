@@ -1,14 +1,14 @@
+using Frosty.Sdk.IO;
+using Frosty.Sdk.IO.Compression;
+using Frosty.Sdk.Managers.CatResources;
+using Frosty.Sdk.Managers.Infos;
+using Frosty.Sdk.Managers.Infos.FileInfos;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using Frosty.Sdk.IO;
-using Frosty.Sdk.IO.Compression;
-using Frosty.Sdk.Managers.CatResources;
-using Frosty.Sdk.Managers.Infos;
-using Frosty.Sdk.Managers.Infos.FileInfos;
 
 namespace Frosty.Sdk.Managers;
 
@@ -69,7 +69,7 @@ public static class ResourceManager
                         string keyStr = arr[1].Trim();
 
                         key = new byte[keyStr.Length / 2];
-                        for(int i = 0; i < keyStr.Length / 2; i++)
+                        for (int i = 0; i < keyStr.Length / 2; i++)
                         {
                             key[i] = Convert.ToByte(keyStr.Substring(i * 2, 2), 16);
                         }
@@ -156,6 +156,7 @@ public static class ResourceManager
             CasFileInfo fileInfo = new(baseFileInfo?.GetBase(), deltaFileInfo?.GetBase());
             s_resourceEntries.TryAdd(entry.Sha1, fileInfo);
         }
+
         s_patchEntries.Clear();
     }
 

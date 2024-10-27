@@ -1,14 +1,14 @@
-﻿using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Diagnostics;
-using Frosty.Sdk.Exceptions;
+﻿using Frosty.Sdk.Exceptions;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Infos.FileInfos;
 using Frosty.Sdk.Utils;
+using System;
+using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Frosty.Sdk.Managers.Loaders;
 
@@ -167,11 +167,14 @@ public class Manifest2019AssetLoader : IAssetLoader
                         default:
                             throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
                     }
+
                     LoadBundle(bundleStream, bundleOffset, bundleSize, ref bundle);
                 }
+
                 huffmanDecoder?.Dispose();
                 sbStream?.Dispose();
             }
+
             if (chunksCount != 0)
             {
                 stream.Position = chunkDataOffset;
@@ -195,6 +198,7 @@ public class Manifest2019AssetLoader : IAssetLoader
                         m_removedChunks.Add(guid);
                         continue;
                     }
+
                     if (m_removedChunks.Contains(guid))
                     {
                         // is removed, just skip
@@ -208,11 +212,15 @@ public class Manifest2019AssetLoader : IAssetLoader
                     CasFileIdentifier casFileIdentifier;
                     if (fileIdentifierFlag == 1)
                     {
-                        casFileIdentifier = CasFileIdentifier.FromFileIdentifier(BinaryPrimitives.ReverseEndianness(chunkData[index++]));
+                        casFileIdentifier =
+                            CasFileIdentifier.FromFileIdentifier(
+                                BinaryPrimitives.ReverseEndianness(chunkData[index++]));
                     }
                     else if (fileIdentifierFlag == 0x80)
                     {
-                        casFileIdentifier = CasFileIdentifier.FromFileIdentifier(BinaryPrimitives.ReverseEndianness(chunkData[index++]), BinaryPrimitives.ReverseEndianness(chunkData[index++]));
+                        casFileIdentifier = CasFileIdentifier.FromFileIdentifier(
+                            BinaryPrimitives.ReverseEndianness(chunkData[index++]),
+                            BinaryPrimitives.ReverseEndianness(chunkData[index++]));
                     }
                     else
                     {
@@ -280,7 +288,8 @@ public class Manifest2019AssetLoader : IAssetLoader
         {
             stream.Position = inOffset + bundleOffset;
             bundleMeta = BinaryBundle.Deserialize(stream);
-            Debug.Assert(stream.Position == inOffset + bundleOffset + bundleSize, "We did not read the bundle meta completely");
+            Debug.Assert(stream.Position == inOffset + bundleOffset + bundleSize,
+                "We did not read the bundle meta completely");
 
             // go to the start of the data
             stream.Position = inOffset + dataOffset;
@@ -296,11 +305,13 @@ public class Manifest2019AssetLoader : IAssetLoader
             {
                 throw new Exception("Corrupted data. File for bundle does not exist.");
             }
+
             using (BlockStream bundleStream = BlockStream.FromFile(path, offset, size))
             {
                 bundleMeta = BinaryBundle.Deserialize(bundleStream);
 
-                Debug.Assert(bundleStream.Position == bundleStream.Length, "We did not read the bundle meta completely");
+                Debug.Assert(bundleStream.Position == bundleStream.Length,
+                    "We did not read the bundle meta completely");
             }
         }
 
@@ -327,7 +338,8 @@ public class Manifest2019AssetLoader : IAssetLoader
         {
             file = ReadCasFileIdentifier(stream, fileIdentifierFlags[currentIndex++], file);
 
-            chunk.AddFileInfo(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big), chunk.LogicalOffset));
+            chunk.AddFileInfo(new CasFileInfo(file, stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big),
+                chunk.LogicalOffset));
 
             AssetManager.AddChunk(chunk, bundle.Id);
         }
@@ -346,7 +358,8 @@ public class Manifest2019AssetLoader : IAssetLoader
             case 1:
                 return CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32(Endian.Big));
             case 0x80:
-                return CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big));
+                return CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32(Endian.Big),
+                    stream.ReadUInt32(Endian.Big));
             default:
                 throw new UnknownValueException<byte>("file identifier flag", inFlag);
         }

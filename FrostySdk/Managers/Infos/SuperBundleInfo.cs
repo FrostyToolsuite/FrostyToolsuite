@@ -13,7 +13,7 @@ public class SuperBundleInfo
         Same = 1 << 1,
         Delta = 1 << 2
     }
-    
+
     public string Name { get; }
     public LegacyFlags Flags { get; private set; }
     public List<SuperBundleInstallChunk> InstallChunks { get; }
@@ -22,12 +22,11 @@ public class SuperBundleInfo
     {
         Name = inName;
         InstallChunks = new List<SuperBundleInstallChunk>();
-
     }
 
     public void SetLegacyFlags(bool inBase, bool inSame, bool inDelta)
     {
         Flags = (inBase ? LegacyFlags.Base : LegacyFlags.None) | (inSame ? LegacyFlags.Same : LegacyFlags.None) |
-               (inDelta ? LegacyFlags.Delta : LegacyFlags.None);
+                (inDelta ? LegacyFlags.Delta : LegacyFlags.None);
     }
 }

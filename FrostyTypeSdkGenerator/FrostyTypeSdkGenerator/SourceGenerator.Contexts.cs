@@ -13,7 +13,9 @@ public sealed partial class SourceGenerator
 
     private sealed class TypeContextEqualityComparer : IEqualityComparer<TypeContext>
     {
-        private TypeContextEqualityComparer() { }
+        private TypeContextEqualityComparer()
+        {
+        }
 
         public static TypeContextEqualityComparer Instance { get; } = new();
 
@@ -33,7 +35,9 @@ public sealed partial class SourceGenerator
 
     private sealed class FieldContextEqualityComparer : IEqualityComparer<FieldContext>
     {
-        private FieldContextEqualityComparer() { }
+        private FieldContextEqualityComparer()
+        {
+        }
 
         public static FieldContextEqualityComparer Instance { get; } = new();
 

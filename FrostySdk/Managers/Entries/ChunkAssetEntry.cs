@@ -6,19 +6,19 @@ namespace Frosty.Sdk.Managers.Entries;
 public class ChunkAssetEntry : AssetEntry
 {
     public override string Type => "Chunk";
-    
+
     public override string AssetType => "chunk";
 
     /// <summary>
     /// Id of this chunk.
     /// </summary>
     public Guid Id { get; }
-    
+
     /// <summary>
     /// Offset of the FirstMip if this is a chunk for a texture, else it's 0.
     /// </summary>
     public uint LogicalOffset { get; internal set; }
-    
+
     /// <summary>
     /// Size of the chunk from the FirstMip if this is a chunk for a texture, else it's the size of the chunk.
     /// </summary>

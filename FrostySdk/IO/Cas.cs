@@ -1,12 +1,12 @@
-﻿using Frosty.Sdk.IO.Compression;
-using System;
-using System.Diagnostics;
-using System.IO;
-using Frosty.Sdk.Exceptions;
+﻿using Frosty.Sdk.Exceptions;
 using Frosty.Sdk.Interfaces;
+using Frosty.Sdk.IO.Compression;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Profiles;
 using Frosty.Sdk.Utils;
+using System;
+using System.Diagnostics;
+using System.IO;
 
 namespace Frosty.Sdk.IO;
 
@@ -68,6 +68,7 @@ public static class Cas
                 inData.Shift(decompressedSize);
             }
         }
+
         inData.ResetShift();
 
         return outData;
@@ -107,6 +108,7 @@ public static class Cas
                     {
                         ReadBlock(inBaseStream, outBuffer);
                     }
+
                     break;
                 }
                 case 1:
@@ -206,6 +208,7 @@ public static class Cas
                     {
                         ReadBlock(inDeltaStream, outBuffer);
                     }
+
                     break;
                 }
                 case 4:
@@ -217,6 +220,7 @@ public static class Cas
                     {
                         ReadBlock(inBaseStream, null);
                     }
+
                     break;
                 }
                 default:
@@ -269,6 +273,7 @@ public static class Cas
                             return outBuffer;
                         }
                     }
+
                     break;
                 }
                 case 1:
@@ -406,6 +411,7 @@ public static class Cas
                             return outBuffer;
                         }
                     }
+
                     break;
                 }
                 case 4:
@@ -427,6 +433,7 @@ public static class Cas
                             return outBuffer;
                         }
                     }
+
                     break;
                 }
                 default:
@@ -691,6 +698,7 @@ public static class Cas
             default:
                 throw new NotImplementedException($"Compression type: {inCompressionType}");
         }
+
         decompressor?.Decompress(inCompressedBuffer, ref outBuffer, inFlags != 0 ? CompressionFlags.ZStdUseDicts : CompressionFlags.None);
     }
 }

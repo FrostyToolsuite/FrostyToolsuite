@@ -1,10 +1,10 @@
+using Frosty.Sdk.IO.Compression;
+using Frosty.Sdk.Profiles;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using Frosty.Sdk.Profiles;
-using Frosty.Sdk.IO.Compression;
 
 namespace Frosty.Sdk;
 
@@ -14,7 +14,7 @@ public static class ProfilesLibrary
 
     public static string ProfileName => s_effectiveProfile?.Name ?? string.Empty;
     public static string DisplayName => s_effectiveProfile?.DisplayName ?? string.Empty;
-    public static string InternalName => s_effectiveProfile?.InternalName?? string.Empty;
+    public static string InternalName => s_effectiveProfile?.InternalName ?? string.Empty;
     public static string TypeInfoSignature => s_effectiveProfile?.TypeInfoSignature ?? string.Empty;
     public static bool HasStrippedTypeNames => s_effectiveProfile?.HasStrippedTypeNames ?? false;
     public static string TypeHashSeed => s_effectiveProfile?.TypeHashSeed ?? string.Empty;
@@ -62,6 +62,7 @@ public static class ProfilesLibrary
                 {
                     profile = JsonSerializer.Deserialize<Profile>(stream);
                 }
+
                 if (profile is not null)
                 {
                     s_profiles.Add(profile);
@@ -78,14 +79,16 @@ public static class ProfilesLibrary
         {
             return true;
         }
+
         if (!s_profilesLoaded)
         {
             Initialize();
         }
+
         s_effectiveProfile = s_profiles.Find(a => a.Name.Equals(profileKey, StringComparison.OrdinalIgnoreCase));
         if (s_effectiveProfile is not null)
         {
-            foreach (string bundle in  s_effectiveProfile.SharedBundles)
+            foreach (string bundle in s_effectiveProfile.SharedBundles)
             {
                 SharedBundles.Add(Utils.Utils.HashString(bundle, true), bundle);
             }

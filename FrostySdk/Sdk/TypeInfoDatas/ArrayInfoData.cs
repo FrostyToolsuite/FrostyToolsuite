@@ -1,7 +1,7 @@
-﻿using System;
-using System.Text;
-using Frosty.Sdk.Attributes;
+﻿using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
+using System;
+using System.Text;
 
 namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
@@ -36,6 +36,7 @@ internal class ArrayInfoData : TypeInfoData
         {
             sb.AppendLine($"[{nameof(ArrayGuidAttribute)}(\"{m_guid}\")]");
         }
+
         sb.AppendLine($"[{nameof(ArrayHashAttribute)}({m_nameHash})]");
         sb.AppendLine($"[{nameof(EbxArrayMetaAttribute)}({(ushort)m_flags})]");
     }

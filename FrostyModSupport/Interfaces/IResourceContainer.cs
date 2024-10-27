@@ -1,6 +1,6 @@
-using System.Collections.Generic;
 using Frosty.ModSupport.Mod;
 using Frosty.ModSupport.Mod.Resources;
+using System.Collections.Generic;
 
 namespace Frosty.ModSupport.Interfaces;
 
@@ -10,7 +10,7 @@ public interface IResourceContainer
     /// The Resources of this resource container.
     /// </summary>
     public IEnumerable<BaseModResource> Resources { get; }
-    
+
     /// <summary>
     /// Gets the data of a resource
     /// </summary>

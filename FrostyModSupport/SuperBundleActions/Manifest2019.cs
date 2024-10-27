@@ -1,9 +1,3 @@
-using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Text;
 using Frosty.ModSupport.Archive;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
@@ -15,6 +9,12 @@ using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Loaders;
 using Frosty.Sdk.Utils;
+using System;
+using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
 
 namespace Frosty.ModSupport;
 
@@ -155,6 +155,7 @@ internal class Manifest2019 : IDisposable
             {
                 flags |= Manifest2019AssetLoader.Flags.HasCompressedNames;
             }
+
             if (FileSystemManager.Sources.Count > 1)
             {
                 flags |= Manifest2019AssetLoader.Flags.HasBaseBundles | Manifest2019AssetLoader.Flags.HasBaseChunks;
@@ -236,7 +237,6 @@ internal class Manifest2019 : IDisposable
 
                 chunkData.Add(chunk.Offset);
                 chunkData.Add(chunk.Size);
-
             }
 
             stream.Pad(8);
@@ -375,7 +375,7 @@ internal class Manifest2019 : IDisposable
                         stream.Position = curPos;
                     }
 
-                    int id = Frosty.Sdk.Utils.Utils.HashString(name + inSbIc.Name, true);
+                    int id = Sdk.Utils.Utils.HashString(name + inSbIc.Name, true);
                     bundleLoadFlag = (byte)(bundleSize >> 30);
                     bundleSize &= 0x3FFFFFFFU;
 
@@ -408,6 +408,7 @@ internal class Manifest2019 : IDisposable
                             default:
                                 throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
                         }
+
                         inModifiedStream.Pad(4);
                     }
                     else
@@ -444,6 +445,7 @@ internal class Manifest2019 : IDisposable
                     // add new bundle to toc
                     inBundles.Add((inStringHelper.AddString(name), newBundleSize, newOffset));
                 }
+
                 huffmanDecoder?.Dispose();
                 sbStream?.Dispose();
             }
@@ -483,11 +485,15 @@ internal class Manifest2019 : IDisposable
                     CasFileIdentifier casFileIdentifier;
                     if (fileIdentifierFlag == 1)
                     {
-                        casFileIdentifier = CasFileIdentifier.FromFileIdentifier(BinaryPrimitives.ReverseEndianness(chunkData[index++]));
+                        casFileIdentifier =
+                            CasFileIdentifier.FromFileIdentifier(
+                                BinaryPrimitives.ReverseEndianness(chunkData[index++]));
                     }
                     else if (fileIdentifierFlag == 0x80)
                     {
-                        casFileIdentifier = CasFileIdentifier.FromFileIdentifier(BinaryPrimitives.ReverseEndianness(chunkData[index++]), BinaryPrimitives.ReverseEndianness(chunkData[index++]));
+                        casFileIdentifier = CasFileIdentifier.FromFileIdentifier(
+                            BinaryPrimitives.ReverseEndianness(chunkData[index++]),
+                            BinaryPrimitives.ReverseEndianness(chunkData[index++]));
                     }
                     else
                     {
@@ -510,7 +516,8 @@ internal class Manifest2019 : IDisposable
                     else
                     {
                         // modify chunk
-                        (CasFileIdentifier, uint, uint) info = inInstallChunkWriter.GetFileInfo(m_modifiedChunks[id].Sha1);
+                        (CasFileIdentifier, uint, uint) info =
+                            inInstallChunkWriter.GetFileInfo(m_modifiedChunks[id].Sha1);
 
                         casFileIdentifier = info.Item1;
                         offset = info.Item2;
@@ -534,10 +541,13 @@ internal class Manifest2019 : IDisposable
                 inChunks.Add((id, info.Item1, info.Item2, info.Item3));
             }
         }
+
         return bundleLoadFlag;
     }
 
-    private static Block<byte> WriteModifiedBundle((Block<byte> BundleMeta, List<(CasFileIdentifier, uint, uint)> Files, bool IsInline) inBundle, InstallChunkWriter inInstallChunkWriter)
+    private static Block<byte> WriteModifiedBundle(
+        (Block<byte> BundleMeta, List<(CasFileIdentifier, uint, uint)> Files, bool IsInline) inBundle,
+        InstallChunkWriter inInstallChunkWriter)
     {
         Block<byte> retVal = new(0);
         using (BlockStream bundleWriter = new(retVal, true))
@@ -564,7 +574,8 @@ internal class Manifest2019 : IDisposable
             else
             {
                 inBundle.Files[0] =
-                    inInstallChunkWriter.WriteData(Frosty.Sdk.Utils.Utils.GenerateSha1(inBundle.BundleMeta), inBundle.BundleMeta);
+                    inInstallChunkWriter.WriteData(Sdk.Utils.Utils.GenerateSha1(inBundle.BundleMeta),
+                        inBundle.BundleMeta);
             }
 
             inBundle.BundleMeta.Dispose();
@@ -610,6 +621,7 @@ internal class Manifest2019 : IDisposable
                 bundleWriter.Position = 0;
                 bundleWriter.WriteUInt32(bundleMetaOffset, Endian.Big);
             }
+
             bundleWriter.Position = 8;
             bundleWriter.WriteUInt32((uint)fileFlagOffset, Endian.Big);
             bundleWriter.Position = 16;
@@ -671,7 +683,8 @@ internal class Manifest2019 : IDisposable
                         return;
                     }
 
-                    (CasFileIdentifier File, uint Offset, uint Size) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
+                    (CasFileIdentifier File, uint Offset, uint Size)
+                        info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
                     if (entry is ChunkModEntry chunk && chunk.FirstMip > 0)
                     {
                         info.Offset += chunk.RangeStart;
@@ -695,16 +708,20 @@ internal class Manifest2019 : IDisposable
             {
                 throw new Exception("Corrupted data. File for bundle does not exist.");
             }
+
             using (BlockStream bundleStream = BlockStream.FromFile(path, files[0].Item2, (int)files[0].Item3))
             {
-                bundleMeta = BinaryBundle.Modify(bundleStream, inModInfo, m_modifiedEbx, m_modifiedRes, m_modifiedChunks,
+                bundleMeta = BinaryBundle.Modify(bundleStream, inModInfo, m_modifiedEbx, m_modifiedRes,
+                    m_modifiedChunks,
                     (entry, i, isAdded, isModified, _) =>
                     {
                         if (!isModified)
                         {
                             return;
                         }
-                        (CasFileIdentifier File, uint Offset, uint Size) info = inInstallChunkWriter.GetFileInfo(entry.Sha1);
+
+                        (CasFileIdentifier File, uint Offset, uint Size) info =
+                            inInstallChunkWriter.GetFileInfo(entry.Sha1);
                         if (entry is ChunkModEntry chunk && chunk.FirstMip > 0)
                         {
                             info.Offset += chunk.RangeStart;
@@ -720,7 +737,8 @@ internal class Manifest2019 : IDisposable
                             files[i + 1] = info;
                         }
                     });
-                Debug.Assert(bundleStream.Position == bundleStream.Length, "We did not read the bundle meta completely");
+                Debug.Assert(bundleStream.Position == bundleStream.Length,
+                    "We did not read the bundle meta completely");
             }
         }
 
@@ -740,7 +758,8 @@ internal class Manifest2019 : IDisposable
             case 1:
                 return CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32(Endian.Big));
             case 0x80:
-                return CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32(Endian.Big), stream.ReadUInt32(Endian.Big));
+                return CasFileIdentifier.FromFileIdentifier(stream.ReadUInt32(Endian.Big),
+                    stream.ReadUInt32(Endian.Big));
             default:
                 throw new UnknownValueException<byte>("file identifier flag", inFlag);
         }
@@ -755,7 +774,8 @@ internal class Manifest2019 : IDisposable
 
 public partial class FrostyModExecutor
 {
-    private void ModManifest2019(SuperBundleInstallChunk inSbIc, SuperBundleModInfo inModInfo, InstallChunkWriter inInstallChunkWriter)
+    private void ModManifest2019(SuperBundleInstallChunk inSbIc, SuperBundleModInfo inModInfo,
+        InstallChunkWriter inInstallChunkWriter)
     {
         bool createNewPatch = false;
         string? tocPath = Path.Combine(m_gamePatchPath, $"{inSbIc.Name}.toc");
@@ -786,7 +806,8 @@ public partial class FrostyModExecutor
 
             if (action.SbData is not null)
             {
-                using (FileStream stream = new(modifiedToc.FullName.Replace(".toc", ".sb"), FileMode.Create, FileAccess.Write))
+                using (FileStream stream = new(modifiedToc.FullName.Replace(".toc", ".sb"), FileMode.Create,
+                           FileAccess.Write))
                 {
                     stream.Write(action.SbData);
                     action.SbData.Dispose();

@@ -19,19 +19,18 @@
                    VerticalAlignment="Center">
               <Image.Source>
                 <MultiBinding Converter="{x:Static viewModels:DataExplorerViewModel.FolderIconConverter}">
-                  <Binding Path="IsExpanded"/>
+                  <Binding Path="IsExpanded" />
                 </MultiBinding>
               </Image.Source>
             </Image>
             <TextBlock Text="{Binding Name}"
-                       VerticalAlignment="Center"/>
+                       VerticalAlignment="Center" />
           </StackPanel>
-        </DataTemplate> 
+        </DataTemplate>
       </TreeDataGrid.Resources>
     </TreeDataGrid>
     <TreeDataGrid Grid.Row="1"
                   Source="{Binding AssetsSource}"
-                  ContextFlyout="{Binding ContextMenu, Mode=OneWay}">
-    </TreeDataGrid>
+                  ContextFlyout="{Binding ContextMenu, Mode=OneWay}" />
   </Grid>
 </UserControl>

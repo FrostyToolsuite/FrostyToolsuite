@@ -1,11 +1,11 @@
-using System;
-using System.IO;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using FrostyEditor.Utils;
 using FrostyEditor.ViewModels;
 using FrostyEditor.Windows;
+using System;
+using System.IO;
 
 namespace FrostyEditor;
 

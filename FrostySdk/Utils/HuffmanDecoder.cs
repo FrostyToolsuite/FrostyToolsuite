@@ -84,6 +84,7 @@ internal class HuffmanNode : IComparable<HuffmanNode>
         {
             bitVal = "ERROR!";
         }
+
         return Parent.GetBitRepresentation() + bitVal;
     }
 
@@ -195,6 +196,7 @@ public class HuffmanDecoder
         {
             remaining = remaining.Reverse().ToArray();
         }
+
         // might be better to replace this with the same method used in the DataStream readInt method
         m_data[intLength] = BitConverter.ToInt32(remaining);
     }
@@ -232,6 +234,7 @@ public class HuffmanDecoder
                 {
                     node = node.Right!;
                 }
+
                 bitIndex++;
             }
 

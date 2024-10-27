@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Text;
-using Frosty.Sdk.IO;
+﻿using Frosty.Sdk.IO;
 using Frosty.Sdk.Sdk.TypeInfoDatas;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Frosty.Sdk.Sdk.TypeInfos;
 
@@ -26,6 +26,7 @@ internal class ArrayInfo : TypeInfo
                 Mapping!.Add(ptr, p_this);
             }
         }
+
         base.Read(reader);
     }
 
@@ -38,6 +39,7 @@ internal class ArrayInfo : TypeInfo
         {
             FrostyLogger.Logger?.LogInfo("Default value for array not an empty array");
         }
+
         return "new()";
     }
 

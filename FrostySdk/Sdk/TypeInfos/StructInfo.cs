@@ -1,6 +1,4 @@
-﻿using System;
-using System.Linq;
-using Frosty.Sdk.IO;
+﻿using Frosty.Sdk.IO;
 using Frosty.Sdk.Sdk.TypeInfoDatas;
 
 namespace Frosty.Sdk.Sdk.TypeInfos;
@@ -22,4 +20,3 @@ internal class StructInfo : TypeInfo
         return (m_data as StructInfoData)?.ReadDefaultValue(reader) ?? string.Empty;
     }
 }
-

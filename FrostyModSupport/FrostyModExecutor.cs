@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text.Json;
 using Frosty.ModSupport.Archive;
 using Frosty.ModSupport.Attributes;
 using Frosty.ModSupport.Interfaces;
@@ -16,6 +10,12 @@ using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Utils;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text.Json;
 
 namespace Frosty.ModSupport;
 
@@ -85,10 +85,12 @@ public partial class FrostyModExecutor
                 {
                     return Errors.InvalidMods;
                 }
+
                 if (mod.Head != FileSystemManager.Head)
                 {
                     FrostyLogger.Logger?.LogWarning($"Mod {mod.ModDetails.Title} was made for a different version of the game, it might or might not work");
                 }
+
                 ProcessModResources(mod);
             }
             else if (extension == ".fbcollection")
@@ -105,6 +107,7 @@ public partial class FrostyModExecutor
                     {
                         FrostyLogger.Logger?.LogWarning($"Mod {mod.ModDetails.Title} was made for a different version of the game, it might or might not work");
                     }
+
                     ProcessModResources(mod);
                 }
             }
@@ -123,6 +126,7 @@ public partial class FrostyModExecutor
         {
             Directory.Delete(inModPackPath, true);
         }
+
         Directory.CreateDirectory(m_modDataPath);
 
         // modify the superbundles and write them to mod data
@@ -154,7 +158,8 @@ public partial class FrostyModExecutor
         }
 
         // we need to write the cas files at the end bc of non cas format
-        if (FileSystemManager.BundleFormat == BundleFormat.Dynamic2018 || FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
+        if (FileSystemManager.BundleFormat == BundleFormat.Dynamic2018 ||
+            FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
         {
             foreach (KeyValuePair<int, SuperBundleModInfo> sb in m_superBundleModInfos)
             {
@@ -175,6 +180,7 @@ public partial class FrostyModExecutor
         {
             data.Dispose();
         }
+
         foreach (InstallChunkWriter installChunkWriter in m_installChunkWriters.Values)
         {
             installChunkWriter.Dispose();
@@ -243,7 +249,7 @@ public partial class FrostyModExecutor
 
     private void LoadHandlers()
     {
-        string handlersDir = Path.Combine(Frosty.Sdk.Utils.Utils.BaseDirectory, "Handlers");
+        string handlersDir = Path.Combine(Sdk.Utils.Utils.BaseDirectory, "Handlers");
         Directory.CreateDirectory(handlersDir);
 
         foreach (string handler in Directory.EnumerateFiles(handlersDir))
@@ -258,6 +264,7 @@ public partial class FrostyModExecutor
                     {
                         continue;
                     }
+
                     m_handlers.TryAdd(attribute.Hash, type);
                 }
             }
@@ -351,6 +358,7 @@ public partial class FrostyModExecutor
                             }
                         }
                     }
+
                     m_modifiedEbx.Add(resource.Name, modEntry);
                     break;
                 }
@@ -382,10 +390,7 @@ public partial class FrostyModExecutor
                         }
                         else
                         {
-                            modEntry = new ResModEntry(res, -1)
-                            {
-                                Handler = (IHandler)Activator.CreateInstance(type)!
-                            };
+                            modEntry = new ResModEntry(res, -1) { Handler = (IHandler)Activator.CreateInstance(type)! };
                             m_modifiedRes.Add(resource.Name, modEntry);
                             m_handlerAssets.Add(modEntry);
                         }
@@ -426,6 +431,7 @@ public partial class FrostyModExecutor
                             }
                         }
                     }
+
                     m_modifiedRes.Add(resource.Name, modEntry);
                     break;
                 }
@@ -522,6 +528,7 @@ public partial class FrostyModExecutor
                         SuperBundleModInfo sb = GetSuperBundleModInfo(superBundle);
                         sb.Removed.Chunks.Add(id);
                     }
+
                     m_modifiedChunks.Add(id, modEntry);
                     break;
                 }
@@ -688,6 +695,7 @@ public partial class FrostyModExecutor
 
             modInfoList.Add(modInfo);
         }
+
         return modInfoList;
     }
 

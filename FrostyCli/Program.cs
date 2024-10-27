@@ -1,15 +1,15 @@
-﻿using System;
-using System.CommandLine;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using Frosty.Sdk;
+﻿using Frosty.Sdk;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Sdk;
 using Frosty.Sdk.Utils;
 using Sharprompt;
+using System;
+using System.CommandLine;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 
 namespace FrostyCli;
 
@@ -57,53 +57,53 @@ internal static partial class Program
         ActionType actionType;
         do
         {
-             switch (actionType = Prompt.Select<ActionType>("Select what you want to do"))
-             {
-                 case ActionType.Quit:
-                     if (FrostyLogger.Logger is Logger logger)
-                     {
-                         logger.StopLogging();
-                     }
-                     break;
-                 case ActionType.Mod:
-                     ModGame();
-                     break;
-                 case ActionType.UpdateMod:
-                     UpdateMod();
-                     break;
-                 case ActionType.CreateMod:
-                     CreateMod();
-                     break;
-                 case ActionType.ListEbx:
-                     ListEbx();
-                     break;
-                 case ActionType.ListRes:
-                     ListRes();
-                     break;
-                 case ActionType.ListChunks:
-                     ListChunks();
-                     break;
-                 case ActionType.DumpEbx:
-                     InteractiveDumpEbx();
-                     break;
-                 case ActionType.DumpRes:
-                     InteractiveDumpRes();
-                     break;
-                 case ActionType.DumpChunks:
-                     InteractiveDumpChunks();
-                     break;
-                 case ActionType.ExportEbx:
-                     InteractiveExportEbx();
-                     break;
-                 case ActionType.ExportRes:
-                     InteractiveExportRes();
-                     break;
-                 case ActionType.ExportChunk:
-                     InteractiveExportChunk();
-                     break;
-             }
-        } while (actionType != ActionType.Quit);
+            switch (actionType = Prompt.Select<ActionType>("Select what you want to do"))
+            {
+                case ActionType.Quit:
+                    if (FrostyLogger.Logger is Logger logger)
+                    {
+                        logger.StopLogging();
+                    }
 
+                    break;
+                case ActionType.Mod:
+                    ModGame();
+                    break;
+                case ActionType.UpdateMod:
+                    UpdateMod();
+                    break;
+                case ActionType.CreateMod:
+                    CreateMod();
+                    break;
+                case ActionType.ListEbx:
+                    ListEbx();
+                    break;
+                case ActionType.ListRes:
+                    ListRes();
+                    break;
+                case ActionType.ListChunks:
+                    ListChunks();
+                    break;
+                case ActionType.DumpEbx:
+                    InteractiveDumpEbx();
+                    break;
+                case ActionType.DumpRes:
+                    InteractiveDumpRes();
+                    break;
+                case ActionType.DumpChunks:
+                    InteractiveDumpChunks();
+                    break;
+                case ActionType.ExportEbx:
+                    InteractiveExportEbx();
+                    break;
+                case ActionType.ExportRes:
+                    InteractiveExportRes();
+                    break;
+                case ActionType.ExportChunk:
+                    InteractiveExportChunk();
+                    break;
+            }
+        } while (actionType != ActionType.Quit);
     }
 
     private enum ActionType

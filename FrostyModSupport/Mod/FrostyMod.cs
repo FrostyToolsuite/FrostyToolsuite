@@ -1,12 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using Frosty.ModSupport.Interfaces;
 using Frosty.ModSupport.Mod.Resources;
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Utils;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Frosty.ModSupport.Mod;
 
@@ -27,6 +27,7 @@ public class FrostyMod : IResourceContainer
     /// <para>  6 - Storing of Added/Removed Bundles and SuperBundles</para>
     /// </summary>
     public const uint Version = 6;
+
     public const ulong Magic = 0x01005954534F5246;
 
 
@@ -201,11 +202,11 @@ public class FrostyMod : IResourceContainer
         FrostyModDetails inModDetails, uint inHead)
     {
         int headerSize = sizeof(ulong) + sizeof(uint) +
-                   sizeof(long) + sizeof(int) +
-                   ProfilesLibrary.ProfileName.Length + 1 + sizeof(uint) +
-                   inModDetails.Title.Length + 1 + inModDetails.Author.Length + 1 +
-                   inModDetails.Version.Length + 1 + inModDetails.Description.Length + 1 +
-                   inModDetails.Category.Length + 1 + inModDetails.ModPageLink.Length + 1 + 20;
+                         sizeof(long) + sizeof(int) +
+                         ProfilesLibrary.ProfileName.Length + 1 + sizeof(uint) +
+                         inModDetails.Title.Length + 1 + inModDetails.Author.Length + 1 +
+                         inModDetails.Version.Length + 1 + inModDetails.Description.Length + 1 +
+                         inModDetails.Category.Length + 1 + inModDetails.ModPageLink.Length + 1 + 20;
 
         Block<byte> resources = new(sizeof(int) + inResources.Length * (4 + 10)); // we just estimate a min size (ResourceIndex + Name(low estimate of 9 chars))
         using (BlockStream stream = new(resources, true))
@@ -221,14 +222,16 @@ public class FrostyMod : IResourceContainer
         Block<byte> data = new(inData.Length * 100); // low estimate of the actual size
         Block<byte> dataHeader = new(inData.Length * (sizeof(long) + sizeof(int)));
         using (BlockStream stream = new(dataHeader, true))
-        using (BlockStream dataStream = new(data, true))
         {
-            foreach (Block<byte> subData in inData)
+            using (BlockStream dataStream = new(data, true))
             {
-                stream.WriteInt64(dataStream.Position);
-                stream.WriteInt32(subData.Size);
+                foreach (Block<byte> subData in inData)
+                {
+                    stream.WriteInt64(dataStream.Position);
+                    stream.WriteInt32(subData.Size);
 
-                dataStream.Write(subData);
+                    dataStream.Write(subData);
+                }
             }
         }
 
@@ -251,7 +254,7 @@ public class FrostyMod : IResourceContainer
             stream.WriteNullTerminatedString(inModDetails.Description);
             stream.WriteNullTerminatedString(inModDetails.ModPageLink);
 
-            stream.WriteSha1(Frosty.Sdk.Utils.Utils.GenerateSha1(resources));
+            stream.WriteSha1(Sdk.Utils.Utils.GenerateSha1(resources));
 
             stream.Write(resources);
             resources.Dispose();

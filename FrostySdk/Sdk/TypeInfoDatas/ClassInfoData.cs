@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Frosty.Sdk.Attributes;
+﻿using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Sdk.TypeInfos;
+using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
@@ -29,6 +29,7 @@ internal class ClassInfoData : TypeInfoData
         {
             reader.ReadLong();
         }
+
         long pFieldInfos = reader.ReadLong();
         long pMethodInfos = reader.ReadLong();
 
@@ -41,6 +42,7 @@ internal class ClassInfoData : TypeInfoData
                 m_fieldInfos[i].Read(reader, m_nameHash, m_name);
             }
         }
+
         if (TypeInfo.Version > 5)
         {
             if (pMethodInfos != 0)
@@ -89,6 +91,7 @@ internal class ClassInfoData : TypeInfoData
             superClassFieldCount = superClass.GetFieldCount();
             sb.Append($" : {superClass.GetFullName()}");
         }
+
         sb.AppendLine();
 
         sb.AppendLine("{");

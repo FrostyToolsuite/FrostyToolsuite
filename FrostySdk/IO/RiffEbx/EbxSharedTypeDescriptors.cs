@@ -1,9 +1,9 @@
+using Frosty.Sdk.Managers;
+using Frosty.Sdk.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using Frosty.Sdk.Managers;
-using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO.RiffEbx;
 
@@ -36,7 +36,8 @@ internal static class EbxSharedTypeDescriptors
         s_isInitialized = true;
     }
 
-    public static EbxTypeDescriptor GetTypeDescriptor(Guid inGuid, uint inSignature) => s_typeDescriptors[s_mapping[(inGuid, inSignature)]];
+    public static EbxTypeDescriptor GetTypeDescriptor(Guid inGuid, uint inSignature) =>
+        s_typeDescriptors[s_mapping[(inGuid, inSignature)]];
 
     public static EbxTypeDescriptor GetTypeDescriptor(ushort inIndex) => s_typeDescriptors[inIndex];
 

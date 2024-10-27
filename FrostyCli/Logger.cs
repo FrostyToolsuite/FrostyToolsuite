@@ -1,9 +1,9 @@
+using Frosty.Sdk.Interfaces;
+using Pastel;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
-using Frosty.Sdk.Interfaces;
-using Pastel;
 
 namespace FrostyCli;
 

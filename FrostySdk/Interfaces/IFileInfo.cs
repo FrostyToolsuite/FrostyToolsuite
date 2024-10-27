@@ -1,8 +1,8 @@
-﻿using System;
-using System.IO;
-using Frosty.Sdk.IO;
+﻿using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Infos.FileInfos;
 using Frosty.Sdk.Utils;
+using System;
+using System.IO;
 
 namespace Frosty.Sdk.Interfaces;
 
@@ -36,6 +36,7 @@ public interface IFileInfo
             default:
                 throw new NotImplementedException();
         }
+
         fileInfo.SerializeInternal(stream);
     }
 

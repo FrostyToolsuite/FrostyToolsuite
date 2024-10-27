@@ -1,13 +1,13 @@
+using Frosty.Sdk.DbObjectElements;
+using Frosty.Sdk.IO;
+using Frosty.Sdk.Managers.Infos;
+using Frosty.Sdk.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Security.Cryptography;
-using Frosty.Sdk.DbObjectElements;
-using Frosty.Sdk.IO;
-using Frosty.Sdk.Managers.Infos;
-using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.Managers;
 
@@ -322,6 +322,7 @@ public static class FileSystemManager
             {
                 LoadInitFs(name, true);
             }
+
             s_memoryFs.TryAdd(fileName, new Block<byte>(file.AsBlob("payload")));
         }
 
@@ -334,6 +335,7 @@ public static class FileSystemManager
         {
             return;
         }
+
         switch (platform)
         {
             case "Win32":
@@ -396,6 +398,7 @@ public static class FileSystemManager
         {
             return false;
         }
+
         uint @base = layout.AsUInt("base");
         uint head = layout.AsUInt("head");
 
@@ -406,7 +409,8 @@ public static class FileSystemManager
                 // load superbundles
                 string name = superBundle.AsDict().AsString("name");
                 s_superBundleMapping.TryAdd(name, new SuperBundleInfo(name));
-                s_superBundleMapping[name].SetLegacyFlags(superBundle.AsDict().AsBoolean("base"), superBundle.AsDict().AsBoolean("same"), superBundle.AsDict().AsBoolean("delta"));
+                s_superBundleMapping[name].SetLegacyFlags(superBundle.AsDict().AsBoolean("base"),
+                    superBundle.AsDict().AsBoolean("same"), superBundle.AsDict().AsBoolean("delta"));
             }
 
             Head = head;

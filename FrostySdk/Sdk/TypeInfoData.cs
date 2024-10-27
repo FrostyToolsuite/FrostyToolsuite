@@ -1,10 +1,9 @@
-﻿using System;
-using System.Diagnostics;
-using System.Text;
-using Frosty.Sdk.Attributes;
+﻿using Frosty.Sdk.Attributes;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Sdk.TypeInfoDatas;
 using Frosty.Sdk.Sdk.TypeInfos;
+using System;
+using System.Text;
 
 namespace Frosty.Sdk.Sdk;
 
@@ -106,7 +105,8 @@ internal class TypeInfoData
                 break;
         }
 
-        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings && Strings.TypeMapping!.TryGetValue(nameHash, out string? resolvedName))
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings &&
+            Strings.TypeMapping!.TryGetValue(nameHash, out string? resolvedName))
         {
             name = resolvedName;
         }
@@ -173,6 +173,7 @@ internal class TypeInfoData
         {
             sb.AppendLine($"[{nameof(GuidAttribute)}(\"{m_guid}\")]");
         }
+
         if (m_signature != 0)
         {
             sb.AppendLine($"[{nameof(SignatureAttribute)}({m_signature})]");

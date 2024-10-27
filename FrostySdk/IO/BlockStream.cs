@@ -1,12 +1,10 @@
-﻿using System;
+﻿using Frosty.Sdk.Utils;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using Frosty.Sdk.Interfaces;
-using Frosty.Sdk.Managers;
-using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO;
 
@@ -73,11 +71,13 @@ public class BlockStream : DataStream
         }
 
         using (Block<byte> a = new(m_block.BasePtr + Position, bufferSize))
-        using (Block<byte> b = new(stream.m_block.BasePtr + stream.Position, bufferSize))
         {
-            a.MarkMemoryAsFragile();
-            b.MarkMemoryAsFragile();
-            a.CopyTo(b);
+            using (Block<byte> b = new(stream.m_block.BasePtr + stream.Position, bufferSize))
+            {
+                a.MarkMemoryAsFragile();
+                b.MarkMemoryAsFragile();
+                a.CopyTo(b);
+            }
         }
 
         stream.Position += bufferSize;
@@ -91,6 +91,7 @@ public class BlockStream : DataStream
         {
             return base.ReadNullTerminatedString(inEncoding);
         }
+
         string retVal = new((sbyte*)(m_block.Ptr + Position));
         Position += retVal.Length + 1;
         return retVal;
@@ -225,6 +226,7 @@ public class BlockStream : DataStream
             Position = Length;
             m_stream.Write(padding);
         }
+
         if (m_leaveOpen && m_block.Size != Length)
         {
             // resize the block if needed
@@ -236,6 +238,7 @@ public class BlockStream : DataStream
         {
             m_block.Dispose();
         }
+
         GC.SuppressFinalize(this);
     }
 
@@ -264,7 +267,7 @@ public class BlockStream : DataStream
         return true;
     }
 
-    private static bool Deobfuscate(Span<byte> inHeader, Stream inStream, [NotNullWhen(returnValue:true)] out BlockStream? stream)
+    private static bool Deobfuscate(Span<byte> inHeader, Stream inStream, [NotNullWhen(returnValue: true)] out BlockStream? stream)
     {
         if (!(inHeader[0] == 0x00 && inHeader[1] == 0xD1 && inHeader[2] == 0xCE &&
               (inHeader[3] == 0x00 || inHeader[3] == 0x01 || inHeader[3] == 0x03))) // version 0 is not used in fb3

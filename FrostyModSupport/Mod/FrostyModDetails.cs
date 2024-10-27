@@ -5,7 +5,7 @@ namespace Frosty.ModSupport.Mod;
 public sealed class FrostyModDetails
 {
     public string Title { get; set; } = string.Empty;
-    public string Author { get; set;} = string.Empty;
+    public string Author { get; set; } = string.Empty;
     public string Version { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Category { get; set; } = "Misc";
@@ -32,7 +32,7 @@ public sealed class FrostyModDetails
 
     public bool Equals(FrostyModDetails b)
     {
-        return Title == b.Title && Author == b.Author && Version == b.Version && Description == b.Description  && Category == b.Category && ModPageLink == b.ModPageLink;
+        return Title == b.Title && Author == b.Author && Version == b.Version && Description == b.Description && Category == b.Category && ModPageLink == b.ModPageLink;
     }
 
     public override int GetHashCode()

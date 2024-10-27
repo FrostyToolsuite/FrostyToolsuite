@@ -1,10 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Reflection;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 
 namespace Frosty.Sdk.IO;
 
@@ -97,6 +97,7 @@ public abstract class BaseEbxWriter
                 // transient field, do not write
                 continue;
             }
+
             ExtractField(ebxField.PropertyType, ebxField.GetValue(obj)!);
         }
     }
@@ -175,6 +176,7 @@ public abstract class BaseEbxWriter
                 {
                     break;
                 }
+
                 offset += (uint)(m_strings[i].Length + 1);
             }
         }

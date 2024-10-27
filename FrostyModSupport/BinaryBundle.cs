@@ -1,9 +1,3 @@
-using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
 using Frosty.ModSupport.Interfaces;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
@@ -13,6 +7,12 @@ using Frosty.Sdk.Exceptions;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Utils;
+using System;
+using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
 
 namespace Frosty.ModSupport;
 
@@ -85,6 +85,7 @@ public static class BinaryBundle
             {
                 b += inModInfo.Added.Res.Count;
             }
+
             sha1[i + b] = containsSha1 ? inStream.ReadSha1() : Sha1.Zero;
         }
 
@@ -124,7 +125,7 @@ public static class BinaryBundle
         {
             EbxModEntry modEntry = inModifiedEbx[name];
             ebx[k++] = modEntry;
-            modify(modEntry, j , true, true, 0);
+            modify(modEntry, j, true, true, 0);
             sha1[j++] = modEntry.Sha1;
             if (strings.TryAdd(name, offset))
             {
@@ -179,7 +180,7 @@ public static class BinaryBundle
         {
             ResModEntry modEntry = inModifiedRes[name];
             res[k++] = modEntry;
-            modify(modEntry, j , true, true, 0);
+            modify(modEntry, j, true, true, 0);
             sha1[j++] = modEntry.Sha1;
 
             if (strings.TryAdd(name, offset))
@@ -214,12 +215,13 @@ public static class BinaryBundle
                     DbObjectDict? meta = chunkMeta?.FirstOrDefault(m => m.AsDict().AsInt("h32") == modEntry.H32)?.AsDict();
                     if (meta is null)
                     {
-                        meta = DbObject.CreateDict( 2);
+                        meta = DbObject.CreateDict(2);
                         meta.Set("h32", modEntry.H32);
                         meta.Set("meta", DbObject.CreateDict("meta", 1));
                         chunkMeta ??= DbObject.CreateList(1);
                         chunkMeta.Add(meta);
                     }
+
                     meta.AsDict("meta").Set("firstMip", modEntry.FirstMip);
                 }
             }
@@ -235,7 +237,7 @@ public static class BinaryBundle
         {
             ChunkModEntry modEntry = inModifiedChunks[id];
             chunks[k++] = modEntry;
-            modify(modEntry, j , true, true, 0);
+            modify(modEntry, j, true, true, 0);
             sha1[j++] = modEntry.Sha1;
 
             DbObjectDict meta = DbObject.CreateDict(2);
@@ -246,6 +248,7 @@ public static class BinaryBundle
                 firstMip.Set("firstMip", modEntry.FirstMip);
                 meta.Set("meta", firstMip);
             }
+
             chunkMeta!.Add(meta);
         }
 
@@ -316,9 +319,10 @@ public static class BinaryBundle
             {
                 DbObject.Serialize(stream, chunkMeta);
             }
+
             uint chunkMetaSize = (uint)(stream.Position - 4 - chunkMetaOffset);
 
-            foreach (KeyValuePair<string,uint> pair in strings)
+            foreach (KeyValuePair<string, uint> pair in strings)
             {
                 stream.WriteNullTerminatedString(pair.Key);
             }

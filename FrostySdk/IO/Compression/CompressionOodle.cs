@@ -1,8 +1,8 @@
+using Frosty.Sdk.Interfaces;
+using Frosty.Sdk.Utils;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using Frosty.Sdk.Interfaces;
-using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO.Compression;
 
@@ -57,29 +57,29 @@ public partial class CompressionOodle : ICompressionFormat
         OodleLZ_Compressor_Force32 = 0x40000000
     }
 
-    internal  enum OodleLZ_CompressionLevel
+    internal enum OodleLZ_CompressionLevel
     {
-        OodleLZ_CompressionLevel_None=0,
-        OodleLZ_CompressionLevel_SuperFast=1,
-        OodleLZ_CompressionLevel_VeryFast=2,
-        OodleLZ_CompressionLevel_Fast=3,
-        OodleLZ_CompressionLevel_Normal=4,
+        OodleLZ_CompressionLevel_None = 0,
+        OodleLZ_CompressionLevel_SuperFast = 1,
+        OodleLZ_CompressionLevel_VeryFast = 2,
+        OodleLZ_CompressionLevel_Fast = 3,
+        OodleLZ_CompressionLevel_Normal = 4,
 
-        OodleLZ_CompressionLevel_Optimal1=5,
-        OodleLZ_CompressionLevel_Optimal2=6,
-        OodleLZ_CompressionLevel_Optimal3=7,
-        OodleLZ_CompressionLevel_Optimal4=8,
-        OodleLZ_CompressionLevel_Optimal5=9,
+        OodleLZ_CompressionLevel_Optimal1 = 5,
+        OodleLZ_CompressionLevel_Optimal2 = 6,
+        OodleLZ_CompressionLevel_Optimal3 = 7,
+        OodleLZ_CompressionLevel_Optimal4 = 8,
+        OodleLZ_CompressionLevel_Optimal5 = 9,
 
-        OodleLZ_CompressionLevel_HyperFast1=-1,
-        OodleLZ_CompressionLevel_HyperFast2=-2,
-        OodleLZ_CompressionLevel_HyperFast3=-3,
-        OodleLZ_CompressionLevel_HyperFast4=-4,
+        OodleLZ_CompressionLevel_HyperFast1 = -1,
+        OodleLZ_CompressionLevel_HyperFast2 = -2,
+        OodleLZ_CompressionLevel_HyperFast3 = -3,
+        OodleLZ_CompressionLevel_HyperFast4 = -4,
 
-        OodleLZ_CompressionLevel_HyperFast=OodleLZ_CompressionLevel_HyperFast1,
+        OodleLZ_CompressionLevel_HyperFast = OodleLZ_CompressionLevel_HyperFast1,
         OodleLZ_CompressionLevel_Optimal = OodleLZ_CompressionLevel_Optimal2,
-        OodleLZ_CompressionLevel_Max     = OodleLZ_CompressionLevel_Optimal5,
-        OodleLZ_CompressionLevel_Min     = OodleLZ_CompressionLevel_HyperFast4,
+        OodleLZ_CompressionLevel_Max = OodleLZ_CompressionLevel_Optimal5,
+        OodleLZ_CompressionLevel_Min = OodleLZ_CompressionLevel_HyperFast4,
 
         OodleLZ_CompressionLevel_Force32 = 0x40000000,
         OodleLZ_CompressionLevel_Invalid = OodleLZ_CompressionLevel_Force32

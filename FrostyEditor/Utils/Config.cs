@@ -1,9 +1,9 @@
+using Frosty.Sdk;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using Frosty.Sdk;
 
 namespace FrostyEditor.Utils;
 
@@ -54,6 +54,7 @@ public static class Config
                     {
                         return game[option, scope];
                     }
+
                     return null;
                 }
 
@@ -309,7 +310,6 @@ public static class Config
     /// <param name="defaultValue">The default value of the option, if not found in the <see cref="Config"/>.</param>
     /// <param name="scope">The <see cref="ConfigScope"/> of the option.</param>
     /// <param name="profile">The profile the option belongs to. If null, the currently active profile will be used.</param>
-
     public static T Get<T>(string option, T defaultValue, ConfigScope scope = ConfigScope.Global, string? profile = null)
     {
         s_current ??= new InternalConfig();

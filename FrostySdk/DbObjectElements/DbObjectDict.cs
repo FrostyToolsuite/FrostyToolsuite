@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Frosty.Sdk.IO;
+using Frosty.Sdk.Utils;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Frosty.Sdk.IO;
-using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.DbObjectElements;
 
@@ -16,7 +16,7 @@ public class DbObjectDict : DbObject
         m_items = new Dictionary<string, DbObject>();
     }
 
-    protected internal  DbObjectDict(int inCapacity)
+    protected internal DbObjectDict(int inCapacity)
         : base(Type.Dict | Type.Anonymous)
     {
         m_items = new Dictionary<string, DbObject>(inCapacity);

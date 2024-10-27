@@ -83,6 +83,6 @@ public enum ResourceType : uint
     UITtfFontFile = 0x9D00966A,
     VisualTerrain = 0x1CA38E06,
     ZoneStreamerGrid = 0xEFC70728,
-    
+
     Invalid = 0xFFFFFFFF
 }

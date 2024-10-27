@@ -20,7 +20,7 @@ public readonly struct ResourceRef
         {
             return Equals(a);
         }
-            
+
         if (obj is ulong b)
         {
             return Equals(b);
@@ -47,5 +47,6 @@ public readonly struct ResourceRef
             return hash;
         }
     }
+
     public override string ToString() => m_resourceId.ToString("X16");
 }

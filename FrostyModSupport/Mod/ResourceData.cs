@@ -1,12 +1,12 @@
-using System.IO;
 using Frosty.Sdk.Utils;
+using System.IO;
 
 namespace Frosty.ModSupport.Mod;
 
 public class ResourceData
 {
     public long Size => m_size;
-        
+
     private string m_fileName;
     private long m_offset;
     private int m_size;

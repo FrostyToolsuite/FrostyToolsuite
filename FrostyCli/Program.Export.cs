@@ -1,12 +1,12 @@
-using System;
-using System.Globalization;
-using System.IO;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Utils;
 using Sharprompt;
+using System;
+using System.Globalization;
+using System.IO;
 
 namespace FrostyCli;
 
@@ -117,6 +117,7 @@ internal static partial class Program
         {
             entry = AssetManager.GetResAssetEntry(name);
         }
+
         if (entry is null)
         {
             Logger.LogErrorInternal("Asset does not exist.");
@@ -145,6 +146,7 @@ internal static partial class Program
                 {
                     stream.Write(inEntry.ResMeta);
                 }
+
                 stream.Write(data);
             }
         }
@@ -158,7 +160,8 @@ internal static partial class Program
     {
         DirectoryInfo dumpDir = RequestDirectory("Input where to dump the chunks", true);
 
-        if (!Prompt.Confirm("This might take a long time, since it will write all chunks to file, do you want to continue?"))
+        if (!Prompt.Confirm(
+                "This might take a long time, since it will write all chunks to file, do you want to continue?"))
         {
             return;
         }

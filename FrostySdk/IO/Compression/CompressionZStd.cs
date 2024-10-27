@@ -1,8 +1,8 @@
-using System;
-using System.Runtime.InteropServices;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Utils;
+using System;
+using System.Runtime.InteropServices;
 
 namespace Frosty.Sdk.IO.Compression;
 
@@ -58,6 +58,7 @@ public partial class CompressionZStd : ICompressionFormat
         {
             code = ZSTD_decompress((nuint)outData.Ptr, (nuint)outData.Size, (nuint)inData.Ptr, (nuint)inData.Size);
         }
+
         GetError(code);
     }
 

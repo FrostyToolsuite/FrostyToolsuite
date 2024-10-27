@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Frosty.Sdk.IO;
+using Frosty.Sdk.Utils;
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using Frosty.Sdk.IO;
-using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.DbObjectElements;
 
@@ -18,13 +18,13 @@ public class DbObjectList : DbObject, IEnumerable<DbObject>
         m_items = new List<DbObject>();
     }
 
-    protected internal  DbObjectList(int inCapacity)
+    protected internal DbObjectList(int inCapacity)
         : base(Type.List | Type.Anonymous)
     {
         m_items = new List<DbObject>(inCapacity);
     }
 
-    protected internal  DbObjectList(string inName, int inCapacity)
+    protected internal DbObjectList(string inName, int inCapacity)
         : base(Type.List, inName)
     {
         m_items = new List<DbObject>(inCapacity);

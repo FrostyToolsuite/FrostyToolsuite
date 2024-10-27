@@ -1,11 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Reflection;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.Sdk;
 using Frosty.Sdk.Utils;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 
 namespace Frosty.Sdk.IO.RiffEbx;
 
@@ -174,7 +174,8 @@ public class EbxWriter : BaseEbxWriter
 
             string name = objType.GetName();
 
-            index = AddClass(objType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name),
+            index = AddClass(
+                objType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name),
                 m_fieldTypes.Count,
                 (byte)objProperties.Count,
                 1,
@@ -324,6 +325,7 @@ public class EbxWriter : BaseEbxWriter
                 {
                     writer.WriteGuid(guid.ExportedGuid);
                 }
+
                 //m_exportOffsets.Add((uint)writer.Position);
                 long classStartOffset = writer.Position;
 

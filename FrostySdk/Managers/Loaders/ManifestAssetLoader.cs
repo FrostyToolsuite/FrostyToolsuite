@@ -1,12 +1,12 @@
-﻿using System;
-using System.Diagnostics;
-using System.Linq;
-using Frosty.Sdk.DbObjectElements;
+﻿using Frosty.Sdk.DbObjectElements;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Infos.FileInfos;
+using System;
+using System.Diagnostics;
+using System.Linq;
 
 namespace Frosty.Sdk.Managers.Loaders;
 
@@ -64,7 +64,7 @@ public class ManifestAssetLoader : IAssetLoader
                            FileSystemManager.GetFilePath(resourceInfo.Identifier), resourceInfo.Offset,
                            (int)resourceInfo.Size))
                 {
-                     bundleMeta = BinaryBundle.Deserialize(bundleStream);
+                    bundleMeta = BinaryBundle.Deserialize(bundleStream);
                 }
 
                 // get name since they are hashed

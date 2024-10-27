@@ -1,14 +1,14 @@
+using Frosty.Sdk.Attributes;
+using Frosty.Sdk.Ebx;
+using Frosty.Sdk.Interfaces;
+using Frosty.Sdk.IO.Ebx;
+using Frosty.Sdk.Sdk;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Frosty.Sdk.Attributes;
-using Frosty.Sdk.Ebx;
-using Frosty.Sdk.Interfaces;
-using Frosty.Sdk.IO.Ebx;
-using Frosty.Sdk.Sdk;
 
 namespace Frosty.Sdk.IO.PartitionEbx;
 
@@ -124,6 +124,7 @@ public class EbxReader : BaseEbxReader
                             primitive.FromActualType(value);
                             value = primitive;
                         }
+
                         propertyInfo?.GetValue(obj)?.GetType().GetMethod("Add")?.Invoke(propertyInfo.GetValue(obj), new[] { value });
                     });
                     break;
@@ -142,6 +143,7 @@ public class EbxReader : BaseEbxReader
                             primitive.FromActualType(value);
                             value = primitive;
                         }
+
                         propertyInfo?.SetValue(obj, value);
                     });
                     break;
@@ -251,6 +253,7 @@ public class EbxReader : BaseEbxReader
             EbxFieldDescriptor elementFieldDescriptor = m_typeResolver.ResolveField(arrayTypeDescriptor.FieldIndex);
             ReadField(arrayTypeDescriptor, elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef, inAddFunc);
         }
+
         m_stream.Position = arrayPos;
     }
 
@@ -355,6 +358,7 @@ public class EbxReader : BaseEbxReader
                         primitive.FromActualType(obj);
                         obj = primitive;
                     }
+
                     fieldType.GetMethod("Add")?.Invoke(value, new[] { obj });
                 });
                 break;
@@ -393,27 +397,48 @@ public class EbxReader : BaseEbxReader
     {
         switch (inFlags)
         {
-            case TypeFlags.TypeEnum.Struct: return GetType(m_typeResolver.ResolveType(inTypeDescriptorRef));
-            case TypeFlags.TypeEnum.String: return s_stringType;
-            case TypeFlags.TypeEnum.Int8: return s_sbyteType;
-            case TypeFlags.TypeEnum.UInt8: return s_byteType;
-            case TypeFlags.TypeEnum.Boolean: return s_boolType;
-            case TypeFlags.TypeEnum.UInt16: return s_ushortType;
-            case TypeFlags.TypeEnum.Int16: return s_shortType;
-            case TypeFlags.TypeEnum.UInt32: return s_uintType;
-            case TypeFlags.TypeEnum.Int32: return s_intType;
-            case TypeFlags.TypeEnum.UInt64: return s_ulongType;
-            case TypeFlags.TypeEnum.Int64: return s_longType;
-            case TypeFlags.TypeEnum.Float32: return s_floatType;
-            case TypeFlags.TypeEnum.Float64: return s_doubleType;
-            case TypeFlags.TypeEnum.Class: return s_pointerType;
-            case TypeFlags.TypeEnum.Guid: return s_guidType;
-            case TypeFlags.TypeEnum.Sha1: return s_sha1Type;
-            case TypeFlags.TypeEnum.CString: return s_cStringType;
-            case TypeFlags.TypeEnum.ResourceRef: return s_resourceRefType;
-            case TypeFlags.TypeEnum.FileRef: return s_fileRefType;
-            case TypeFlags.TypeEnum.TypeRef: return s_typeRefType!;
-            case TypeFlags.TypeEnum.BoxedValueRef: return s_boxedValueRefType!;
+            case TypeFlags.TypeEnum.Struct:
+                return GetType(m_typeResolver.ResolveType(inTypeDescriptorRef));
+            case TypeFlags.TypeEnum.String:
+                return s_stringType;
+            case TypeFlags.TypeEnum.Int8:
+                return s_sbyteType;
+            case TypeFlags.TypeEnum.UInt8:
+                return s_byteType;
+            case TypeFlags.TypeEnum.Boolean:
+                return s_boolType;
+            case TypeFlags.TypeEnum.UInt16:
+                return s_ushortType;
+            case TypeFlags.TypeEnum.Int16:
+                return s_shortType;
+            case TypeFlags.TypeEnum.UInt32:
+                return s_uintType;
+            case TypeFlags.TypeEnum.Int32:
+                return s_intType;
+            case TypeFlags.TypeEnum.UInt64:
+                return s_ulongType;
+            case TypeFlags.TypeEnum.Int64:
+                return s_longType;
+            case TypeFlags.TypeEnum.Float32:
+                return s_floatType;
+            case TypeFlags.TypeEnum.Float64:
+                return s_doubleType;
+            case TypeFlags.TypeEnum.Class:
+                return s_pointerType;
+            case TypeFlags.TypeEnum.Guid:
+                return s_guidType;
+            case TypeFlags.TypeEnum.Sha1:
+                return s_sha1Type;
+            case TypeFlags.TypeEnum.CString:
+                return s_cStringType;
+            case TypeFlags.TypeEnum.ResourceRef:
+                return s_resourceRefType;
+            case TypeFlags.TypeEnum.FileRef:
+                return s_fileRefType;
+            case TypeFlags.TypeEnum.TypeRef:
+                return s_typeRefType!;
+            case TypeFlags.TypeEnum.BoxedValueRef:
+                return s_boxedValueRefType!;
             case TypeFlags.TypeEnum.Array:
                 EbxTypeDescriptor arrayTypeDescriptor = m_typeResolver.ResolveType(inTypeDescriptorRef);
                 EbxFieldDescriptor elementFieldDescriptor = m_typeResolver.ResolveField(arrayTypeDescriptor.FieldIndex);

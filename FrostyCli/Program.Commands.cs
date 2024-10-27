@@ -10,8 +10,8 @@ internal static partial class Program
         description: "The path to the game.");
 
     private static Option<int?> pidOption = new(
-            name: "--pid",
-            description: "The pid of the game if a sdk should get generated for the game.");
+        name: "--pid",
+        description: "The pid of the game if a sdk should get generated for the game.");
 
     private static Option<FileInfo?> key1Option = new(
         name: "--initfs-key",

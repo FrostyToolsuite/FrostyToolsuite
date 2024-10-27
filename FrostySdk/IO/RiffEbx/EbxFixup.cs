@@ -1,6 +1,6 @@
+using Frosty.Sdk.IO.Ebx;
 using System;
 using System.Collections.Generic;
-using Frosty.Sdk.IO.Ebx;
 
 namespace Frosty.Sdk.IO.RiffEbx;
 
@@ -92,5 +92,4 @@ internal struct EbxFixup
 
         return fixup;
     }
-
 }

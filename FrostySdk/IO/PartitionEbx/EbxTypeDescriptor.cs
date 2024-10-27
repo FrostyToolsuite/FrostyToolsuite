@@ -1,5 +1,5 @@
-﻿using System;
-using Frosty.Sdk.Sdk;
+﻿using Frosty.Sdk.Sdk;
+using System;
 
 namespace Frosty.Sdk.IO.PartitionEbx;
 
@@ -30,7 +30,13 @@ public struct EbxTypeDescriptor
     }
 
     public ushort GetFieldCount() => (ushort)(FieldCount | ((Alignment & 0x80) << 1));
-    public void SetFieldCount(ushort value) { FieldCount = (byte)value; Alignment = (byte)((Alignment & ~0x80) | ((value & 0x100) >> 1)); }
+
+    public void SetFieldCount(ushort value)
+    {
+        FieldCount = (byte)value;
+        Alignment = (byte)((Alignment & ~0x80) | ((value & 0x100) >> 1));
+    }
+
     public byte GetAlignment() => (byte)(Alignment & 0x7F);
     public void SetAlignment(byte value) => Alignment = (byte)((Alignment & ~0x7F) | value);
 

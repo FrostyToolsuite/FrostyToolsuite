@@ -1,8 +1,8 @@
-﻿using System;
-using Frosty.Sdk.Interfaces;
+﻿using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Infos.FileInfos.ResourceInfo;
 using Frosty.Sdk.Utils;
+using System;
 
 namespace Frosty.Sdk.Managers.Infos.FileInfos;
 
@@ -55,6 +55,7 @@ public class CasFileInfo : IFileInfo
             {
                 baseStream = new BlockStream(m_base.GetRawData());
             }
+
             return Cas.GetOriginalSize(deltaStream, baseStream);
         }
     }
@@ -93,6 +94,7 @@ public class CasFileInfo : IFileInfo
             {
                 baseStream = new BlockStream(m_base.GetRawData());
             }
+
             return Cas.DecompressData(deltaStream, baseStream, inOriginalSize);
         }
     }

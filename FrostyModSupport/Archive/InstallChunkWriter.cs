@@ -1,13 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.CatResources;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Utils;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 
 namespace Frosty.ModSupport.Archive;
 
@@ -118,7 +118,7 @@ public class InstallChunkWriter : IDisposable
                     stream.WriteInt32(entry.ArchiveIndex);
                 }
 
-                foreach (KeyValuePair<Sha1,(CasFileIdentifier Identifier, uint Offset, uint Size)> data in m_data)
+                foreach (KeyValuePair<Sha1, (CasFileIdentifier Identifier, uint Offset, uint Size)> data in m_data)
                 {
                     stream.WriteSha1(data.Key);
                     stream.WriteUInt32(data.Value.Offset);
@@ -162,6 +162,7 @@ public class InstallChunkWriter : IDisposable
             {
                 ObfuscationHeader.Write(stream);
             }
+
             stream.Write(catalog);
         }
     }

@@ -1,14 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Reflection;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
 using Frosty.Sdk.Sdk;
 using Frosty.Sdk.Utils;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 using static Frosty.Sdk.Sdk.TypeFlags;
 
 namespace Frosty.Sdk.IO.PartitionEbx;
@@ -700,6 +700,7 @@ public class EbxWriter : BaseEbxWriter
                 m_typeDescriptors[i] = EbxSharedTypeDescriptors.GetKey(type);
             }
         }
+
         m_stream.WriteInt32((int)(ProfilesLibrary.EbxVersion >= 4 ? EbxVersion.Version4 : EbxVersion.Version2));
         m_stream.WriteInt32(0x00); // stringsOffset
         m_stream.WriteInt32(0x00); // stringsAndDataLen
@@ -791,8 +792,8 @@ public class EbxWriter : BaseEbxWriter
                 }
 
                 writer.WriteUInt32(pointerIndex);
+                break;
             }
-            break;
 
             case TypeEnum.Struct:
             {
@@ -802,8 +803,8 @@ public class EbxWriter : BaseEbxWriter
                 writer.Pad(structClassType.GetAlignment());
 
                 WriteType(ebxObj, structType, writer, writer.Position);
+                break;
             }
-            break;
 
             case TypeEnum.Array:
             {
@@ -840,6 +841,7 @@ public class EbxWriter : BaseEbxWriter
 
                             WriteField(subValue, ebxType, arrayWriter, arrayWriter.Position);
                         }
+
                         arrayWriter.Pad(16);
                     }
 
@@ -854,9 +856,10 @@ public class EbxWriter : BaseEbxWriter
 
                     m_arrayData.Add(arrayStream);
                 }
+
                 writer.WriteInt32(arrayIdx);
+                break;
             }
-            break;
 
             case TypeEnum.Enum:
                 writer.WriteInt32((int)ebxObj);

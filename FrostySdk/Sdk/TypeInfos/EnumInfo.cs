@@ -9,6 +9,7 @@ internal class EnumInfo : TypeInfo
         : base(data)
     {
     }
+
     public override string ReadDefaultValue(MemoryReader reader)
     {
         return (m_data as EnumInfoData)?.ReadDefaultValue(reader) ?? string.Empty;

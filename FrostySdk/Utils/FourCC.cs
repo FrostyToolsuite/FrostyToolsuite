@@ -7,7 +7,7 @@ public struct FourCC
     private uint m_value;
 
     public static implicit operator uint(FourCC value) => value.m_value;
-    public static implicit operator FourCC(uint value) => new(){m_value = value};
+    public static implicit operator FourCC(uint value) => new() { m_value = value };
 
     public static implicit operator string(FourCC value) => FromFourCC(value);
     public static implicit operator FourCC(string value) => ToFourCC(value);

@@ -1,13 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using Frosty.Sdk.DbObjectElements;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Infos.FileInfos;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 
 namespace Frosty.Sdk.Managers.Loaders;
 
@@ -119,7 +119,8 @@ public class Dynamic2018AssetLoader : IAssetLoader
             {
                 DbObjectList bundles = toc.AsList("bundles");
 
-                if (bundles.Count > 0 && ProfilesLibrary.FrostbiteVersion < "2014.4.11" && !inSource.IsDLC() && !FileSystemManager.TryResolvePath(false, $"{inSbIc.Name}.toc", out _))
+                if (bundles.Count > 0 && ProfilesLibrary.FrostbiteVersion < "2014.4.11" && !inSource.IsDLC() &&
+                    !FileSystemManager.TryResolvePath(false, $"{inSbIc.Name}.toc", out _))
                 {
                     // some superbundles are still in the Update/Patch folder even tho their base bundles which are needed are not there (e.g. languages that are not loaded)
                     return Code.NotFound;
@@ -148,7 +149,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                         baseSbStream ??=
                             BlockStream.FromFile(baseSbPath, false);
 
-                        LoadBundle(baseSbStream, offset, size, ref bundle, !isCas,  inSuperBundlePath: relBaseSbPath);
+                        LoadBundle(baseSbStream, offset, size, ref bundle, !isCas, inSuperBundlePath: relBaseSbPath);
                     }
                     else if (!isCas && isDelta)
                     {
@@ -246,7 +247,6 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     }
                 }
             }
-
         }
 
         if (toc.ContainsKey("hasBaseBundles") || toc.ContainsKey("hasBaseChunks"))
@@ -304,6 +304,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
             // we need to set it to null here to be sure
             inBaseStream = null;
         }
+
         BinaryBundle bundleMeta = DeserializeDeltaBundle(inDeltaStream, inBaseStream);
 
         int index = 0;
@@ -392,6 +393,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                             }
                         }
                     }
+
                     break;
                 }
                 case 1:
@@ -526,6 +528,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                             }
                         }
                     }
+
                     break;
                 }
                 case 4:
@@ -537,6 +540,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
                     {
                         Cas.GetUncompressedSize(inBaseStream);
                     }
+
                     break;
                 }
             }
@@ -545,7 +549,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         // ??? this makes no sense
         long extraSize = 0;
 
-        while ((inBaseStream?.Position ?? 0) - inBaseOffset <  inBaseSize)
+        while ((inBaseStream?.Position ?? 0) - inBaseOffset < inBaseSize)
         {
             Debug.Assert(inBaseStream is not null);
 

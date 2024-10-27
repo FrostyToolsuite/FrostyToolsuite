@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using Frosty.ModSupport.Archive;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
@@ -11,6 +7,10 @@ using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Utils;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 
 namespace Frosty.ModSupport;
 
@@ -69,6 +69,7 @@ internal class Dynamic2018 : IDisposable
                 {
                     size = 1;
                 }
+
                 while (value > 0)
                 {
                     size++;
@@ -100,6 +101,7 @@ internal class Dynamic2018 : IDisposable
                     // if its loaded from base superbundle dont increase the offset
                     continue;
                 }
+
                 bundle.Set("offset", obj.AsDict().AsLong("offset") + offset);
             }
         }
@@ -157,7 +159,7 @@ internal class Dynamic2018 : IDisposable
                     DbObjectDict bundleObj = obj.AsDict();
 
                     string bundleName = bundleObj.AsString("id");
-                    int id = Frosty.Sdk.Utils.Utils.HashString(bundleName + inSbIc.Name, true);
+                    int id = Sdk.Utils.Utils.HashString(bundleName + inSbIc.Name, true);
 
                     long offset = bundleObj.AsLong("offset");
                     long size = bundleObj.AsLong("size");
@@ -632,6 +634,7 @@ internal class Dynamic2018 : IDisposable
                 {
                     FrostyLogger.Logger?.LogWarning($"More than 1 chunk for texture with h32 {modEntry.H32}");
                 }
+
                 chunkMeta = list[0];
             }
 
@@ -723,6 +726,7 @@ internal class Dynamic2018 : IDisposable
                 {
                     FrostyLogger.Logger?.LogWarning($"More than 1 chunk for texture with h32 {modEntry.H32}");
                 }
+
                 chunkMeta = list[0];
             }
 
@@ -767,6 +771,7 @@ internal class Dynamic2018 : IDisposable
             bundle.Set("resBundleSize", resBundleSize);
             bundle.Set("chunkBundleSize", chunkBundleSize);
         }
+
         bundle.Set("totalSize", ebxBundleSize + resBundleSize + chunkBundleSize);
 
         // write bundle to sb file
@@ -804,7 +809,7 @@ internal class Dynamic2018 : IDisposable
                                           (uint)ProfilesLibrary.MaxBufferSize;
                         dataStream.WriteUInt32(blockCount, Endian.Big);
                         blockCount = ((uint)entry.OriginalSize + (uint)ProfilesLibrary.MaxBufferSize - 1) /
-                                          (uint)ProfilesLibrary.MaxBufferSize;
+                                     (uint)ProfilesLibrary.MaxBufferSize;
                         dataStream.WriteUInt32(blockCount | 0x30000000, Endian.Big);
 
                         // write data

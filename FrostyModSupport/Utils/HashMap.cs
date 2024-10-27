@@ -44,6 +44,7 @@ public static class HashMap
         {
             hashDict[i] = new List<T>();
         }
+
         foreach (T key in inItems)
         {
             hashDict[getIndexFunc(key, size, 0x811c9dc5)].Add(key);
@@ -87,7 +88,7 @@ public static class HashMap
             }
 
             // set seed as hashmap value
-            hashMap[getIndexFunc(hashDict[hash][0], size, 0x811c9dc5) ] = (int)seed;
+            hashMap[getIndexFunc(hashDict[hash][0], size, 0x811c9dc5)] = (int)seed;
 
             // set output values and make indices used
             for (int j = 0; j < duplicateCount; j++)

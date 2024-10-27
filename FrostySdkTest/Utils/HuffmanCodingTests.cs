@@ -1,20 +1,15 @@
+using Frosty.Sdk.IO;
+using Frosty.Sdk.Utils;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Metadata;
-using System.Text;
-using Frosty.Sdk.IO;
-using Frosty.Sdk.Utils;
-using static Frosty.Sdk.Utils.EncodingResult;
 
 namespace FrostySdkTest.Utils;
 
 public class HuffmanEncodingTests
 {
-
     /// <summary>
     /// Tests the encoding and decoding of some test strings. The argument source once encodes the strings with reusing existing entries, and once without, leading to different result byte lengths.
     /// </summary>
@@ -40,9 +35,12 @@ public class HuffmanEncodingTests
         var encodingResult = encoder.EncodeTexts(input, endian, compressResults, false);
         Assert.Multiple(() =>
         {
-            Assert.That(encodingResult.EncodedTestsAsBools, Has.Count.EqualTo(encodedBitSize), "Encoded bit count does not match expected count");
-            Assert.That(encodingResult.EncodedTexts, Has.Length.EqualTo(encodedByteSize), "Encoded data-length does not match expected length");
-            Assert.That(encodingResult.EncodedTextPositions, Has.Count.EqualTo(texts.Length), "Encoded text position has different number of entries than the number of encoded texts!");
+            Assert.That(encodingResult.EncodedTestsAsBools, Has.Count.EqualTo(encodedBitSize),
+                "Encoded bit count does not match expected count");
+            Assert.That(encodingResult.EncodedTexts, Has.Length.EqualTo(encodedByteSize),
+                "Encoded data-length does not match expected length");
+            Assert.That(encodingResult.EncodedTextPositions, Has.Count.EqualTo(texts.Length),
+                "Encoded text position has different number of entries than the number of encoded texts!");
         });
 
         var byteArray = encodingResult.EncodedTexts;
@@ -92,6 +90,7 @@ public class HuffmanEncodingTests
                 decoder.ReadHuffmanTable(new DataStream(stream), (uint)encodingTree.Count);
             }
         }
+
         return decoder;
     }
 
@@ -120,7 +119,8 @@ public class HuffmanEncodingTests
             }
         }
 
-        Dictionary<string, int> lookupMap = new(encodingResult.EncodedTextPositions.Select(t => KeyValuePair.Create(t.Identifier, t.Position)).ToList());
+        Dictionary<string, int> lookupMap = new(encodingResult.EncodedTextPositions
+            .Select(t => KeyValuePair.Create(t.Identifier, t.Position)).ToList());
         List<string> decoded = new();
         foreach (string originalText in texts)
         {
@@ -212,7 +212,6 @@ public class HuffmanEncodingTests
         var assembly = Assembly.GetExecutingAssembly();
         using (var stream = assembly.GetManifestResourceStream(testFilePath))
         {
-
             if (stream == null)
             {
                 return "Cannot read resource file!";
@@ -224,7 +223,6 @@ public class HuffmanEncodingTests
             HuffmanDecoder decoder = new();
             using (DataStream ds = new(stream))
             {
-
                 // new huffman was created when writing the string data ignored endianness and always used little endian.
                 decoder.ReadOddSizedEncodedData(ds, textLengthInBytes, encodedTestEndian);
 

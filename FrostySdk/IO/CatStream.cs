@@ -1,5 +1,5 @@
-﻿using System;
-using Frosty.Sdk.Managers.CatResources;
+﻿using Frosty.Sdk.Managers.CatResources;
+using System;
 
 namespace Frosty.Sdk.IO;
 

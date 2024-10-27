@@ -1,7 +1,5 @@
-using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Frosty.Sdk.Interfaces;
-using Pastel;
 
 namespace FrostyEditor.ViewModels;
 

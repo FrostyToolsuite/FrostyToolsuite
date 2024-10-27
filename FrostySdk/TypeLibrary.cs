@@ -1,9 +1,9 @@
-﻿using System;
+﻿using Frosty.Sdk.Attributes;
+using Frosty.Sdk.Managers;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using Frosty.Sdk.Attributes;
-using Frosty.Sdk.Managers;
 
 namespace Frosty.Sdk;
 
@@ -48,6 +48,7 @@ public static class TypeLibrary
                 // issue described in #25 we are just ignoring these cases
                 continue;
             }
+
             uint nameHash = nameHashAttribute.Hash;
             string name = type.GetName();
             Guid? guid = type.GetCustomAttribute<GuidAttribute>()?.Guid;
@@ -72,6 +73,7 @@ public static class TypeLibrary
         {
             return null;
         }
+
         return s_types[index];
     }
 
@@ -81,6 +83,7 @@ public static class TypeLibrary
         {
             return null;
         }
+
         return s_types[index];
     }
 
@@ -90,6 +93,7 @@ public static class TypeLibrary
         {
             return null;
         }
+
         return s_types[index];
     }
 

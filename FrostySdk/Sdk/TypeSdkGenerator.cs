@@ -1,4 +1,11 @@
-﻿using System;
+﻿using Frosty.Sdk.IO;
+using Frosty.Sdk.Managers;
+using Frosty.Sdk.Sdk.TypeInfos;
+using FrostyTypeSdkGenerator;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
+using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -11,13 +18,6 @@ using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Frosty.Sdk.IO;
-using Frosty.Sdk.Managers;
-using Frosty.Sdk.Sdk.TypeInfos;
-using FrostyTypeSdkGenerator;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Emit;
 
 namespace Frosty.Sdk.Sdk;
 
@@ -253,7 +253,7 @@ public class TypeSdkGenerator
             int totalFieldNames = 0;
             int unresolvedFieldNames = 0;
 
-            foreach (Dictionary<uint,string> mapping in Strings.FieldMapping.Values)
+            foreach (Dictionary<uint, string> mapping in Strings.FieldMapping.Values)
             {
                 toRemove.Clear();
 
@@ -278,13 +278,14 @@ public class TypeSdkGenerator
             FrostyLogger.Logger?.LogInfo($"{unresolvedFieldNames} unresolved field names left");
 
             Strings.TypeNames.UnionWith(Strings.TypeMapping.Values);
-            foreach (KeyValuePair<uint,Dictionary<uint,string>> pair in Strings.FieldMapping)
+            foreach (KeyValuePair<uint, Dictionary<uint, string>> pair in Strings.FieldMapping)
             {
                 HashSet<string> fields = new();
                 foreach (string name in pair.Value.Values)
                 {
                     fields.Add(name);
                 }
+
                 Strings.FieldNames.Add(Strings.TypeMapping[pair.Key], fields);
             }
 
@@ -458,6 +459,7 @@ public class TypeSdkGenerator
 
                 return false;
             }
+
             File.WriteAllBytes(filePath, stream.ToArray());
             FrostyLogger.Logger?.LogInfo("Successfully compiled sdk");
         }

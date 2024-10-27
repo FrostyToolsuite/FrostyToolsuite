@@ -1,9 +1,9 @@
+using Frosty.Sdk.Ebx;
+using Frosty.Sdk.IO;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Security.Cryptography;
-using Frosty.Sdk.Ebx;
-using Frosty.Sdk.IO;
 
 namespace Frosty.Sdk.Utils;
 
@@ -107,7 +107,6 @@ public static class Utils
         {
             random.NextBytes(buf);
             ulongRand = BinaryPrimitives.ReadUInt64LittleEndian(buf);
-
         } while (ulongRand > max - (max % uRange + 1) % uRange);
 
         return (ulongRand % uRange + min) | 1;

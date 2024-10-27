@@ -1,8 +1,8 @@
+using Frosty.Sdk.IO;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using Frosty.Sdk.IO;
 
 namespace Frosty.ModSupport.Mod;
 
@@ -26,6 +26,7 @@ public class FrostyModCollection
     /// 'FCOL'
     /// </summary>
     private static readonly uint s_magic = 0x46434F4C;
+
     private static readonly uint s_version = 1;
 
     private FrostyModDetails m_modDetails;

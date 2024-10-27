@@ -1,5 +1,3 @@
-using Frosty.Sdk.Profiles;
-
 namespace Frosty.Sdk.Managers.Entries;
 
 public class ResAssetEntry : AssetEntry

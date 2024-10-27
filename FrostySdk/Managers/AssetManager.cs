@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
@@ -12,6 +7,11 @@ using Frosty.Sdk.Managers.Loaders;
 using Frosty.Sdk.Managers.Patch;
 using Frosty.Sdk.Resources;
 using Frosty.Sdk.Utils;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 
 namespace Frosty.Sdk.Managers;
 
@@ -39,6 +39,7 @@ public static class AssetManager
     /// <para>3 - Completely changed what needs to be stored</para>
     /// </summary>
     private const uint c_cacheVersion = 3;
+
     private const ulong c_cacheMagic = 0x02005954534F5246;
 
     /// <summary>
@@ -429,6 +430,7 @@ public static class AssetManager
                     return;
                 }
             }
+
             entry.Bundles.Add(bundleId);
             s_resNameMapping.Add(entry.Name, entry);
         }
@@ -584,6 +586,7 @@ public static class AssetManager
                 entry.LogicalSize = (uint)entry.OriginalSize;
             }
         }
+
         FrostyLogger.Logger?.LogInfo($"Had to resolve OriginalSize for {a} chunks");
     }
 
@@ -698,6 +701,7 @@ public static class AssetManager
                     {
                         s_resRidMapping.Add(entry.ResRid, entry);
                     }
+
                     s_resNameMapping.Add(name, entry);
                 }
             }

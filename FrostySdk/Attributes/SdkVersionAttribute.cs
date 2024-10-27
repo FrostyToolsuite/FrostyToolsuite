@@ -2,7 +2,6 @@
 
 namespace Frosty.Sdk.Attributes;
 
-
 [AttributeUsage(AttributeTargets.Assembly)]
 public class SdkVersionAttribute : Attribute
 {

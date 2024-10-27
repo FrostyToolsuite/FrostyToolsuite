@@ -53,6 +53,7 @@ internal class ClassInfo : TypeInfo
         {
             fieldCount += superClass.GetFieldCount();
         }
+
         return fieldCount;
     }
 }

@@ -13,10 +13,8 @@ public partial struct PropertyConnection
 
 public enum PropertyConnectionTargetType
 {
-
 }
 
 public enum InputPropertyType
 {
-
 }

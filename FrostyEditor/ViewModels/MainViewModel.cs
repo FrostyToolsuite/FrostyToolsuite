@@ -1,8 +1,8 @@
-using System;
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Frosty.Sdk;
 using FrostyEditor.Models;
+using System;
+using System.Collections.ObjectModel;
 
 namespace FrostyEditor.ViewModels;
 

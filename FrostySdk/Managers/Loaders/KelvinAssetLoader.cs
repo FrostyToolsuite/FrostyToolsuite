@@ -1,13 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using Frosty.Sdk.Interfaces;
+﻿using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Infos.FileInfos;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Frosty.Sdk.Managers.Loaders;
 
@@ -129,58 +129,60 @@ public class KelvinAssetLoader : IAssetLoader
 
                     foreach (EbxAssetEntry ebx in bundleMeta.EbxList)
                     {
-                         if (dataStream.Position == resourceInfo.Size)
-                         {
-                             dataStream.Dispose();
-                             resourceInfo = files[++index];
-                             dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
-                                 resourceInfo.Offset, (int)resourceInfo.Size);
-                         }
+                        if (dataStream.Position == resourceInfo.Size)
+                        {
+                            dataStream.Dispose();
+                            resourceInfo = files[++index];
+                            dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
+                                resourceInfo.Offset, (int)resourceInfo.Size);
+                        }
 
-                         uint offset = (uint)dataStream.Position;
-                         uint size = (uint)Cas.GetCompressedSize(dataStream, ebx.OriginalSize);
+                        uint offset = (uint)dataStream.Position;
+                        uint size = (uint)Cas.GetCompressedSize(dataStream, ebx.OriginalSize);
 
-                         ebx.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
-                             resourceInfo.Offset + offset, size, 0));
+                        ebx.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
+                            resourceInfo.Offset + offset, size, 0));
 
-                         AssetManager.AddEbx(ebx, bundle.Id);
+                        AssetManager.AddEbx(ebx, bundle.Id);
                     }
+
                     foreach (ResAssetEntry res in bundleMeta.ResList)
                     {
-                         if (dataStream.Position == resourceInfo.Size)
-                         {
-                             dataStream.Dispose();
-                             resourceInfo = files[++index];
-                             dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
-                                 resourceInfo.Offset, (int)resourceInfo.Size);
-                         }
+                        if (dataStream.Position == resourceInfo.Size)
+                        {
+                            dataStream.Dispose();
+                            resourceInfo = files[++index];
+                            dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
+                                resourceInfo.Offset, (int)resourceInfo.Size);
+                        }
 
-                         uint offset = (uint)dataStream.Position;
-                         uint size = (uint)Cas.GetCompressedSize(dataStream, res.OriginalSize);
+                        uint offset = (uint)dataStream.Position;
+                        uint size = (uint)Cas.GetCompressedSize(dataStream, res.OriginalSize);
 
-                         res.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
-                             resourceInfo.Offset + offset, size, 0));
+                        res.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
+                            resourceInfo.Offset + offset, size, 0));
 
-                         AssetManager.AddRes(res, bundle.Id);
+                        AssetManager.AddRes(res, bundle.Id);
                     }
+
                     foreach (ChunkAssetEntry chunk in bundleMeta.ChunkList)
                     {
-                         if (dataStream.Position == resourceInfo.Size)
-                         {
-                             dataStream.Dispose();
-                             resourceInfo = files[++index];
-                             dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
-                                 resourceInfo.Offset, (int)resourceInfo.Size);
-                         }
+                        if (dataStream.Position == resourceInfo.Size)
+                        {
+                            dataStream.Dispose();
+                            resourceInfo = files[++index];
+                            dataStream = BlockStream.FromFile(FileSystemManager.GetFilePath(resourceInfo.FileIndex),
+                                resourceInfo.Offset, (int)resourceInfo.Size);
+                        }
 
-                         uint offset = (uint)dataStream.Position;
-                         uint size = (uint)Cas.GetCompressedSize(dataStream,
-                             (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize);
+                        uint offset = (uint)dataStream.Position;
+                        uint size = (uint)Cas.GetCompressedSize(dataStream,
+                            (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize);
 
-                         chunk.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
-                             resourceInfo.Offset + offset, size, chunk.LogicalOffset));
+                        chunk.AddFileInfo(new KelvinFileInfo(resourceInfo.FileIndex,
+                            resourceInfo.Offset + offset, size, chunk.LogicalOffset));
 
-                         AssetManager.AddChunk(chunk, bundle.Id);
+                        AssetManager.AddChunk(chunk, bundle.Id);
                     }
 
                     dataStream.Dispose();

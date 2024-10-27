@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Frosty.Sdk.Profiles;
 
 namespace Frosty.Sdk.Managers.Entries;
 

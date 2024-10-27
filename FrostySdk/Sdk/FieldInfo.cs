@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Frosty.Sdk.Attributes;
+using Frosty.Sdk.IO;
+using Frosty.Sdk.Sdk.TypeInfos;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
-using Frosty.Sdk.Attributes;
-using Frosty.Sdk.IO;
-using Frosty.Sdk.Sdk.TypeInfos;
 
 namespace Frosty.Sdk.Sdk;
 
@@ -129,6 +129,7 @@ internal class FieldInfo : IComparable
                 typeName = "Frosty.Sdk.Ebx.PointerRef";
                 isClass = true;
             }
+
             typeName = $"ObservableCollection<{typeName}>";
         }
 

@@ -1,5 +1,5 @@
-﻿using System;
-using Frosty.Sdk.Sdk;
+﻿using Frosty.Sdk.Sdk;
+using System;
 
 namespace Frosty.Sdk.Attributes;
 

@@ -2,15 +2,15 @@ using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
-using static Frosty.Sdk.Sdk.TypeFlags;
 using System;
-using System.Diagnostics;
-using System.Reflection;
-using System.Xml;
-using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Xml;
+using static Frosty.Sdk.Sdk.TypeFlags;
 
 namespace Frosty.Sdk.IO;
 
@@ -26,13 +26,17 @@ public sealed class DbxReader
 
     // the loaded dbx file
     private readonly XmlDocument m_xml = new();
+
     // key - instance guid, value - instance and its xml representation
     private readonly Dictionary<Guid, (object ebxInstance, XmlNode dbxInstance)> m_guidToObjAndXmlNode = new();
+
     // used to keep track of number of refs pointing to an instance
     private readonly Dictionary<Guid, int> m_guidToRefCount = new();
 
     private EbxAsset? m_ebx;
+
     private Guid m_primaryInstGuid;
+
     // incremented when an internal id is requested
     private int m_internalId = -1;
     private string m_filepath = string.Empty;
@@ -81,6 +85,7 @@ public sealed class DbxReader
                 Console.WriteLine($"Null property {propName}");
                 return;
             }
+
             property.SetValue(obj, propValue);
         }
     }
@@ -96,6 +101,7 @@ public sealed class DbxReader
                 Console.WriteLine($"Null value {propName}");
                 return;
             }
+
             property.SetValue(obj, value);
         }
     }
@@ -207,13 +213,13 @@ public sealed class DbxReader
 
         m_ebx!.partitionGuid = partitionGuid;
 
-        foreach(XmlNode child in partitionNode.ChildNodes)
+        foreach (XmlNode child in partitionNode.ChildNodes)
         {
             CreateInstance(child);
         }
 
         // because of pointers, instances must be initialized before being parsed
-        foreach(var kvp in m_guidToObjAndXmlNode)
+        foreach (var kvp in m_guidToObjAndXmlNode)
         {
             ParseInstance(kvp.Value.dbxInstance, kvp.Value.ebxInstance, kvp.Key);
         }
@@ -224,13 +230,13 @@ public sealed class DbxReader
     private void CreateInstance(XmlNode node)
     {
         Type? ebxType = TypeLibrary.GetType(GetAttributeValue(node, "type")!.Split('.')[^1]);
-        if(ebxType is null)
+        if (ebxType is null)
         {
             return;
         }
 
         dynamic? obj = Activator.CreateInstance(ebxType);
-        if(obj is null)
+        if (obj is null)
         {
             return;
         }
@@ -239,7 +245,7 @@ public sealed class DbxReader
         Guid instGuid = Guid.Parse(GetAttributeValue(node, "guid")!);
 
         AssetClassGuid assetGuid = new
-            (isExported ? instGuid : Guid.Empty,
+        (isExported ? instGuid : Guid.Empty,
             ++m_internalId);
 
         obj.SetInstanceGuid(assetGuid);
@@ -282,7 +288,7 @@ public sealed class DbxReader
 
     private void ReadInstanceFields(XmlNode node, object obj, Type objType)
     {
-        foreach(XmlNode child in node.ChildNodes)
+        foreach (XmlNode child in node.ChildNodes)
         {
             ReadField(ref obj, child, objType);
         }
@@ -309,18 +315,20 @@ public sealed class DbxReader
                 {
                     SetPropertyFromStringValue(obj, objType, GetAttributeValue(node, "name")!, node.InnerText);
                 }
+
                 break;
             }
             case "item":
             {
                 if (isRef)
                 {
-                    objType.GetMethod("Add")?.Invoke(obj, new[] { (object)ParseRef(node, GetAttributeValue(node, "ref")!)});
+                    objType.GetMethod("Add")?.Invoke(obj, new[] { (object)ParseRef(node, GetAttributeValue(node, "ref")!) });
                 }
                 else
                 {
                     objType.GetMethod("Add")?.Invoke(obj, new[] { GetValueFromString(arrayElementType!, node.InnerText, arrayElementTypeEnum) });
                 }
+
                 break;
             }
             case "array":
@@ -342,6 +350,7 @@ public sealed class DbxReader
                 {
                     SetProperty(obj, objType, structFieldName, structObj);
                 }
+
                 break;
             }
             case "boxed":
@@ -397,7 +406,7 @@ public sealed class DbxReader
 
         if (node.ChildNodes.Count > 0)
         {
-            foreach(XmlNode child in node.ChildNodes)
+            foreach (XmlNode child in node.ChildNodes)
             {
                 ReadField(ref array, child, arrayType, true, isRef, arrayElementType, arrayTypeMeta?.Flags.GetTypeEnum());
             }
@@ -412,11 +421,11 @@ public sealed class DbxReader
                     ?? throw new ArgumentException($"struct type doesn't exist?");
 
         object obj = Activator.CreateInstance(type)
-                      ?? throw new ArgumentException($"failed to create struct of type {type.Name}");
+                     ?? throw new ArgumentException($"failed to create struct of type {type.Name}");
 
         if (node.ChildNodes.Count > 0)
         {
-            foreach(XmlNode child in node.ChildNodes)
+            foreach (XmlNode child in node.ChildNodes)
             {
                 ReadField(ref obj, child, type);
             }

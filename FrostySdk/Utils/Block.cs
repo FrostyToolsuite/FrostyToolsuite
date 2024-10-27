@@ -56,6 +56,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             GC.AddMemoryPressure(inSize * sizeof(T));
         }
+
         Ptr = BasePtr;
         BaseSize = inSize;
     }
@@ -122,6 +123,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
             {
                 GC.AddMemoryPressure(size);
             }
+
             Ptr = BasePtr;
             BaseSize = inArray.Length;
             Buffer.MemoryCopy(ptr, BasePtr, size, size);
@@ -141,10 +143,12 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
             {
                 throw new ObjectDisposedException(ToString());
             }
+
             if (index >= 0 && index < Size)
             {
                 return Ptr[index];
             }
+
             throw new ArgumentOutOfRangeException(nameof(index));
         }
         set
@@ -153,6 +157,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
             {
                 throw new ObjectDisposedException(ToString());
             }
+
             if (index >= 0 && index < Size)
             {
                 Ptr[index] = value;
@@ -182,6 +187,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         if (inNewSize < 1)
         {
             throw new ArgumentOutOfRangeException(nameof(inNewSize));
@@ -195,6 +201,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             GC.RemoveMemoryPressure(BaseSize * sizeof(T));
         }
+
         BaseSize = newSize;
         GC.AddMemoryPressure(BaseSize * sizeof(T));
         // Adjust Ptr since BasePtr has changed.
@@ -213,14 +220,17 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         if (Ptr + inAmount < BasePtr)
         {
             throw new ArgumentOutOfRangeException(nameof(inAmount), $"Attempted to shift before the beginning of the block!");
         }
+
         if (inAmount > Size)
         {
             throw new ArgumentOutOfRangeException(nameof(inAmount), $"Attempted to shift after the end of the block!");
         }
+
         Ptr += inAmount;
     }
 
@@ -233,6 +243,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         Ptr = BasePtr;
     }
 
@@ -242,6 +253,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         T[] buf = new T[Size];
         for (int i = 0; i < Size; i++)
         {
@@ -257,6 +269,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         return new Span<T>(Ptr, Size);
     }
 
@@ -266,6 +279,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         return new ReadOnlySpan<T>(Ptr, Size);
     }
 
@@ -275,6 +289,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         return new Block<TOther>((TOther*)Ptr, (Size * sizeof(T)) / sizeof(TOther));
     }
 
@@ -284,14 +299,17 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         if (Ptr + inStart < BasePtr)
         {
             throw new ArgumentOutOfRangeException(nameof(inStart), $"Attempted to slice before the beginning of the block!");
         }
+
         if (Ptr + inStart > BasePtr + BaseSize)
         {
             throw new ArgumentOutOfRangeException(nameof(inStart), $"Attempted to slice after the end of the block!");
         }
+
         return new Span<T>(Ptr + inStart, Size - inStart);
     }
 
@@ -301,14 +319,17 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         if (Ptr + inStart < BasePtr)
         {
             throw new ArgumentOutOfRangeException(nameof(inStart), $"Attempted to slice before the beginning of the block!");
         }
+
         if (Ptr + inStart + inLength > BasePtr + BaseSize)
         {
             throw new ArgumentOutOfRangeException(nameof(inLength), $"Attempted to slice after the end of the block!");
         }
+
         return new Span<T>(Ptr + inStart, inLength);
     }
 
@@ -318,6 +339,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         List<T> buf = new(Size);
         for (int i = 0; i < Size; i++)
         {
@@ -333,6 +355,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         UnmanagedMemoryStream s = new((byte*)BasePtr, BaseSize, BaseSize, FileAccess.ReadWrite);
         s.Position += ShiftAmount * sizeof(T);
         return s;
@@ -348,6 +371,7 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(inBlock.ToString());
         }
+
         return Marshal.PtrToStringUTF8((IntPtr)inBlock.Ptr);
     }
 
@@ -371,10 +395,12 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ObjectDisposedException(ToString());
         }
+
         if (inDest.BaseSize < BaseSize)
         {
             throw new ArgumentOutOfRangeException(nameof(inDest), "The target block must be at least as big as the source block!");
         }
+
         Buffer.MemoryCopy(BasePtr, inDest.BasePtr, inDest.BaseSize, BaseSize);
     }
 
@@ -394,10 +420,12 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
         {
             throw new ArgumentOutOfRangeException(nameof(inSize), "The source block is not big enough!");
         }
+
         if (inDest.Size < inSize)
         {
             throw new ArgumentOutOfRangeException(nameof(inDest), "The target block is not big enough!");
         }
+
         Buffer.MemoryCopy(Ptr, inDest.Ptr, Size, inSize);
     }
 
@@ -443,8 +471,10 @@ public unsafe class Block<T> : IDisposable where T : unmanaged
                     GC.RemoveMemoryPressure(BaseSize * sizeof(T));
                 }
             }
+
             m_usable = false;
         }
+
         GC.SuppressFinalize(this);
     }
 

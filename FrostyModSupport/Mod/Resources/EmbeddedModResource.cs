@@ -1,6 +1,6 @@
-using System.Linq;
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
+using System.Linq;
 
 namespace Frosty.ModSupport.Mod.Resources;
 
@@ -12,7 +12,7 @@ public sealed class EmbeddedModResource : BaseModResource
         : base(inStream)
     {
     }
-    
+
     public EmbeddedModResource(int inResourceIndex, string inName)
         : base(inResourceIndex, inName, Sha1.Zero, 0, 0, 0,
             string.Empty, Enumerable.Empty<int>(), Enumerable.Empty<int>())

@@ -1,9 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace FrostyEditor.Models;
 
@@ -59,6 +59,7 @@ public partial class FolderTreeNodeModel : ObservableObject
                 {
                     folder = current.m_children[current.m_childrenMap[hash]];
                 }
+
                 current = folder;
             }
 

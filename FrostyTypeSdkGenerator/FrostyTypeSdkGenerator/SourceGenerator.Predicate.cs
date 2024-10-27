@@ -1,8 +1,8 @@
-﻿using System.Linq;
-using System.Threading;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Linq;
+using System.Threading;
 
 namespace FrostyTypeSdkGenerator;
 
@@ -26,7 +26,6 @@ public sealed partial class SourceGenerator
     private static bool DataContainerPredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
         return node is ClassDeclarationSyntax { BaseList: not null } classDeclarationSyntax && classDeclarationSyntax.BaseList.Types.Any(static type => (type.Type as QualifiedNameSyntax)?.Right.Identifier.Text == "DataContainer");
-
     }
 
     private static bool NonDataContainerPredicate(SyntaxNode node, CancellationToken cancellationToken)

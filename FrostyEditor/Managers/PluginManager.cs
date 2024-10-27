@@ -1,7 +1,7 @@
-using System;
-using System.Collections.Generic;
 using Frosty.Sdk.Managers.Entries;
 using FrostyEditor.ViewModels;
+using System;
+using System.Collections.Generic;
 
 namespace FrostyEditor.Managers;
 

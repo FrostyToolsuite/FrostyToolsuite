@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Frosty.Sdk.Managers.Infos;
+﻿namespace Frosty.Sdk.Managers.Infos;
 
 public enum InstallChunkType
 {

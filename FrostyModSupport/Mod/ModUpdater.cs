@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Xml;
 using Frosty.ModSupport.Mod.Resources;
 using Frosty.Sdk;
 using Frosty.Sdk.DbObjectElements;
@@ -15,6 +8,13 @@ using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Profiles;
 using Frosty.Sdk.Utils;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Xml;
 
 namespace Frosty.ModSupport.Mod;
 
@@ -44,20 +44,20 @@ public class ModUpdater
         {
             foreach (BundleInfo bundle in AssetManager.EnumerateBundleInfos())
             {
-                int hash = Frosty.Sdk.Utils.Utils.HashString(bundle.Name, true);
+                int hash = Sdk.Utils.Utils.HashString(bundle.Name, true);
                 s_bundleMapping.TryAdd(hash, new HashSet<int>());
                 s_bundleMapping[hash].Add(bundle.Id);
             }
 
             // v1 used a chunks bundle to add chunks to the superbundle we dont need that, so just add an empty collection
-            s_bundleMapping.Add(Frosty.Sdk.Utils.Utils.HashString("chunks"), new HashSet<int>());
+            s_bundleMapping.Add(Sdk.Utils.Utils.HashString("chunks"), new HashSet<int>());
         }
 
         if (s_superBundleMapping.Count == 0)
         {
             if (FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
             {
-                s_superBundleMapping.Add(Frosty.Sdk.Utils.Utils.HashStringA("<none>"),
+                s_superBundleMapping.Add(Sdk.Utils.Utils.HashStringA("<none>"),
                     FileSystemManager.GetSuperBundle(FileSystemManager.DefaultInstallChunk!.SuperBundles.First())
                         .InstallChunks[0]);
             }
@@ -65,7 +65,7 @@ public class ModUpdater
             {
                 foreach (SuperBundleInfo superBundle in FileSystemManager.EnumerateSuperBundles())
                 {
-                    int hash = Frosty.Sdk.Utils.Utils.HashStringA(superBundle.Name, true);
+                    int hash = Sdk.Utils.Utils.HashStringA(superBundle.Name, true);
                     foreach (SuperBundleInstallChunk sbIc in superBundle.InstallChunks)
                     {
                         s_superBundleMapping.Add(hash, sbIc);
@@ -152,11 +152,9 @@ public class ModUpdater
                     inStream.ReadNullTerminatedString();
                     int superBundleHash = inStream.ReadInt32();
                     SuperBundleInstallChunk sbIc = s_superBundleMapping[superBundleHash];
-                    int bundleHash = Frosty.Sdk.Utils.Utils.HashString(baseResource.Name + sbIc.Name, true);
-                    s_bundleMapping.Add(Frosty.Sdk.Utils.Utils.HashString(baseResource.Name, true), new HashSet<int>
-                    {
-                        bundleHash
-                    });
+                    int bundleHash = Sdk.Utils.Utils.HashString(baseResource.Name + sbIc.Name, true);
+                    s_bundleMapping.Add(Sdk.Utils.Utils.HashString(baseResource.Name, true),
+                        new HashSet<int> { bundleHash });
 
                     resources[i] = new BundleModResource(baseResource.Name, bundleHash, sbIc.Id);
                     break;
@@ -283,7 +281,7 @@ public class ModUpdater
                 continue;
             }
 
-            int bundleHash = Frosty.Sdk.Utils.Utils.HashString(bundleName, true);
+            int bundleHash = Sdk.Utils.Utils.HashString(bundleName, true);
             string type = action.AsString("type");
             int resourceId = action.AsInt("resourceId");
 
@@ -375,13 +373,10 @@ public class ModUpdater
                     break;
                 case "bundle":
                 {
-                    int superBundleHash = Frosty.Sdk.Utils.Utils.HashString(resource.AsString("sb"), true);
+                    int superBundleHash = Sdk.Utils.Utils.HashString(resource.AsString("sb"), true);
                     SuperBundleInstallChunk sbIc = s_superBundleMapping[superBundleHash];
-                    int bundleHash = Frosty.Sdk.Utils.Utils.HashString(name + sbIc.Name, true);
-                    s_bundleMapping.Add(Frosty.Sdk.Utils.Utils.HashString(name, true), new HashSet<int>
-                    {
-                        bundleHash
-                    });
+                    int bundleHash = Sdk.Utils.Utils.HashString(name + sbIc.Name, true);
+                    s_bundleMapping.Add(Sdk.Utils.Utils.HashString(name, true), new HashSet<int> { bundleHash });
 
                     resources.Add(new BundleModResource(name, bundleHash, sbIc.Id));
                     break;
@@ -498,7 +493,7 @@ public class ModUpdater
             foreach (XmlElement bundle in bundlesElem)
             {
                 string bundleName = bundle.GetAttribute("name");
-                int bundleHash = Frosty.Sdk.Utils.Utils.HashString(bundleName, true);
+                int bundleHash = Sdk.Utils.Utils.HashString(bundleName, true);
                 string action = bundle.GetAttribute("action");
 
                 XmlElement? entries = bundle["entries"];
@@ -513,6 +508,7 @@ public class ModUpdater
                     {
                         continue;
                     }
+
                     switch (action)
                     {
                         case "modify":
@@ -547,6 +543,7 @@ public class ModUpdater
                 {
                     resourceId = -1;
                 }
+
                 Sha1 sha1 = resource.HasAttribute("sha1") ? new Sha1(resource.GetAttribute("sha1")) : Sha1.Zero;
 
                 if (action == "remove")
@@ -656,6 +653,7 @@ public class ModUpdater
                         break;
                     }
                 }
+
                 index++;
             }
         }
@@ -703,6 +701,7 @@ public class ModUpdater
                 int hash = inStream.ReadInt32();
                 bundles.UnionWith(s_bundleMapping[hash]);
             }
+
             retVal.Item7 = bundles;
             retVal.Item8 = bundles.Count > 0;
         }
@@ -718,6 +717,7 @@ public class ModUpdater
                 int hash = inStream.ReadInt32();
                 bundles.UnionWith(s_bundleMapping[hash]);
             }
+
             retVal.Item7 = bundles;
             retVal.Item8 = bundles.Count > 0;
         }
@@ -737,7 +737,6 @@ public class ModUpdater
 
         if (firstMip <= 0 && logicalOffset != 0)
         {
-
         }
 
         ChunkAssetEntry? entry;
@@ -834,6 +833,7 @@ public class ModUpdater
             {
                 return -1;
             }
+
             stream = BlockStream.FromFile(path, false);
         }
 

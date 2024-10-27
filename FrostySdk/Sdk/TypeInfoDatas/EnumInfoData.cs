@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using Frosty.Sdk.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Frosty.Sdk.IO;
 
 namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
@@ -42,6 +42,7 @@ internal class EnumInfoData : TypeInfoData
         {
             return $"({GetFullName()})({value})";
         }
+
         return $"{GetFullName()}.{strValue}";
     }
 

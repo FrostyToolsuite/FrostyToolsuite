@@ -1,7 +1,7 @@
-using System;
 using Frosty.ModSupport.Interfaces;
 using Frosty.ModSupport.Mod.Resources;
 using Frosty.Sdk;
+using System;
 
 namespace Frosty.ModSupport.ModEntries;
 
@@ -30,7 +30,6 @@ public class ChunkModEntry : IModEntry
         H32 = inResource.H32;
         FirstMip = inResource.FirstMip;
         Size = inSize;
-
     }
 
     public ChunkModEntry(Guid inId, Sha1 inSha1, uint inLogicalOffset, uint inLogicalSize)

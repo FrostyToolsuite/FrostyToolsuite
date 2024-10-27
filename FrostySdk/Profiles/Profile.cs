@@ -4,7 +4,7 @@ namespace Frosty.Sdk.Profiles;
 
 public class Profile
 {
-    public string Name  { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
 
     public string InternalName { get; set; } = string.Empty;

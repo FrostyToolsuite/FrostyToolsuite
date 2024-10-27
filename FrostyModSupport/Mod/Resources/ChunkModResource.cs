@@ -1,6 +1,6 @@
-using System.Collections.Generic;
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
+using System.Collections.Generic;
 
 namespace Frosty.ModSupport.Mod.Resources;
 
@@ -16,7 +16,7 @@ public class ChunkModResource : BaseModResource
     public int FirstMip { get; }
     public IEnumerable<int> AddedSuperBundles => m_superBundlesToAdd;
     public IEnumerable<int> RemovedSuperBundles => m_superBundlesToRemove;
-    
+
     protected HashSet<int> m_superBundlesToAdd = new();
     protected HashSet<int> m_superBundlesToRemove = new();
 
@@ -29,13 +29,13 @@ public class ChunkModResource : BaseModResource
         LogicalSize = inStream.ReadUInt32();
         H32 = inStream.ReadInt32();
         FirstMip = inStream.ReadInt32();
-        
+
         int addedCount = inStream.ReadInt32();
         for (int i = 0; i < addedCount; i++)
         {
             m_superBundlesToAdd.Add(inStream.ReadInt32());
         }
-        
+
         int removedCount = inStream.ReadInt32();
         for (int i = 0; i < removedCount; i++)
         {
@@ -64,20 +64,20 @@ public class ChunkModResource : BaseModResource
     public override void Write(DataStream stream)
     {
         base.Write(stream);
-        
+
         stream.WriteUInt32(RangeStart);
         stream.WriteUInt32(RangeEnd);
         stream.WriteUInt32(LogicalOffset);
         stream.WriteUInt32(LogicalSize);
         stream.WriteInt32(H32);
         stream.WriteInt32(FirstMip);
-        
+
         stream.WriteInt32(m_superBundlesToAdd.Count);
         foreach (int superBundleId in m_superBundlesToAdd)
         {
             stream.WriteInt32(superBundleId);
         }
-        
+
         stream.WriteInt32(m_superBundlesToRemove.Count);
         foreach (int superBundleId in m_superBundlesToRemove)
         {

@@ -1,6 +1,6 @@
-using System.Collections.Generic;
 using Frosty.Sdk;
 using Frosty.Sdk.IO;
+using System.Collections.Generic;
 
 namespace Frosty.ModSupport.Mod.Resources;
 

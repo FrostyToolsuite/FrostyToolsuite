@@ -8,7 +8,7 @@ public class UnknownValueException<T> : Exception
 
     private readonly string m_name;
     private readonly T m_value;
-    
+
     public UnknownValueException(string inName, T inValue)
     {
         m_name = inName;

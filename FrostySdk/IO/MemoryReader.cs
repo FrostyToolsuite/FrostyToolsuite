@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Frosty.Sdk.Utils;
+using Microsoft.Win32.SafeHandles;
+using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -8,8 +10,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using Frosty.Sdk.Utils;
-using Microsoft.Win32.SafeHandles;
 
 namespace Frosty.Sdk.IO;
 
@@ -43,7 +43,11 @@ public sealed unsafe partial class MemoryReader
     private static partial nint VirtualQueryEx(SafeProcessHandle processHandle, nint address, out MemoryBasicInformation64 memoryInformation, nint size);
 
     [StructLayout(LayoutKind.Explicit, Size = 48)]
-    private readonly record struct MemoryBasicInformation64([field: FieldOffset(0x0)] long BaseAddress, [field: FieldOffset(0x18)] nint RegionSize, [field: FieldOffset(0x20)] AllocationType State, [field: FieldOffset(0x24)] ProtectionType Protect);
+    private readonly record struct MemoryBasicInformation64(
+        [field: FieldOffset(0x0)] long BaseAddress,
+        [field: FieldOffset(0x18)] nint RegionSize,
+        [field: FieldOffset(0x20)] AllocationType State,
+        [field: FieldOffset(0x24)] ProtectionType Protect);
 
     #endregion
 
@@ -221,6 +225,7 @@ public sealed unsafe partial class MemoryReader
         {
             throw new EndOfStreamException();
         }
+
         Position += bytesRead;
     }
 
@@ -261,9 +266,12 @@ public sealed unsafe partial class MemoryReader
                     goto end;
                 }
             }
+
             return i;
-            end:;
+end:
+            ;
         }
+
         return 0;
     }
 
@@ -297,9 +305,10 @@ public sealed unsafe partial class MemoryReader
 
             while (true)
             {
-                if (VirtualQueryEx(m_process.SafeHandle, currentAddress, out MemoryBasicInformation64 region, Unsafe.SizeOf<MemoryBasicInformation64>()) == 0)
+                if (VirtualQueryEx(m_process.SafeHandle, currentAddress, out MemoryBasicInformation64 region,
+                        Unsafe.SizeOf<MemoryBasicInformation64>()) == 0)
                 {
-                    if (Marshal.GetLastPInvokeError() == (int) SystemErrorCode.InvalidParameter)
+                    if (Marshal.GetLastPInvokeError() == (int)SystemErrorCode.InvalidParameter)
                     {
                         break;
                     }
@@ -307,12 +316,13 @@ public sealed unsafe partial class MemoryReader
                     throw new Win32Exception();
                 }
 
-                if (region.State.HasFlag(AllocationType.Commit) && region.Protect != ProtectionType.NoAccess && !region.Protect.HasFlag(ProtectionType.Guard))
+                if (region.State.HasFlag(AllocationType.Commit) && region.Protect != ProtectionType.NoAccess &&
+                    !region.Protect.HasFlag(ProtectionType.Guard))
                 {
-                    yield return (currentAddress, (int) region.RegionSize);
+                    yield return (currentAddress, (int)region.RegionSize);
                 }
 
-                currentAddress = (nint) region.BaseAddress + region.RegionSize;
+                currentAddress = (nint)region.BaseAddress + region.RegionSize;
             }
         }
         else

@@ -22,7 +22,6 @@ public class FunctionAttribute : Attribute
         }
 
         return other.ArgumentTypes.SequenceEqual(ArgumentTypes);
-
     }
 
     protected bool Equals(FunctionAttribute other)

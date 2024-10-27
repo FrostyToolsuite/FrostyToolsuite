@@ -1,4 +1,3 @@
-using Frosty.ModSupport.ModEntries;
 using Frosty.Sdk.Utils;
 
 namespace Frosty.ModSupport.Interfaces;

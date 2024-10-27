@@ -1,7 +1,7 @@
+using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.Utils;
 using System;
 using System.Runtime.InteropServices;
-using Frosty.Sdk.Interfaces;
 
 namespace Frosty.Sdk.IO.Compression;
 

@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Selection;
@@ -20,6 +15,11 @@ using Frosty.Sdk.Utils;
 using FrostyEditor.Managers;
 using FrostyEditor.Models;
 using FrostyEditor.Utils;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace FrostyEditor.ViewModels;
 
@@ -31,13 +31,17 @@ public partial class DataExplorerViewModel : ViewModelBase
         {
             if (s_folderIconConverter is null)
             {
-                using (Stream folderCollapsedStream = AssetLoader.Open(new Uri("avares://FrostyEditor/Assets/FolderCollapsed.png")))
-                using (Stream folderExpandStream = AssetLoader.Open(new Uri("avares://FrostyEditor/Assets/FolderExpanded.png")))
+                using (Stream folderCollapsedStream =
+                       AssetLoader.Open(new Uri("avares://FrostyEditor/Assets/FolderCollapsed.png")))
                 {
-                    Bitmap folderCollapsedIcon = new(folderCollapsedStream);
-                    Bitmap folderExpandIcon = new(folderExpandStream);
+                    using (Stream folderExpandStream =
+                           AssetLoader.Open(new Uri("avares://FrostyEditor/Assets/FolderExpanded.png")))
+                    {
+                        Bitmap folderCollapsedIcon = new(folderCollapsedStream);
+                        Bitmap folderExpandIcon = new(folderExpandStream);
 
-                    s_folderIconConverter = new FolderIconConvert(folderExpandIcon, folderCollapsedIcon);
+                        s_folderIconConverter = new FolderIconConvert(folderExpandIcon, folderCollapsedIcon);
+                    }
                 }
             }
 
@@ -202,6 +206,7 @@ public partial class DataExplorerViewModel : ViewModelBase
     {
         private readonly Bitmap m_folderExpanded;
         private readonly Bitmap m_folderCollapsed;
+
         public FolderIconConvert(Bitmap folderExpanded, Bitmap folderCollapsed)
         {
             m_folderExpanded = folderExpanded;

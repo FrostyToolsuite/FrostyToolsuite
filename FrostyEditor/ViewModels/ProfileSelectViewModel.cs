@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
@@ -14,6 +9,11 @@ using Frosty.Sdk.Managers;
 using FrostyEditor.Utils;
 using FrostyEditor.Windows;
 using MsBox.Avalonia;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace FrostyEditor.ViewModels;
 
@@ -58,6 +58,7 @@ public partial class ProfileSelectViewModel : WindowViewModel
                 Config.RemoveGame(profile);
             }
         }
+
         Config.Save(App.ConfigPath);
     }
 
@@ -107,6 +108,7 @@ public partial class ProfileSelectViewModel : WindowViewModel
             Config.AddGame(key, file.Path.LocalPath);
             Profiles.Add(new ProfileConfig(key));
         }
+
         Config.Save(App.ConfigPath);
     }
 
@@ -180,7 +182,8 @@ public partial class ProfileSelectViewModel : WindowViewModel
             {
                 MessageBoxManager.GetMessageBoxStandard("FrostyEditor", "Failed to initialize Frosty, for more information check the log.");
             }
-            failed:
+
+failed:
             MessageBoxManager.GetMessageBoxStandard("FrostyEditor", "Failed to initialize Frosty, for more information check the log.");
 
             CloseWindow?.Invoke();

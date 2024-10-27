@@ -1,8 +1,8 @@
-using System;
-using System.IO;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Utils;
+using System;
+using System.IO;
 
 namespace Frosty.Sdk.Managers.Infos.FileInfos;
 
@@ -146,6 +146,7 @@ public class NonCasFileInfo : IFileInfo
                 stream.ReadInt64(), stream.ReadUInt32(), stream.ReadInt64(), stream.ReadUInt32(), stream.ReadInt32(),
                 stream.ReadUInt32());
         }
+
         return new NonCasFileInfo(stream.ReadNullTerminatedString(), stream.ReadInt64(), stream.ReadUInt32(),
             stream.ReadUInt32());
     }

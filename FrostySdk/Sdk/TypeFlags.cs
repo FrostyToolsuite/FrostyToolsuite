@@ -96,5 +96,4 @@ public struct TypeFlags
     public static implicit operator ushort(TypeFlags value) => value.m_flags;
 
     public static implicit operator TypeFlags(ushort value) => new(value);
-
 }
