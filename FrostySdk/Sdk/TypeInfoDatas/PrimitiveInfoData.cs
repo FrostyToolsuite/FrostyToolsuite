@@ -11,6 +11,8 @@ internal class PrimitiveInfoData : TypeInfoData
     {
         switch (m_flags.GetTypeEnum())
         {
+            case TypeFlags.TypeEnum.Inherited:
+                break;
             case TypeFlags.TypeEnum.String:
                 break;
             case TypeFlags.TypeEnum.CString:
@@ -79,6 +81,13 @@ internal class PrimitiveInfoData : TypeInfoData
 
         switch (m_flags.GetTypeEnum())
         {
+            case TypeFlags.TypeEnum.Inherited:
+                sb.AppendLine($$"""
+                        public struct {{m_name}}
+                        {
+                        }
+                        """);
+                return;
             case TypeFlags.TypeEnum.String:
             case TypeFlags.TypeEnum.CString:
                 actualType = "System.String";

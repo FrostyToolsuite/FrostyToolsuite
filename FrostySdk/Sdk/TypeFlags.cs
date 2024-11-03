@@ -73,7 +73,7 @@ public struct TypeFlags
     private static readonly int s_typeShift = ProfilesLibrary.FrostbiteVersion >= "2016" ? 0x05 : 0x04;
     private static readonly int s_typeMask = 0x1F;
 
-    private static readonly int s_flagsShift = ProfilesLibrary.FrostbiteVersion >= "2016" ? 0x09 : 0x0A;
+    private static readonly int s_flagsShift = 0x0A;
 
 
     public TypeFlags(ushort inFlags)
@@ -81,10 +81,10 @@ public struct TypeFlags
         m_flags = inFlags;
     }
 
-    public TypeFlags(TypeEnum type, CategoryEnum category = CategoryEnum.None, int flags = 0)
+    public TypeFlags(TypeEnum type, CategoryEnum category = CategoryEnum.None, int flags = 0, int unk = 1)
     {
         m_flags = (ushort)((flags << s_flagsShift) | (((ushort)type & s_typeMask) << s_typeShift) |
-                           (((ushort)category & s_categoryMask) << s_categoryShift) | 1);
+                           (((ushort)category & s_categoryMask) << s_categoryShift) | unk);
     }
 
     public TypeEnum GetTypeEnum() => (TypeEnum)((m_flags >> s_typeShift) & s_typeMask);

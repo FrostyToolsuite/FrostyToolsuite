@@ -32,7 +32,7 @@ internal class TypeInfoData
             name = reader.ReadNullTerminatedString();
         }
 
-        uint nameHash;
+        uint nameHash = uint.MaxValue;
         if (TypeInfo.Version > 4)
         {
             nameHash = reader.ReadUInt();
@@ -42,10 +42,6 @@ internal class TypeInfoData
                 Strings.TypeHashes!.Add(nameHash);
                 Strings.TypeMapping!.Add(nameHash, string.Empty);
             }
-        }
-        else
-        {
-            nameHash = (uint)Utils.Utils.HashString(name);
         }
 
         if (!ProfilesLibrary.HasStrippedTypeNames)
@@ -78,6 +74,7 @@ internal class TypeInfoData
             case TypeFlags.TypeEnum.Interface:
                 retVal = new InterfaceInfoData();
                 break;
+            case TypeFlags.TypeEnum.Inherited:
             case TypeFlags.TypeEnum.String:
             case TypeFlags.TypeEnum.CString:
             case TypeFlags.TypeEnum.FileRef:
@@ -167,7 +164,11 @@ internal class TypeInfoData
         sb.AppendLine($"[{nameof(EbxTypeMetaAttribute)}({(ushort)m_flags}, {m_alignment}, {m_size})]");
 
         sb.AppendLine($"[{nameof(DisplayNameAttribute)}(\"{m_name}\")]");
-        sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
+
+        if (m_nameHash != uint.MaxValue)
+        {
+            sb.AppendLine($"[{nameof(NameHashAttribute)}({m_nameHash})]");
+        }
 
         if (!m_guid.Equals(Guid.Empty))
         {

@@ -12,6 +12,7 @@ public abstract class BaseEbxReader
 
     #region -- PrimitiveTypes --
 
+    protected static readonly Type s_voidType = TypeLibrary.GetType("Void")!;
     protected static readonly Type s_stringType = TypeLibrary.GetType("String")!;
     protected static readonly Type s_sbyteType = TypeLibrary.GetType("Int8")!;
     protected static readonly Type s_byteType = TypeLibrary.GetType("Uint8") ?? TypeLibrary.GetType("UInt8")!;

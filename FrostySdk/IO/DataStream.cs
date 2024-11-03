@@ -28,13 +28,11 @@ public unsafe class DataStream : IDisposable
     protected DataStream()
     {
         m_stream = Stream.Null;
-        new StringBuilder();
     }
 
     public DataStream(Stream inStream)
     {
         m_stream = inStream;
-        new StringBuilder();
     }
 
     /// <inheritdoc cref="Stream.Seek"/>
@@ -71,6 +69,9 @@ public unsafe class DataStream : IDisposable
 
     /// <inheritdoc cref="Stream.Read(byte[], int, int)"/>
     public int Read(byte[] buffer, int offset, int count) => m_stream.Read(buffer, offset, count);
+
+    /// <inheritdoc cref="Stream.Read(Span{byte})"/>
+    public int Read(Span<byte> buffer) => m_stream.Read(buffer);
 
     #region -- Basic Types --
 
@@ -200,13 +201,18 @@ public unsafe class DataStream : IDisposable
     public virtual string ReadNullTerminatedString(Encoding? inEncoding = null)
     {
         int i = 0;
-        m_buffer ??= new Block<byte>(255);
+        m_buffer ??= new Block<byte>(Environment.SystemPageSize);
         while (true)
         {
             byte c = ReadByte();
             if (c == 0)
             {
                 return (inEncoding ?? Encoding.UTF8).GetString(m_buffer.Ptr, i);
+            }
+
+            if (i >= m_buffer.Size)
+            {
+                m_buffer.Resize(m_buffer.Size + Environment.SystemPageSize);
             }
 
             m_buffer[i++] = c;
@@ -542,6 +548,7 @@ public unsafe class DataStream : IDisposable
     public virtual void Dispose()
     {
         m_stream.Dispose();
+        m_buffer?.Dispose();
     }
 
     public virtual DataStream CreateSubStream(long inStartOffset, int inSize)

@@ -143,11 +143,46 @@ public static class TypeLibrary
 
     public static string GetName(this MemberInfo type)
     {
+        if (type.Name == "ObservableCollection`1")
+        {
+            Type elementType = (type as Type)!.GenericTypeArguments[0].Name == "PointerRef" ? GetType("DataContainer")! : (type as Type)!.GenericTypeArguments[0];
+
+            return (elementType.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name) + "-Array";
+        }
         return type.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name;
     }
 
     public static Guid GetGuid(this MemberInfo type)
     {
+        if (type.Name == "ObservableCollection`1")
+        {
+            Type elementType = (type as Type)!.GenericTypeArguments[0].Name == "PointerRef" ? GetType("DataContainer")! : (type as Type)!.GenericTypeArguments[0];
+
+            return elementType.GetCustomAttribute<GuidAttribute>()?.Guid ??  Guid.Empty;
+        }
         return type.GetCustomAttribute<GuidAttribute>()?.Guid ?? Guid.Empty;
+    }
+
+    public static uint GetSignature(this MemberInfo type)
+    {
+        if (type.Name == "ObservableCollection`1")
+        {
+            Type elementType = (type as Type)!.GenericTypeArguments[0].Name == "PointerRef" ? GetType("DataContainer")! : (type as Type)!.GenericTypeArguments[0];
+
+            return elementType.GetCustomAttribute<SignatureAttribute>()?.Signature ?? uint.MaxValue;
+        }
+        return type.GetCustomAttribute<SignatureAttribute>()?.Signature ?? uint.MaxValue;
+    }
+
+    public static uint GetNameHash(this MemberInfo type)
+    {
+        if (type.Name == "ObservableCollection`1")
+        {
+            Type elementType = (type as Type)!.GenericTypeArguments[0].Name == "PointerRef" ? GetType("DataContainer")! : (type as Type)!.GenericTypeArguments[0];
+
+            return elementType.GetCustomAttribute<ArrayHashAttribute>()?.Hash ?? uint.MaxValue;
+        }
+
+        return type.GetCustomAttribute<NameHashAttribute>()?.Hash ?? uint.MaxValue;
     }
 }
