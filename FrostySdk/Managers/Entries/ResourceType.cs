@@ -39,6 +39,7 @@ public enum ResourceType : uint
     FifaPhysicsResourceData = 0xEF23407C,
     FootballMetaMorphMeshDeltaPositionsResource = 0x4C4D624A,
     FootballMetaMorphVertexRegionWeightsResource = 0x59BBF1E8,
+    GiGridStreamingGroupResource = 0xF20A477A,
     GtsoLut = 0xCB8BCD07,
     HavokClothPhysicsData = 0xE36F0D59,
     HavokPhysicsData = 0x91043F65,
