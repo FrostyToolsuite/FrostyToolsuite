@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Managers;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk;
 
@@ -33,7 +34,7 @@ public static class TypeLibrary
 
         if ((sdk.GetCustomAttribute<SdkVersionAttribute>()?.Head ?? 0) != FileSystemManager.Head)
         {
-            FrostyLogger.Logger?.LogInfo("Outdated Type Sdk, please regenerate it to avoid issues");
+            FrostyLogger.Logger?.LogInformation("Outdated Type Sdk, please regenerate it to avoid issues");
         }
 
         s_types = sdk.GetExportedTypes();

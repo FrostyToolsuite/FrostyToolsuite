@@ -12,6 +12,7 @@ using Frosty.Sdk.Managers.Loaders;
 using Frosty.Sdk.Managers.Patch;
 using Frosty.Sdk.Resources;
 using Frosty.Sdk.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk.Managers;
 
@@ -72,34 +73,34 @@ public static class AssetManager
 
             if (FileSystemManager.BundleFormat == BundleFormat.Dynamic2018 || FileSystemManager.BundleFormat == BundleFormat.SuperBundleManifest)
             {
-                FrostyLogger.Logger?.LogInfo("Loading FileInfos from catalogs");
+                FrostyLogger.Logger?.LogInformation("Loading FileInfos from catalogs");
 
                 timer.Start();
                 ResourceManager.LoadInstallChunks();
                 timer.Stop();
 
-                FrostyLogger.Logger?.LogInfo($"Loaded FileInfos from catalogs in {timer.Elapsed.TotalSeconds} seconds");
+                FrostyLogger.Logger?.LogInformation($"Loaded FileInfos from catalogs in {timer.Elapsed.TotalSeconds} seconds");
             }
 
             IAssetLoader assetLoader = GetAssetLoader();
 
-            FrostyLogger.Logger?.LogInfo("Loading Assets from SuperBundles");
+            FrostyLogger.Logger?.LogInformation("Loading Assets from SuperBundles");
 
             timer.Restart();
             assetLoader.Load();
             timer.Stop();
 
-            FrostyLogger.Logger?.LogInfo($"Loaded Assets from SuperBundles in {timer.Elapsed.TotalSeconds} seconds");
+            FrostyLogger.Logger?.LogInformation($"Loaded Assets from SuperBundles in {timer.Elapsed.TotalSeconds} seconds");
 
             ResourceManager.CLearInstallChunks();
 
-            FrostyLogger.Logger?.LogInfo("Indexing Ebx");
+            FrostyLogger.Logger?.LogInformation("Indexing Ebx");
 
             timer.Restart();
             DoEbxIndexing();
             timer.Stop();
 
-            FrostyLogger.Logger?.LogInfo($"Indexed ebx in {timer.Elapsed.TotalSeconds} seconds");
+            FrostyLogger.Logger?.LogInformation($"Indexed ebx in {timer.Elapsed.TotalSeconds} seconds");
 
             WriteCache();
 
@@ -189,7 +190,7 @@ public static class AssetManager
             }
         }
 
-        FrostyLogger.Logger?.LogInfo("Finished initializing");
+        FrostyLogger.Logger?.LogInformation("Finished initializing");
 
         IsInitialized = true;
         return true;
@@ -584,7 +585,7 @@ public static class AssetManager
                 entry.LogicalSize = (uint)entry.OriginalSize;
             }
         }
-        FrostyLogger.Logger?.LogInfo($"Had to resolve OriginalSize for {a} chunks");
+        FrostyLogger.Logger?.LogInformation($"Had to resolve OriginalSize for {a} chunks");
     }
 
     private static bool ReadCache(out List<EbxAssetEntry> prePatchEbx, out List<ResAssetEntry> prePatchRes, out List<ChunkAssetEntry> prePatchChunks)
@@ -638,11 +639,10 @@ public static class AssetManager
                 }
             }
 
-            FrostyLogger.Logger?.LogInfo("Loading ebx from cache");
+            FrostyLogger.Logger?.LogInformation("Loading ebx from cache");
             int ebxCount = stream.ReadInt32();
             for (int i = 0; i < ebxCount; i++)
             {
-                FrostyLogger.Logger?.LogProgress(i / (double)ebxCount);
                 string name = stream.ReadNullTerminatedString();
 
                 EbxAssetEntry entry = new(name, stream.ReadSha1(), stream.ReadInt64())
@@ -670,11 +670,10 @@ public static class AssetManager
                 }
             }
 
-            FrostyLogger.Logger?.LogInfo("Loading res from cache");
+            FrostyLogger.Logger?.LogInformation("Loading res from cache");
             int resCount = stream.ReadInt32();
             for (int i = 0; i < resCount; i++)
             {
-                FrostyLogger.Logger?.LogProgress(i / (double)resCount);
                 string name = stream.ReadNullTerminatedString();
 
                 ResAssetEntry entry = new(name, stream.ReadSha1(), stream.ReadInt64(),
@@ -702,11 +701,10 @@ public static class AssetManager
                 }
             }
 
-            FrostyLogger.Logger?.LogInfo("Loading chunks from cache");
+            FrostyLogger.Logger?.LogInformation("Loading chunks from cache");
             int chunkCount = stream.ReadInt32();
             for (int i = 0; i < chunkCount; i++)
             {
-                FrostyLogger.Logger?.LogProgress(i / (double)chunkCount);
                 ChunkAssetEntry entry = new(stream.ReadGuid(), stream.ReadSha1(),
                     stream.ReadUInt32(), stream.ReadUInt32());
 

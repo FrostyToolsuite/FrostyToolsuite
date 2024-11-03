@@ -8,8 +8,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyModSupport", "FrostyM
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostySdkTest", "FrostySdkTest\FrostySdkTest.csproj", "{0D68BF68-5166-4995-BBAF-4D0257A9DB38}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyEditor", "FrostyEditor\FrostyEditor.csproj", "{E9375102-4BDB-4E18-ABC2-9BDC0FBFA3D7}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1E32C01C-7858-4510-80C2-C6A705DC8926}"
 	ProjectSection(SolutionItems) = preProject
 		README.md = README.md
@@ -23,6 +21,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyTypeSdkGenerator", "FrostyTypeSdkGenerator\FrostyTypeSdkGenerator\FrostyTypeSdkGenerator.csproj", "{8679D294-9AA1-49A1-A769-AEFCF1C6CAA9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyTypeSdkGenerator.Example", "FrostyTypeSdkGenerator\FrostyTypeSdkGenerator.Example\FrostyTypeSdkGenerator.Example.csproj", "{447CC684-05A6-49FE-821D-A0BF0602614C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Frosty", "Frosty\Frosty.csproj", "{9C34D7BA-637E-480D-B127-2278EE948717}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -54,10 +54,6 @@ Global
 		{0D68BF68-5166-4995-BBAF-4D0257A9DB38}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0D68BF68-5166-4995-BBAF-4D0257A9DB38}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0D68BF68-5166-4995-BBAF-4D0257A9DB38}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E9375102-4BDB-4E18-ABC2-9BDC0FBFA3D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E9375102-4BDB-4E18-ABC2-9BDC0FBFA3D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E9375102-4BDB-4E18-ABC2-9BDC0FBFA3D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E9375102-4BDB-4E18-ABC2-9BDC0FBFA3D7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8679D294-9AA1-49A1-A769-AEFCF1C6CAA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8679D294-9AA1-49A1-A769-AEFCF1C6CAA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8679D294-9AA1-49A1-A769-AEFCF1C6CAA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -66,6 +62,10 @@ Global
 		{447CC684-05A6-49FE-821D-A0BF0602614C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{447CC684-05A6-49FE-821D-A0BF0602614C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{447CC684-05A6-49FE-821D-A0BF0602614C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9C34D7BA-637E-480D-B127-2278EE948717}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C34D7BA-637E-480D-B127-2278EE948717}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C34D7BA-637E-480D-B127-2278EE948717}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C34D7BA-637E-480D-B127-2278EE948717}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{8679D294-9AA1-49A1-A769-AEFCF1C6CAA9} = {0E902CC4-FFE0-4614-8C37-4256C3D3F13D}

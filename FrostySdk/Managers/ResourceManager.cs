@@ -9,6 +9,7 @@ using Frosty.Sdk.IO.Compression;
 using Frosty.Sdk.Managers.CatResources;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Infos.FileInfos;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk.Managers;
 

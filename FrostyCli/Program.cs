@@ -9,6 +9,8 @@ using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Sdk;
 using Frosty.Sdk.Utils;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Sharprompt;
 
 namespace FrostyCli;
@@ -19,6 +21,15 @@ internal static partial class Program
 
     private static int Main(string[] args)
     {
+        ILoggerFactory loggerFactory = LoggerFactory.Create(delegate(ILoggingBuilder builder)
+        {
+            builder.AddSimpleConsole(delegate(SimpleConsoleFormatterOptions options)
+            {
+                options.IncludeScopes = true;
+                options.SingleLine = true;
+            });
+        });
+        FrostyLogger.Logger = loggerFactory.CreateLogger("FrostyCli");
         RootCommand rootCommand = new("CLI app to load and mod games made with the Frostbite Engine.")
         {
             key1Option, key2Option, key3Option
@@ -41,7 +52,7 @@ internal static partial class Program
     {
         Assembly assembly = Assembly.GetExecutingAssembly();
 #if DEBUG || NIGHTLY
-        Logger.LogInfoInternal(
+        FrostyLogger.Logger?.LogInformation(
             $"FrostyCli v{assembly.GetName().Version?.ToString(2)}-{assembly.GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "GitHash")?.Value}");
 #else
         Logger.LogInfoInternal($"FrostyCli v{assembly.GetName().Version?.ToString(3)}");
@@ -60,10 +71,6 @@ internal static partial class Program
              switch (actionType = Prompt.Select<ActionType>("Select what you want to do"))
              {
                  case ActionType.Quit:
-                     if (FrostyLogger.Logger is Logger logger)
-                     {
-                         logger.StopLogging();
-                     }
                      break;
                  case ActionType.Mod:
                      ModGame();
@@ -130,12 +137,9 @@ internal static partial class Program
 
         if (game?.Exists != true)
         {
-            Logger.LogErrorInternal("Game does not exist.");
+            FrostyLogger.Logger?.LogError("Game does not exist.");
             return false;
         }
-
-        // set logger
-        FrostyLogger.Logger = new Logger();
 
         // set base directory to the directory containing the executable
         Utils.BaseDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? string.Empty;
@@ -152,13 +156,13 @@ internal static partial class Program
 
             if (keyFileInfo?.Exists != true)
             {
-                Logger.LogErrorInternal("Key does not exist.");
+                FrostyLogger.Logger?.LogError("Key does not exist.");
                 return false;
             }
 
             if (keyFileInfo.Length != 0x10)
             {
-                Logger.LogErrorInternal("InitFs key needs to be 16 bytes long.");
+                FrostyLogger.Logger?.LogError("InitFs key needs to be 16 bytes long.");
                 return false;
             }
 
@@ -171,13 +175,13 @@ internal static partial class Program
 
             if (keyFileInfo?.Exists != true)
             {
-                Logger.LogErrorInternal("Key does not exist.");
+                FrostyLogger.Logger?.LogError("Key does not exist.");
                 return false;
             }
 
             if (keyFileInfo.Length != 0x10)
             {
-                Logger.LogErrorInternal("Bundle key needs to be 16 bytes long.");
+                FrostyLogger.Logger?.LogError("Bundle key needs to be 16 bytes long.");
                 return false;
             }
 
@@ -190,13 +194,13 @@ internal static partial class Program
 
             if (keyFileInfo?.Exists != true)
             {
-                Logger.LogErrorInternal("Key does not exist.");
+                FrostyLogger.Logger?.LogError("Key does not exist.");
                 return false;
             }
 
             if (keyFileInfo.Length != 0x4000)
             {
-                Logger.LogErrorInternal("Cas key needs to be 16384 bytes long.");
+                FrostyLogger.Logger?.LogError("Cas key needs to be 16384 bytes long.");
                 return false;
             }
 
@@ -205,7 +209,7 @@ internal static partial class Program
 
         if (game.DirectoryName is null)
         {
-            Logger.LogErrorInternal("The game needs to be in a directory containing the games data.");
+            FrostyLogger.Logger?.LogError("The game needs to be in a directory containing the games data.");
             return false;
         }
 
@@ -229,7 +233,7 @@ internal static partial class Program
                 return false;
             }
 
-            Logger.LogInfoInternal("The game is not needed anymore and can be closed.");
+            FrostyLogger.Logger?.LogInformation("The game is not needed anymore and can be closed.");
             if (!typeSdkGenerator.CreateSdk(ProfilesLibrary.SdkPath))
             {
                 return false;
@@ -295,7 +299,7 @@ internal static partial class Program
         {
             if (string.IsNullOrEmpty(inDefaultName))
             {
-                Logger.LogErrorInternal("Path can not be a Directory.");
+                FrostyLogger.Logger?.LogError("Path can not be a Directory.");
                 return null;
             }
 
@@ -310,7 +314,7 @@ internal static partial class Program
         }
         else if (retVal.Directory?.Exists == false)
         {
-            Logger.LogErrorInternal($"Directory containing file {inPath} does not exist.");
+            FrostyLogger.Logger?.LogError($"Directory containing file {inPath} does not exist.");
             return null;
         }
 
