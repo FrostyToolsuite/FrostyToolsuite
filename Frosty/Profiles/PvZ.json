@@ -5,21 +5,10 @@
   "TypeInfoSignature": "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? C3",
   "DataVersion": 20140623,
   "FrostbiteVersion": "2013.2",
-  "HasStrippedTypeNames": false,
   "EbxVersion": 2,
-  "RequiresInitFsKey": false,
-  "MustAddChunks": false,
-  "EnableExecution": true,
-  "HasAntiCheat": false,
   "EbxCompression": 21,
   "ResCompression": 21,
   "ChunkCompression": 21,
   "TextureChunkCompression": 21,
-  "MaxBufferSize": 65536,
-  "ZStdCompressionLevel": 0,
-  "DefaultDiffuse": "_pvz/Shaders/_System/BaseShaders/default_textures/white",
-  "DefaultNormals": "_pvz/Shaders/_System/BaseShaders/default_textures/normal_default",
-  "DefaultMask": "_pvz/Shaders/_System/BaseShaders/default_textures/white",
-  "DefaultTint": "_pvz/Shaders/_System/BaseShaders/default_textures/white",
-  "SharedBundles": []
+  "MaxBufferSize": 65536
 }

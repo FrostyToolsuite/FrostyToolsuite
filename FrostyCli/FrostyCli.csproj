@@ -17,8 +17,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="Profiles\*.json" CopyToOutputDirectory="PreserveNewest" />
       <None Update="Sdk\Strings\*.json" CopyToOutputDirectory="PreserveNewest" />
+      <Content Include="..\Frosty\Profiles\*.json">
+        <Link>Profiles\*.json</Link>
+      </Content>
     </ItemGroup>
 
     <ItemGroup>

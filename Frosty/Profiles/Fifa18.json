@@ -5,21 +5,11 @@
   "TypeInfoSignature": "",
   "DataVersion": 20170929,
   "FrostbiteVersion": "2016.4.1",
-  "HasStrippedTypeNames": false,
   "EbxVersion": 4,
   "RequiresInitFsKey": true,
-  "MustAddChunks": false,
-  "EnableExecution": true,
-  "HasAntiCheat": false,
   "EbxCompression": 9,
   "ResCompression": 9,
   "ChunkCompression": 9,
   "TextureChunkCompression": 9,
-  "MaxBufferSize": 262144,
-  "ZStdCompressionLevel": 0,
-  "DefaultDiffuse": "content/Common/textures/debug/debug_texture_color",
-  "DefaultNormals": "content/Common/textures/debug/debug_texture_normal",
-  "DefaultMask": "content/Common/textures/debug/debug_texture_coeff",
-  "DefaultTint": "content/Common/textures/debug/debug_texture_alpha",
-  "SharedBundles": []
+  "MaxBufferSize": 262144
 }
