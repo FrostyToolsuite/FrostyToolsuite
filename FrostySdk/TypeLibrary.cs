@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 using Frosty.Sdk.Attributes;
@@ -15,7 +16,7 @@ public static class TypeLibrary
     private static readonly Dictionary<string, int> s_nameMapping = new();
     private static readonly Dictionary<uint, int> s_nameHashMapping = new();
     private static readonly Dictionary<Guid, int> s_guidMapping = new();
-    private static Type[] s_types = Array.Empty<Type>();
+    private static List<Type> s_types = [];
 
     public static bool Initialize()
     {
@@ -37,9 +38,9 @@ public static class TypeLibrary
             FrostyLogger.Logger?.LogInformation("Outdated Type Sdk, please regenerate it to avoid issues");
         }
 
-        s_types = sdk.GetExportedTypes();
+        s_types.AddRange(sdk.GetExportedTypes());
 
-        for (int i = 0; i < s_types.Length; i++)
+        for (int i = 0; i < s_types.Count; i++)
         {
             Type type = s_types[i];
 
@@ -58,6 +59,12 @@ public static class TypeLibrary
             if (guid.HasValue)
             {
                 s_guidMapping.Add(guid.Value, i);
+            }
+            Guid? arrayGuid = type.GetCustomAttribute<ArrayGuidAttribute>()?.Guid;
+            if (arrayGuid.HasValue)
+            {
+                s_guidMapping.Add(arrayGuid.Value, s_types.Count);
+                s_types.Add(typeof(ObservableCollection<>).MakeGenericType(type));
             }
         }
 

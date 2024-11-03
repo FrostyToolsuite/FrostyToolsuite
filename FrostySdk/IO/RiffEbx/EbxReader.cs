@@ -484,6 +484,7 @@ public class EbxReader : BaseEbxReader
         int typeRef = -1;
         TypeFlags.TypeEnum type;
         TypeFlags.CategoryEnum category;
+        EbxExtra b = m_boxedValues[(uint)(m_stream.Position - m_payloadOffset)];
         if ((packed & 0x80000000) != 0)
         {
             TypeFlags flags = (TypeFlags)(packed & ~0x80000000);
@@ -492,7 +493,6 @@ public class EbxReader : BaseEbxReader
         }
         else
         {
-            EbxExtra b = m_boxedValues[(uint)(m_stream.Position - m_payloadOffset)];
             typeRef = (int)(packed >> 2);
             type = b.Flags.GetTypeEnum();
             category = b.Flags.GetCategoryEnum();
@@ -502,7 +502,7 @@ public class EbxReader : BaseEbxReader
         if (category == TypeFlags.CategoryEnum.Array)
         {
             value = Activator.CreateInstance(fieldType)!;
-            ReadArray(type, typeRef, obj =>
+            ReadArray(type, (int)b.TypeDescriptorRef, obj =>
             {
                 if (obj is null)
                 {
@@ -557,39 +557,66 @@ public class EbxReader : BaseEbxReader
 
     private Type? GetTypeFromEbxField(TypeFlags inFlags, int inTypeDescriptorRef)
     {
-        if (inFlags.GetCategoryEnum() == TypeFlags.CategoryEnum.Array)
-        {
-
-        }
+        Type type;
         switch (inFlags.GetTypeEnum())
         {
-            case TypeFlags.TypeEnum.Inherited: return s_voidType;
-            case TypeFlags.TypeEnum.Struct: return TypeLibrary.GetType(m_fixup.TypeGuids[inTypeDescriptorRef])!;
-            case TypeFlags.TypeEnum.String: return s_stringType;
-            case TypeFlags.TypeEnum.Int8: return s_sbyteType;
-            case TypeFlags.TypeEnum.UInt8: return s_byteType;
-            case TypeFlags.TypeEnum.Boolean: return s_boolType;
-            case TypeFlags.TypeEnum.UInt16: return s_ushortType;
-            case TypeFlags.TypeEnum.Int16: return s_shortType;
-            case TypeFlags.TypeEnum.UInt32: return s_uintType;
-            case TypeFlags.TypeEnum.Int32: return s_intType;
-            case TypeFlags.TypeEnum.UInt64: return s_ulongType;
-            case TypeFlags.TypeEnum.Int64: return s_longType;
-            case TypeFlags.TypeEnum.Float32: return s_floatType;
-            case TypeFlags.TypeEnum.Float64: return s_doubleType;
-            case TypeFlags.TypeEnum.Class: return s_pointerType;
-            case TypeFlags.TypeEnum.Guid: return s_guidType;
-            case TypeFlags.TypeEnum.Sha1: return s_sha1Type;
-            case TypeFlags.TypeEnum.CString: return s_cStringType;
-            case TypeFlags.TypeEnum.ResourceRef: return s_resourceRefType;
-            case TypeFlags.TypeEnum.FileRef: return s_fileRefType;
-            case TypeFlags.TypeEnum.TypeRef: return s_typeRefType!;
-            case TypeFlags.TypeEnum.BoxedValueRef: return s_boxedValueRefType!;
+            case TypeFlags.TypeEnum.Inherited: type = s_voidType;
+                break;
+            case TypeFlags.TypeEnum.Struct: type = TypeLibrary.GetType(m_fixup.TypeGuids[inTypeDescriptorRef])!;
+                break;
+            case TypeFlags.TypeEnum.String: type = s_stringType;
+                break;
+            case TypeFlags.TypeEnum.Int8: type = s_sbyteType;
+                break;
+            case TypeFlags.TypeEnum.UInt8: type = s_byteType;
+                break;
+            case TypeFlags.TypeEnum.Boolean: type = s_boolType;
+                break;
+            case TypeFlags.TypeEnum.UInt16: type = s_ushortType;
+                break;
+            case TypeFlags.TypeEnum.Int16: type = s_shortType;
+                break;
+            case TypeFlags.TypeEnum.UInt32: type = s_uintType;
+                break;
+            case TypeFlags.TypeEnum.Int32: type = s_intType;
+                break;
+            case TypeFlags.TypeEnum.UInt64: type = s_ulongType;
+                break;
+            case TypeFlags.TypeEnum.Int64: type = s_longType;
+                break;
+            case TypeFlags.TypeEnum.Float32: type = s_floatType;
+                break;
+            case TypeFlags.TypeEnum.Float64: type = s_doubleType;
+                break;
+            case TypeFlags.TypeEnum.Class: type = s_pointerType;
+                break;
+            case TypeFlags.TypeEnum.Guid: type = s_guidType;
+                break;
+            case TypeFlags.TypeEnum.Sha1: type = s_sha1Type;
+                break;
+            case TypeFlags.TypeEnum.CString: type = s_cStringType;
+                break;
+            case TypeFlags.TypeEnum.ResourceRef: type = s_resourceRefType;
+                break;
+            case TypeFlags.TypeEnum.FileRef: type = s_fileRefType;
+                break;
+            case TypeFlags.TypeEnum.TypeRef: type = s_typeRefType!;
+                break;
+            case TypeFlags.TypeEnum.BoxedValueRef: type = s_boxedValueRefType!;
+                break;
             case TypeFlags.TypeEnum.Enum:
-                return TypeLibrary.GetType(m_fixup.TypeGuids[inTypeDescriptorRef])!;
+                type = TypeLibrary.GetType(m_fixup.TypeGuids[inTypeDescriptorRef])!;
+                break;
 
             default:
                 throw new NotImplementedException();
         }
+
+        if (inFlags.GetCategoryEnum() == TypeFlags.CategoryEnum.Array && inTypeDescriptorRef == ushort.MaxValue)
+        {
+            return typeof(ObservableCollection<>).MakeGenericType(type);
+        }
+
+        return type;
     }
 }
