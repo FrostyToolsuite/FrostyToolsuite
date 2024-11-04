@@ -110,7 +110,7 @@ public class Texture : Resource
 		Width = inStream.ReadUInt16();
 		Height = inStream.ReadUInt16();
 		Depth = inStream.ReadUInt16();
-		if (ProfilesLibrary.FrostbiteVersion >= "2021.2.3")
+		if (ProfilesLibrary.FrostbiteVersion >= "2021.2.3" && !ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard))
 		{
 			byte b = inStream.ReadByte();
 		}
@@ -126,13 +126,23 @@ public class Texture : Resource
 		FirstMip = inStream.ReadByte();
 		if (ProfilesLibrary.FrostbiteVersion >= "2021.2.3")
 		{
-			byte b2 = inStream.ReadByte();
+            if (ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard))
+            {
+                inStream.ReadInt32();
+            }
+            // no idea why they have 2 of those
+			byte mipMapCount2 = inStream.ReadByte();
 		}
 		if (ProfilesLibrary.FrostbiteVersion >= "2021.1.1")
 		{
 			byte b3 = inStream.ReadByte();
 			byte b4 = inStream.ReadByte();
 			bool flag = inStream.ReadBoolean();
+            if (ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard))
+            {
+                // just read sth so we get the proper alignment
+                inStream.ReadByte();
+            }
 		}
 		inStream.Pad(4);
 		ChunkId = inStream.ReadGuid();
