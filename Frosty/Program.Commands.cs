@@ -249,7 +249,7 @@ internal static partial class Program
 		{
 			EbxAsset asset = AssetManager.GetEbxAsset(inEntry);
             // TODO: create plugin system
-			if (TypeLibrary.IsSubClassOf(inEntry.Type, "TextureAsset"))
+			if (TypeLibrary.IsSubClassOf(inEntry.Type, "TextureBaseAsset"))
 			{
 				Texture texture = AssetManager.GetResAs<Texture>(AssetManager.GetResAssetEntry(asset.RootObject.GetProperty<ResourceRef>("Resource"))!);
 				texture.SaveDds(inPath + ".dds");
