@@ -79,17 +79,16 @@ internal static partial class Program
             {
                 if (!Enum.IsDefined(entry.ResType))
                 {
-                    if (resolved.Contains((uint)entry.ResType))
+                    if (!resolved.Add((uint)entry.ResType))
                     {
-                        continue;
-                    }
-                    if (!types.ContainsKey((uint)entry.ResType))
-                    {
-                        FrostyLogger.Logger?.LogError("Could not resolve ResType: {}", (uint)entry.ResType);
                         continue;
                     }
 
-                    resolved.Add((uint)entry.ResType);
+                    if (!types.ContainsKey((uint)entry.ResType))
+                    {
+                        FrostyLogger.Logger?.LogError("Could not resolve ResType: {} ({})", (uint)entry.ResType, entry.Name);
+                        continue;
+                    }
 
                     List<string> v = types[(uint)entry.ResType];
                     if (v.Count > 1)
