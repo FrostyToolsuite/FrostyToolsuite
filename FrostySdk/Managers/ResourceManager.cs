@@ -86,7 +86,7 @@ public static class ResourceManager
             string ext = Path.GetExtension(libOodle);
             string path = Path.Combine(thirdPartyPath, $"oo2core{ext}");
             File.Delete(path);
-            File.CreateSymbolicLink(path, libOodle);
+            Utils.Utils.File.CreateSymbolicLink(path, libOodle);
 
             // get major version X (2.X.y) from dll name (oo2core_X_win64.dll)
             CompressionOodle.MajorVersion = int.Parse(Regex.Match(libOodle, "oo2core_(.*?)_win").Groups[1].Value);
@@ -95,7 +95,7 @@ public static class ResourceManager
             {
                 string oodleHack = Path.Combine(thirdPartyPath, "oo2core.so");
                 File.Delete(oodleHack);
-                File.CreateSymbolicLink(oodleHack, Path.Combine(thirdPartyPath, "liblinoodle.so"));
+                Utils.Utils.File.CreateSymbolicLink(oodleHack, Path.Combine(thirdPartyPath, "liblinoodle.so"));
             }
 
             break;

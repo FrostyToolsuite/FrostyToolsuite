@@ -187,7 +187,7 @@ public partial class FrostyModExecutor
             if (!File.Exists(modPath))
             {
                 Directory.CreateDirectory(Directory.GetParent(modPath)!.FullName);
-                File.CreateSymbolicLink(modPath, file);
+                Frosty.Sdk.Utils.Utils.File.CreateSymbolicLink(modPath, file);
             }
         }
 
@@ -200,13 +200,13 @@ public partial class FrostyModExecutor
                 {
                     string destPath = Path.Combine(inModPackPath, source.Path);
                     Directory.CreateDirectory(Directory.GetParent(destPath)!.FullName);
-                    Directory.CreateSymbolicLink(destPath,
+                    Frosty.Sdk.Utils.Utils.Directory.CreateSymbolicLink(destPath,
                         Path.Combine(FileSystemManager.BasePath, source.Path));
                 }
 
                 if (source.Path != FileSystemSource.Base.Path && source.Path.Contains("Data"))
                 {
-                    File.CreateSymbolicLink(
+                    Frosty.Sdk.Utils.Utils.File.CreateSymbolicLink(
                         Path.Combine(inModPackPath, source.Path.Replace("/Data", string.Empty),
                             "package.mft"),
                         Path.Combine(FileSystemManager.BasePath, source.Path.Replace("/Data", string.Empty),

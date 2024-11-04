@@ -41,7 +41,7 @@ public class InstallChunkWriter : IDisposable
             {
                 int index = int.Parse(Path.GetFileName(file).AsSpan()[4..][..^4]);
                 m_casIndex = Math.Max(index, m_casIndex);
-                File.CreateSymbolicLink(Path.Combine(m_dir, $"cas_{index:D2}.cas"), file);
+                Frosty.Sdk.Utils.Utils.File.CreateSymbolicLink(Path.Combine(m_dir, $"cas_{index:D2}.cas"), file);
             }
         }
 
