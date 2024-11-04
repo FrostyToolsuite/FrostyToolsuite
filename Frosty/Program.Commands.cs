@@ -175,6 +175,10 @@ internal static partial class Program
         res.SetHandler(HandleResExport, name, resMeta, preserveStructure, type, output);
         export.AddCommand(res);
 
+        Command chunk = new("chunk") { name, output };
+        chunk.SetHandler(HandleChunkExport, name, output);
+        export.AddCommand(chunk);
+
 		inRoot.AddCommand(export);
 	}
 
@@ -193,6 +197,10 @@ internal static partial class Program
         Command res = new("res") { name, type };
         res.SetHandler(HandleResSearch, name, type);
         search.AddCommand(res);
+
+        Command chunk = new("chunk") { name };
+        chunk.SetHandler(HandleChunkSearch, name);
+        search.AddCommand(chunk);
 
 		inRoot.AddCommand(search);
 	}
@@ -221,22 +229,32 @@ internal static partial class Program
         }
     }
 
+    private static void HandleChunkSearch(string inName)
+    {
+        string pattern = "^" + Regex.Escape(inName).Replace("\\?", ".").Replace("\\*", ".*") + "$";
+        foreach (ChunkAssetEntry item in AssetManager.EnumerateChunkAssetEntries())
+        {
+            if (Regex.IsMatch(item.Name, pattern))
+            {
+                Console.WriteLine(item.Name);
+            }
+        }
+    }
+
 	private static void HandleEbxExport(string inName, bool inConvert, bool inPreserveStructure, string? inType, string inOutput)
 	{
 		EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(inName);
 		if (entry is null)
 		{
 			string pattern = "^" + Regex.Escape(inName).Replace("\\?", ".").Replace("\\*", ".*") + "$";
-			{
-				foreach (EbxAssetEntry item in AssetManager.EnumerateEbxAssetEntries())
-				{
-					if (Regex.IsMatch(item.Name, pattern) && (string.IsNullOrEmpty(inType) || TypeLibrary.IsSubClassOf(item.Type, inType)))
-					{
-						ExportEbx(item, inConvert, Path.Combine(inOutput, inPreserveStructure ? item.Name : item.Filename));
-					}
-				}
-				return;
-			}
+			foreach (EbxAssetEntry item in AssetManager.EnumerateEbxAssetEntries())
+            {
+                if (Regex.IsMatch(item.Name, pattern) && (string.IsNullOrEmpty(inType) || TypeLibrary.IsSubClassOf(item.Type, inType)))
+                {
+                    ExportEbx(item, inConvert, Path.Combine(inOutput, inPreserveStructure ? item.Name : item.Filename));
+                }
+            }
+            return;
 		}
 		ExportEbx(entry, inConvert, Path.Combine(inOutput, inPreserveStructure ? entry.Name : entry.Filename));
 	}
@@ -252,7 +270,10 @@ internal static partial class Program
 			if (TypeLibrary.IsSubClassOf(inEntry.Type, "TextureBaseAsset"))
 			{
 				Texture texture = AssetManager.GetResAs<Texture>(AssetManager.GetResAssetEntry(asset.RootObject.GetProperty<ResourceRef>("Resource"))!);
-				texture.SaveDds(inPath + ".dds");
+                if (!texture.SaveDds(inPath + ".dds"))
+                {
+                    FrostyLogger.Logger?.LogError("Failed to export Texture");
+                }
 			}
 			else if (TypeLibrary.IsSubClassOf(inEntry.Type, "MeshAsset"))
 			{
@@ -272,16 +293,14 @@ internal static partial class Program
         if (entry is null)
         {
             string pattern = "^" + Regex.Escape(inName).Replace("\\?", ".").Replace("\\*", ".*") + "$";
+            foreach (ResAssetEntry item in AssetManager.EnumerateResAssetEntries())
             {
-                foreach (ResAssetEntry item in AssetManager.EnumerateResAssetEntries())
+                if (Regex.IsMatch(item.Name, pattern) && (string.IsNullOrEmpty(inType) || item.ResType.ToString() == inType))
                 {
-                    if (Regex.IsMatch(item.Name, pattern) && (string.IsNullOrEmpty(inType) || item.ResType.ToString() == inType))
-                    {
-                        ExportRes(item, inResMeta, Path.Combine(inOutput, inPreserveStructure ? item.Name : item.Filename));
-                    }
+                    ExportRes(item, inResMeta, Path.Combine(inOutput, inPreserveStructure ? item.Name : item.Filename));
                 }
-                return;
             }
+            return;
         }
         ExportRes(entry, inResMeta, Path.Combine(inOutput, inPreserveStructure ? entry.Name : entry.Filename));
     }
@@ -302,6 +321,38 @@ internal static partial class Program
             return;
         }
         File.WriteAllBytes(fileInfo.FullName + "." + inEntry.ResType, block.ToArray());
+    }
+
+    private static void HandleChunkExport(string inName, string inOutput)
+    {
+        if (Guid.TryParse(inName, out Guid id))
+        {
+            ChunkAssetEntry? entry = AssetManager.GetChunkAssetEntry(id);
+            if (entry is null)
+            {
+                FrostyLogger.Logger?.LogError("No chunk with id {} exists", id);
+                return;
+            }
+            ExportChunk(entry, Path.Combine(inOutput, entry.Name));
+        }
+
+        string pattern = "^" + Regex.Escape(inName).Replace("\\?", ".").Replace("\\*", ".*") + "$";
+        foreach (ChunkAssetEntry item in AssetManager.EnumerateChunkAssetEntries())
+        {
+            if (Regex.IsMatch(item.Name, pattern))
+            {
+                ExportChunk(item, Path.Combine(inOutput, item.Name));
+            }
+        }
+    }
+
+    private static void ExportChunk(ChunkAssetEntry inEntry, string inPath)
+    {
+        FileInfo fileInfo = new(inPath);
+        fileInfo.Directory?.Create();
+
+        using Block<byte> block = AssetManager.GetAsset(inEntry);
+        File.WriteAllBytes(fileInfo.FullName + ".chunk", block.ToArray());
     }
 
 	private static void HandleQuit()
