@@ -41,7 +41,7 @@ internal static partial class Program
 			return value;
 		});
 		Option<int> pid = new("--pid", () => -1, "The process id of the running game, needed if a type sdk needs to be generated from the game");
-		Command load = new("load", "Loads a Frostbite game") { gamePath, pid };
+		Command load = new("load", "Loads a Frostbite game") { gamePath, s_initFsKey, s_bundleKey, s_casKey, pid };
 		load.AddAlias("l");
 		load.SetHandler((a, b) =>
 		{

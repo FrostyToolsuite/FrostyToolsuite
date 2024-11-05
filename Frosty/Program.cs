@@ -16,20 +16,26 @@ internal static partial class Program
 {
 	private static bool s_gameIsLoaded;
 
+    private static readonly Option<byte[]?> s_initFsKey = CreateKeyOption("--initfs-key",
+        "The path to a file containing a 16 byte key for the initfs or the key itself in hexadecimal form", 16,
+        "InitFsKey");
+    private static readonly Option<byte[]?> s_bundleKey = CreateKeyOption("--bundle-key",
+        "The path to a file containing a 16 byte key for the bundles or the key itself in hexadecimal form", 16,
+        "BundleEncryptionKey");
+    private static readonly Option<byte[]?> s_casKey = CreateKeyOption("--cas-key",
+        "The path to a file containing a 16384 byte key for the cas archives or the key itself in hexadecimal form",
+        16384, "CasObfuscationKey");
+
 	public static async Task<int> Main(string[] args)
 	{
 		RootCommand root = new();
-        root.AddGlobalOption(CreateKeyOption("--initfs-key",
-            "The path to a file containing a 16 byte key for the initfs or the key itself in hexadecimal form", 16,
-            "InitFsKey"));
-        root.AddGlobalOption(CreateKeyOption("--bundle-key",
-            "The path to a file containing a 16 byte key for the bundles or the key itself in hexadecimal form", 16,
-            "BundleEncryptionKey"));
-        root.AddGlobalOption(CreateKeyOption("--cas-key",
-            "The path to a file containing a 16384 byte key for the cas archives or the key itself in hexadecimal form",
-            16384, "CasObfuscationKey"));
+        root.AddGlobalOption(s_initFsKey);
+        root.AddGlobalOption(s_bundleKey);
+        root.AddGlobalOption(s_casKey);
+        root.SetHandler(Handle);
+
 		CreateBaseCommands(root);
-		root.SetHandler(Handle);
+
 		return await root.InvokeAsync(args);
 	}
 

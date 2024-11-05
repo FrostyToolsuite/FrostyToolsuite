@@ -37,6 +37,7 @@ internal static partial class Program
             });
         Option<int> pid = new("--pid", () => -1,
             "The process id of the running game, needed if a type sdk needs to be generated from the game");
+
         Command load = new("load", "Loads a Frostbite game") { gamePath, pid };
 		load.AddAlias("l");
 		load.SetHandler(context =>
@@ -48,9 +49,16 @@ internal static partial class Program
 			}
 		});
 		inRoot.AddCommand(load);
-		Argument<string> modPath = new("mod-path", "The path to a .fbmod file or a .json load order file referencing multiple mods");
-		Option<string> modDataPath = new("mod-data-path", "The directory to which the modded data gets written to, default is ModData/Default in the game's directory");
-		Command mod = new("mod", "Generates a ModData folder, which can be used to mod the game") { gamePath, modPath, modDataPath };
+
+        Argument<string> modPath = new("mod-path",
+            "The path to a .fbmod file or a .json load order file referencing multiple mods");
+        Option<string> modDataPath = new("mod-data-path",
+            "The directory to which the modded data gets written to, default is ModData/Default in the game's directory");
+        Command mod =
+            new("mod", "Generates a ModData folder, which can be used to mod the game")
+            {
+                gamePath, modPath, modDataPath
+            };
 		mod.AddAlias("m");
 		inRoot.AddCommand(mod);
 	}
