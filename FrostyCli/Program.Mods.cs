@@ -3,8 +3,10 @@ using System.IO;
 using System.Text.Json;
 using Frosty.ModSupport;
 using Frosty.ModSupport.Mod;
+using Frosty.Sdk;
 using Frosty.Sdk.Managers;
 using FrostyCli.Project;
+using Microsoft.Extensions.Logging;
 
 namespace FrostyCli;
 
@@ -61,7 +63,7 @@ internal static partial class Program
         inModFileInfo ??= RequestFile("Pass in the path to the mod that should get updated");
         if (inModFileInfo?.Exists != true)
         {
-            Logger.LogErrorInternal("Mod file does not exist.");
+            FrostyLogger.Logger?.LogError("Mod file does not exist.");
             return;
         }
 
@@ -100,7 +102,7 @@ internal static partial class Program
         FileInfo path = new(Path.Combine(inProjectDirInfo.FullName, "project.json"));
         if (!path.Exists)
         {
-            Logger.LogErrorInternal("Project directory does not contain project.json file.");
+            FrostyLogger.Logger?.LogError("Project directory does not contain project.json file.");
             return;
         }
 
@@ -119,7 +121,7 @@ internal static partial class Program
 
         if (project is null)
         {
-            Logger.LogErrorInternal("Failed to load project.json, maybe not a correct json file.");
+            FrostyLogger.Logger?.LogError("Failed to load project.json, maybe not a correct json file.");
             return;
         }
 
