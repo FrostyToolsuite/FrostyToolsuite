@@ -2,7 +2,7 @@ using System;
 using System.Reflection;
 using Frosty.Sdk.Interfaces;
 
-namespace Frosty;
+namespace Frosty.Sdk.Utils;
 
 public static class ObjectExtensions
 {

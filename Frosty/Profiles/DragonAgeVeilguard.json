@@ -3,7 +3,7 @@
   "DisplayName": "Dragon Age™: The Veilguard",
   "InternalName": "dragonage4",
   "TypeInfoSignature": "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10",
-  "DataVersion": 20230127,
+  "DataVersion": 20241031,
   "FrostbiteVersion": "2021.2.3",
   "EbxVersion": 6,
   "RequiresInitFsKey": true,

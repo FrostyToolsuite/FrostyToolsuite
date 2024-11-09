@@ -127,6 +127,9 @@ internal static partial class Program
 		{
 			return false;
 		}
+
+        PluginManager.LoadPlugins(Path.Combine(Utils.BaseDirectory, "Plugins"));
+
 		if (!ResourceManager.Initialize())
 		{
 			return false;

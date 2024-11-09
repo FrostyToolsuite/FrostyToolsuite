@@ -35,5 +35,7 @@ public enum ProfileVersion
     Fifa23 = 20220930,
     NeedForSpeedUnbound = 20221202,
     DeadSpace = 20230127,
-    DragonAgeVeilguard = 20230127
+    Madden24 = 20230818,
+    Madden25 = 20240816,
+    DragonAgeVeilguard = 20241031
 }

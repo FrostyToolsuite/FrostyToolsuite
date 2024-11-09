@@ -266,19 +266,12 @@ internal static partial class Program
 		if (inConvert)
 		{
 			EbxAsset asset = AssetManager.GetEbxAsset(inEntry);
-            // TODO: create plugin system
-			if (TypeLibrary.IsSubClassOf(inEntry.Type, "TextureBaseAsset"))
-			{
-				Texture texture = AssetManager.GetResAs<Texture>(AssetManager.GetResAssetEntry(asset.RootObject.GetProperty<ResourceRef>("Resource"))!);
-                if (!texture.SaveDds(inPath + ".dds"))
-                {
-                    FrostyLogger.Logger?.LogError("Failed to export Texture");
-                }
-			}
-			else if (TypeLibrary.IsSubClassOf(inEntry.Type, "MeshAsset"))
-			{
-				//MeshExporter.Export(ebxAsset, inPath + ".glb");
-			}
+
+            if (PluginManager.EbxExportDelegates.TryGetValue(inEntry.Type, out ExportEbxDelegate? export))
+            {
+                export(asset, inPath);
+            }
+
 			using DbxWriter dbxWriter = new(fileInfo.FullName + ".dbx");
 			dbxWriter.Write(asset);
 			return;
