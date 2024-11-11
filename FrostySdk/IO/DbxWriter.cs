@@ -220,7 +220,7 @@ public sealed class DbxWriter : IDisposable
                 WriteStruct(fieldName!, obj, objType, isArrayItem);
                 break;
             case TypeEnum.FileRef:
-                WriteFieldWithValue(fieldName!, GetFieldValue<string>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName!, GetFieldValue<FileRef>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.TypeRef:
                 WriteTypeRef(fieldName!, GetFieldValue<TypeRef>(obj));
