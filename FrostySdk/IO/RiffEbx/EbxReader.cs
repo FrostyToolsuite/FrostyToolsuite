@@ -150,11 +150,12 @@ public class EbxReader : BaseEbxReader
         }
 
         Type objType = obj.GetType();
+        PropertyInfo[] properties = objType.GetProperties();
 
         for (int i = 0; i < inTypeDescriptor.FieldCount; i++)
         {
             EbxFieldDescriptor fieldDescriptor = m_typeResolver.ResolveField(inTypeDescriptor.FieldIndex + i);
-            PropertyInfo? propertyInfo = objType.GetProperties().FirstOrDefault(prop =>
+            PropertyInfo? propertyInfo = properties.FirstOrDefault(prop =>
                 prop.GetCustomAttribute<NameHashAttribute>()?.Hash == fieldDescriptor.NameHash);
 
             m_stream.Position = inStartOffset + fieldDescriptor.DataOffset;
@@ -163,7 +164,7 @@ public class EbxReader : BaseEbxReader
 
             if (fieldDescriptor.Flags.GetCategoryEnum() == TypeFlags.CategoryEnum.Array)
             {
-                ReadArray(type, fieldDescriptor.TypeDescriptorRef, value =>
+                ReadArray(fieldDescriptor, value =>
                 {
                     if (value is null)
                     {
@@ -197,9 +198,15 @@ public class EbxReader : BaseEbxReader
                         ReadType(m_typeResolver.ResolveTypeFromField(fieldDescriptor.TypeDescriptorRef), obj, inStartOffset);
                         break;
                     default:
-                        ReadField(type, fieldDescriptor.TypeDescriptorRef, value =>
+                        ReadField(fieldDescriptor, value =>
                         {
-                            if (value is null)
+                            if (typeof(IDelegate).IsAssignableFrom(propertyInfo?.PropertyType))
+                            {
+                                IDelegate @delegate = (IDelegate)Activator.CreateInstance(propertyInfo.PropertyType)!;
+                                @delegate.FunctionType = (Type?)value;
+                                value = @delegate;
+                            }
+                            else if (value is null)
                             {
                                 Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
                                 return;
@@ -210,13 +217,6 @@ public class EbxReader : BaseEbxReader
                                 IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType)!;
                                 primitive.FromActualType(value);
                                 value = primitive;
-                            }
-
-                            if (typeof(IDelegate).IsAssignableFrom(propertyInfo?.PropertyType))
-                            {
-                                IDelegate @delegate = (IDelegate)Activator.CreateInstance(propertyInfo.PropertyType)!;
-                                @delegate.FunctionType = (Type)value;
-                                value = @delegate;
                             }
                             propertyInfo?.SetValue(obj, value);
                         });
@@ -229,7 +229,7 @@ public class EbxReader : BaseEbxReader
         m_stream.Position = inStartOffset + inTypeDescriptor.Size;
     }
 
-    private void ReadField(TypeFlags.TypeEnum inType, Action<object?> inAddFunc)
+    private void SharedReadField(TypeFlags.TypeEnum inType, Action<object?> inAddFunc)
     {
         switch (inType)
         {
@@ -308,24 +308,24 @@ public class EbxReader : BaseEbxReader
         }
     }
 
-    private void ReadField(TypeFlags.TypeEnum inType, ushort inTypeDescriptorRef, Action<object?> inAddFunc)
+    private void ReadField(EbxFieldDescriptor inFieldDescriptor, Action<object?> inAddFunc)
     {
-        switch (inType)
+        switch (inFieldDescriptor.Flags.GetTypeEnum())
         {
             case TypeFlags.TypeEnum.Struct:
-                EbxTypeDescriptor structType = m_typeResolver.ResolveTypeFromField(inTypeDescriptorRef);
+                EbxTypeDescriptor structType = m_typeResolver.ResolveTypeFromField(inFieldDescriptor.TypeDescriptorRef);
                 m_stream.Pad(structType.Alignment);
                 object? obj = TypeLibrary.CreateObject(structType.NameHash);
                 ReadType(structType, obj, m_stream.Position);
                 inAddFunc(obj);
                 break;
             default:
-                ReadField(inType, inAddFunc);
+                SharedReadField(inFieldDescriptor.Flags.GetTypeEnum(), inAddFunc);
                 break;
         }
     }
 
-    private void ReadField(TypeFlags.TypeEnum inType,
+    private void ReadBoxedField(TypeFlags.TypeEnum inType,
         int inTypeDescriptorRef, Action<object?> inAddFunc)
     {
         switch (inType)
@@ -338,12 +338,12 @@ public class EbxReader : BaseEbxReader
                 inAddFunc(obj);
                 break;
             default:
-                ReadField(inType, inAddFunc);
+                SharedReadField(inType, inAddFunc);
                 break;
         }
     }
 
-    private void ReadArray(TypeFlags.TypeEnum inType, ushort inTypeDescriptorRef,
+    private void ReadArray(EbxFieldDescriptor inFieldDescriptor,
         Action<object?> inAddFunc)
     {
         int offset = m_stream.ReadInt32();
@@ -356,13 +356,13 @@ public class EbxReader : BaseEbxReader
 
         for (int i = 0; i < count; i++)
         {
-            ReadField(inType, inTypeDescriptorRef, inAddFunc);
+            ReadField(inFieldDescriptor, inAddFunc);
         }
 
         m_stream.Position = arrayPos;
     }
 
-    private void ReadArray(TypeFlags.TypeEnum inType, int inTypeDescriptorRef,
+    private void ReadBoxedArray(TypeFlags.TypeEnum inType, int inTypeDescriptorRef,
         Action<object?> inAddFunc)
     {
         int offset = m_stream.ReadInt32();
@@ -375,7 +375,7 @@ public class EbxReader : BaseEbxReader
 
         for (int i = 0; i < count; i++)
         {
-            ReadField(inType, inTypeDescriptorRef, inAddFunc);
+            ReadBoxedField(inType, inTypeDescriptorRef, inAddFunc);
         }
 
         m_stream.Position = arrayPos;
@@ -502,7 +502,7 @@ public class EbxReader : BaseEbxReader
         if (category == TypeFlags.CategoryEnum.Array)
         {
             value = Activator.CreateInstance(fieldType)!;
-            ReadArray(type, (int)b.TypeDescriptorRef, obj =>
+            ReadBoxedArray(type, b.TypeDescriptorRef, obj =>
             {
                 if (obj is null)
                 {
@@ -524,13 +524,13 @@ public class EbxReader : BaseEbxReader
             switch (type)
             {
                 case TypeFlags.TypeEnum.Enum:
-                    ReadField(type, typeRef, obj =>
+                    ReadBoxedField(type, typeRef, obj =>
                     {
                         value = Enum.Parse(fieldType, obj!.ToString()!);
                     });
                     break;
                 default:
-                    ReadField(type, typeRef, obj =>
+                    ReadBoxedField(type, typeRef, obj =>
                     {
                         if (obj is null)
                         {
@@ -555,7 +555,7 @@ public class EbxReader : BaseEbxReader
         return new BoxedValueRef(value, type);
     }
 
-    private Type? GetTypeFromEbxField(TypeFlags inFlags, int inTypeDescriptorRef)
+    private Type GetTypeFromEbxField(TypeFlags inFlags, int inTypeDescriptorRef)
     {
         Type type;
         switch (inFlags.GetTypeEnum())
