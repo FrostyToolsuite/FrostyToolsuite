@@ -2,25 +2,30 @@
 
 namespace Frosty.Sdk.Managers.Infos;
 
-public readonly struct CasFileIdentifier : IEquatable<CasFileIdentifier>
+public readonly struct CasFileIdentifier : IEquatable<CasFileIdentifier>, IComparable<CasFileIdentifier>
 {
     public bool IsPatch { get; }
-    public int InstallChunkIndex { get; }
+    public uint InstallChunkIndex { get; }
     public int CasIndex { get; }
 
     public static CasFileIdentifier FromFileIdentifier(uint file)
     {
-        return new CasFileIdentifier(((file >> 16) & 0xFF) != 0, (int)((file >> 8) & 0xFF), (int)(file & 0xFF));
+        return new CasFileIdentifier(((file >> 16) & 0xFF) != 0, (file >> 8) & 0xFF, (int)(file & 0xFF));
     }
 
     public static CasFileIdentifier FromFileIdentifier(uint file1, uint file2)
     {
-        return new CasFileIdentifier(((file1 >> 16) & 0xFF) != 0, (int)(((file1 << 16) & 0xFFFF0000) | ((file2 >> 16) & 0xFFFF)), (int)(file2 & 0xFFFF));
+        return new CasFileIdentifier(((file1 >> 16) & 0xFF) != 0, ((file1 << 16) & 0xFFFF0000) | ((file2 >> 16) & 0xFFFF), (int)(file2 & 0xFFFF));
+    }
+
+    public static CasFileIdentifier FromFileIdentifier(ulong file)
+    {
+        return new CasFileIdentifier(((file >> 48) & 0xFF) != 0, (uint)((file >> 16) & 0xFFFFFFFF), (int)(file & 0xFFFF));
     }
 
     public static CasFileIdentifier FromManifestFileIdentifier(uint file)
     {
-        return new CasFileIdentifier(((file >> 8) & 0xF) != 0, (int)(file >> 12), (int)(file & 0xFF) + 1);
+        return new CasFileIdentifier(((file >> 8) & 0xF) != 0, (uint)(file >> 12), (int)(file & 0xFF) + 1);
     }
 
     public static uint ToFileIdentifier(CasFileIdentifier file)
@@ -38,7 +43,7 @@ public readonly struct CasFileIdentifier : IEquatable<CasFileIdentifier>
         return (uint)((file.IsPatch ? 1 << 8 : 0) | (file.InstallChunkIndex << 12) | (file.CasIndex - 1));
     }
 
-    public CasFileIdentifier(bool inIsPatch, int inInstallChunkIndex, int inCasIndex)
+    public CasFileIdentifier(bool inIsPatch, uint inInstallChunkIndex, int inCasIndex)
     {
         IsPatch = inIsPatch;
         InstallChunkIndex = inInstallChunkIndex;
@@ -51,6 +56,21 @@ public readonly struct CasFileIdentifier : IEquatable<CasFileIdentifier>
     public bool Equals(CasFileIdentifier b)
     {
         return IsPatch == b.IsPatch && InstallChunkIndex == b.InstallChunkIndex && CasIndex == b.CasIndex;
+    }
+
+    public int CompareTo(CasFileIdentifier other)
+    {
+        if (IsPatch != other.IsPatch)
+        {
+            return IsPatch.CompareTo(other.IsPatch);
+        }
+
+        if (InstallChunkIndex != other.InstallChunkIndex)
+        {
+            return InstallChunkIndex.CompareTo(other.InstallChunkIndex);
+        }
+
+        return CasIndex.CompareTo(other.CasIndex);
     }
 
     public override bool Equals(object? obj)

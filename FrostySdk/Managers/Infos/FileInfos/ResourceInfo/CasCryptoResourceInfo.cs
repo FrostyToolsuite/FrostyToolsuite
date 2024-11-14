@@ -14,7 +14,7 @@ public class CasCryptoResourceInfo : CasResourceInfo
         m_keyId = inKeyId;
     }
 
-    public CasCryptoResourceInfo(bool inIsPatch, int inInstallChunkIndex, int inCasIndex, uint inOffset, uint inSize, uint inLogicalOffset, string inKeyId)
+    public CasCryptoResourceInfo(bool inIsPatch, uint inInstallChunkIndex, int inCasIndex, uint inOffset, uint inSize, uint inLogicalOffset, string inKeyId)
         : base(inIsPatch, inInstallChunkIndex, inCasIndex, inOffset, inSize, inLogicalOffset)
     {
         m_keyId = inKeyId;

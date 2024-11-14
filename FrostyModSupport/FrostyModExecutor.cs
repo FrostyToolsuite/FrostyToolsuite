@@ -12,6 +12,8 @@ using Frosty.ModSupport.Mod.Resources;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
 using Frosty.Sdk;
+using Frosty.Sdk.DbObjectElements;
+using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
@@ -169,6 +171,47 @@ public partial class FrostyModExecutor
             foreach (InstallChunkWriter writer in m_installChunkWriters.Values)
             {
                 writer.WriteCatalog();
+            }
+        }
+
+        if (FileSystemManager.BundleFormat == BundleFormat.Manifest2019)
+        {
+            DbObjectDict layout = DbObject.Deserialize(Path.Combine(m_gamePatchPath, "layout.toc"))!.AsDict();
+            byte[]? layeredInstallChunkFiles = layout.AsBlob("layeredInstallChunkFiles");
+            if (layeredInstallChunkFiles is not null)
+            {
+                List<CasFileIdentifier> final;
+                using (DataStream stream = new(new MemoryStream(layeredInstallChunkFiles)))
+                {
+                    final = new List<CasFileIdentifier>((int)(stream.Length / 8));
+                    for (int i = 0; i < stream.Length / 8; i++)
+                    {
+                        final.Add(CasFileIdentifier.FromFileIdentifier(stream.ReadUInt64()));
+                    }
+                }
+
+                foreach (InstallChunkWriter writer in m_installChunkWriters.Values)
+                {
+                    foreach (CasFileIdentifier file in writer.GetFiles())
+                    {
+                        final.Add(file);
+                    }
+                }
+
+                final.Sort();
+
+                using Block<byte> data = new(final.Count * 8);
+                using (BlockStream stream = new(data, true))
+                {
+                    foreach (CasFileIdentifier file in final)
+                    {
+                        stream.WriteUInt64(CasFileIdentifier.ToFileIdentifierLong(file));
+                    }
+                }
+
+                layout.Set("layeredInstallChunkFiles", data.ToArray());
+
+                DbObject.Serialize(Path.Combine(m_modDataPath, "layout.toc"), layout);
             }
         }
 

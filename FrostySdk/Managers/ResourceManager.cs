@@ -168,7 +168,7 @@ public static class ResourceManager
             return;
         }
 
-        int installChunkIndex = FileSystemManager.GetInstallChunkIndex(info);
+        uint installChunkIndex = FileSystemManager.GetInstallChunkIndex(info);
         bool patch = inSource.Path == FileSystemSource.Patch.Path;
 
         using (CatStream stream = new(filePath))

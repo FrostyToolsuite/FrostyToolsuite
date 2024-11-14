@@ -107,9 +107,10 @@ public class DbObjectDict : DbObject
         return m_items.TryGetValue(name, out DbObject? item) ? item.AsSha1() : defaultValue;
     }
 
-    public byte[] AsBlob(string name, byte[]? defaultValue = default)
+    [return: NotNullIfNotNull(nameof(defaultValue))]
+    public byte[]? AsBlob(string name, byte[]? defaultValue = default)
     {
-        return m_items.TryGetValue(name, out DbObject? item) ? item.AsBlob() : defaultValue ?? Array.Empty<byte>();
+        return m_items.TryGetValue(name, out DbObject? item) ? item.AsBlob() : defaultValue;
     }
 
     public bool ContainsKey(string name) => m_items.ContainsKey(name);

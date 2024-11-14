@@ -16,7 +16,7 @@ public class InstallChunkWriter : IDisposable
     private const int c_maxCasFileSize = 1073741824;
 
     private readonly InstallChunkInfo m_installChunk;
-    private readonly int m_installChunkIndex;
+    private readonly uint m_installChunkIndex;
     private int m_casIndex;
     private readonly bool m_isPatch;
     private readonly string m_dir;
@@ -164,6 +164,16 @@ public class InstallChunkWriter : IDisposable
             }
             stream.Write(catalog);
         }
+    }
+
+    public List<CasFileIdentifier> GetFiles()
+    {
+        List<CasFileIdentifier> retVal = new(m_data.Values.Count);
+        foreach ((CasFileIdentifier, uint, uint) value in m_data.Values)
+        {
+            retVal.Add(value.Item1);
+        }
+        return retVal;
     }
 
     private DataStream GetCurrentWriter(int size)

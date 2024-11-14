@@ -323,7 +323,7 @@ public static class BinaryBundle
                 stream.WriteNullTerminatedString(pair.Key);
             }
 
-            while (((stream.Position + 0x24) & 15) != 0)
+            while (((stream.Position - 0x24) & 15) != 0)
             {
                 stream.WriteByte(0);
             }
