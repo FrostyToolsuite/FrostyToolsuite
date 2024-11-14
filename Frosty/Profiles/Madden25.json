@@ -7,10 +7,11 @@
   "FrostbiteVersion": "2023.1.1",
   "EbxVersion": 6,
   "RequiresInitFsKey": true,
+  "HasAntiCheat": true,
   "EbxCompression": 15,
   "ResCompression": 15,
   "ChunkCompression": 15,
   "TextureChunkCompression": 15,
-  "MaxBufferSize": 262144,
+  "MaxBufferSize": 65536,
   "ZStdCompressionLevel": 16
 }

@@ -1,9 +1,9 @@
 {
-  "Name": "FC24",
-  "DisplayName": "FC™ 24",
-  "InternalName": "fifa24",
+  "Name": "FC25",
+  "DisplayName": "FC™ 25",
+  "InternalName": "fifa25",
   "TypeInfoSignature": "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10",
-  "DataVersion": 20230929,
+  "DataVersion": 20240927,
   "FrostbiteVersion": "2022.2.1",
   "EbxVersion": 6,
   "RequiresInitFsKey": true,

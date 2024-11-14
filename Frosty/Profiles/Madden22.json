@@ -11,6 +11,6 @@
   "ResCompression": 15,
   "ChunkCompression": 15,
   "TextureChunkCompression": 15,
-  "MaxBufferSize": 262144,
+  "MaxBufferSize": 65536,
   "ZStdCompressionLevel": 16
 }
