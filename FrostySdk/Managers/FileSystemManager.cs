@@ -32,8 +32,8 @@ public static class FileSystemManager
     public static InstallChunkInfo? DefaultInstallChunk;
 
     private static readonly Dictionary<string, SuperBundleInfo> s_superBundleMapping = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly Dictionary<int, int> s_persistentIndexMapping = new();
-    private static readonly Dictionary<int, int> s_reversePersistentIndexMapping = new();
+    private static readonly Dictionary<uint, int> s_persistentIndexMapping = new();
+    private static readonly Dictionary<int, uint> s_reversePersistentIndexMapping = new();
     private static readonly Dictionary<Guid, int> s_idMapping = new();
     private static readonly List<InstallChunkInfo> s_installChunks = new();
     private static readonly Dictionary<int, SuperBundleInstallChunk> s_sbIcMapping = new();
@@ -230,7 +230,7 @@ public static class FileSystemManager
         }
     }
 
-    public static InstallChunkInfo GetInstallChunkInfo(int index)
+    public static InstallChunkInfo GetInstallChunkInfo(uint index)
     {
         return s_installChunks[s_persistentIndexMapping[index]];
     }
@@ -240,7 +240,7 @@ public static class FileSystemManager
         return s_installChunks[s_idMapping[id]];
     }
 
-    public static int GetInstallChunkIndex(InstallChunkInfo info)
+    public static uint GetInstallChunkIndex(InstallChunkInfo info)
     {
         return s_reversePersistentIndexMapping[s_idMapping[info.Id]];
     }
@@ -488,7 +488,7 @@ public static class FileSystemManager
                     DefaultInstallChunk ??= ic;
                 }
 
-                int index = installChunk.AsDict().AsInt("persistentIndex", s_installChunks.Count);
+                uint index = installChunk.AsDict().AsUInt("persistentIndex", (uint)s_installChunks.Count);
                 s_persistentIndexMapping.Add(index, s_installChunks.Count);
                 s_reversePersistentIndexMapping.Add(s_installChunks.Count, index);
                 s_idMapping.Add(ic.Id, s_installChunks.Count);

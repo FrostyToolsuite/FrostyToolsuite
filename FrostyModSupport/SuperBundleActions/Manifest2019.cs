@@ -191,7 +191,7 @@ internal class Manifest2019 : IDisposable
                 stream.WriteInt64(bundle.Item3, Endian.Big);
             }
 
-            stream.Pad(8);
+            stream.Pad(4);
             uint chunkHashMapOffset = (uint)stream.Position;
 
             hashMap = HashMap.CreateHashMap(ref chunks, (chunk, count, initial) =>
@@ -266,6 +266,7 @@ internal class Manifest2019 : IDisposable
 
             if (bundleLoadFlag == 1)
             {
+                stream.Pad(4);
                 long sbOffset = stream.Position;
                 stream.Write(modifiedSuperBundle);
 
@@ -379,6 +380,7 @@ internal class Manifest2019 : IDisposable
                     bundleLoadFlag = (byte)(bundleSize >> 30);
                     bundleSize &= 0x3FFFFFFFU;
 
+                    inModifiedStream.Pad(4);
                     long newOffset = inModifiedStream.Position;
                     uint newBundleSize;
 
@@ -408,7 +410,6 @@ internal class Manifest2019 : IDisposable
                             default:
                                 throw new UnknownValueException<byte>("bundle load flag", bundleLoadFlag);
                         }
-                        inModifiedStream.Pad(4);
                     }
                     else
                     {
@@ -433,7 +434,6 @@ internal class Manifest2019 : IDisposable
 
                         Block<byte> data = WriteModifiedBundle(bundle, inInstallChunkWriter);
                         inModifiedStream.Write(data);
-                        inModifiedStream.Pad(4);
                         newBundleSize = (uint)data.Size;
                         data.Dispose();
 

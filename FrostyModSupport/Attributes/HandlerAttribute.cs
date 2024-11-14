@@ -10,4 +10,9 @@ public class HandlerAttribute : Attribute
     {
         Hash = inHash;
     }
+
+    public HandlerAttribute(string inName)
+    {
+        Hash = Sdk.Utils.Utils.HashString(inName, true);
+    }
 }
