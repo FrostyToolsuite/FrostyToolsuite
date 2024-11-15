@@ -6,7 +6,7 @@ public struct TypeFlags
 {
     public enum TypeEnum
     {
-        Inherited = 0x00,
+        Void = 0x00,
         DbObject = 0x01,
         Struct = 0x02,
         Class = 0x03,

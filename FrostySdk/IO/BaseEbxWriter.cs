@@ -37,12 +37,12 @@ public abstract class BaseEbxWriter
     protected HashSet<EbxImportReference> m_imports = new();
     protected Dictionary<EbxImportReference, int> m_importOrderFw = new();
 
-    protected Block<byte>? m_arrayData;
-    protected DataStream? m_arrayWriter;
-    protected Block<byte>? m_boxedValueData;
-    protected DataStream? m_boxedValueWriter;
+    protected List<Block<byte>> m_arrayData = new();
+    protected List<Block<byte>> m_boxedValueData = new();
 
     protected bool m_useSharedTypeDescriptors;
+
+    protected HashSet<object> m_processedObjects = new();
 
     protected BaseEbxWriter(DataStream inStream)
     {
@@ -59,8 +59,10 @@ public abstract class BaseEbxWriter
     {
         List<object> exportedObjs = new(inAsset.objects.Count);
         List<object> otherObjs = new(inAsset.objects.Count);
+        List<object> rootObjects = new(1);
 
-        foreach (dynamic obj in inAsset.Objects)
+        int i = 0;
+        foreach (dynamic obj in inAsset.objects)
         {
             AssetClassGuid guid = obj.GetInstanceGuid();
             if (guid.IsExported)
@@ -70,6 +72,11 @@ public abstract class BaseEbxWriter
             else
             {
                 otherObjs.Add(obj);
+            }
+
+            if (i++ != 0 && inAsset.refCounts[i - 1] == 0)
+            {
+                rootObjects.Add(obj);
             }
         }
 
@@ -91,10 +98,13 @@ public abstract class BaseEbxWriter
             return idA.CompareTo(idB);
         });
 
-        otherObjs.Sort((a, b) =>
+        rootObjects.Sort((dynamic a, dynamic b) =>
         {
-            byte[] bA = a.GetType().GetGuid().ToByteArray();
-            byte[] bB = b.GetType().GetGuid().ToByteArray();
+            AssetClassGuid guidA = a.GetInstanceGuid();
+            AssetClassGuid guidB = b.GetInstanceGuid();
+
+            byte[] bA = guidA.ExportedGuid.ToByteArray();
+            byte[] bB = guidB.ExportedGuid.ToByteArray();
 
             uint idA = (uint)(bA[0] << 24 | bA[1] << 16 | bA[2] << 8 | bA[3]);
             uint idB = (uint)(bB[0] << 24 | bB[1] << 16 | bB[2] << 8 | bB[3]);
@@ -102,12 +112,17 @@ public abstract class BaseEbxWriter
             return idA.CompareTo(idB);
         });
 
+        otherObjs.Sort(CompareObjects);
+
         m_objsSorted.Add(root);
         m_objsSorted.AddRange(exportedObjs);
         m_objsSorted.AddRange(otherObjs);
-        foreach (object ebxObj in m_objsSorted)
+
+        rootObjects.Insert(0, root);
+
+        foreach (object ebxObj in rootObjects)
         {
-            ExtractType(ebxObj.GetType(), ebxObj);
+            ProcessType(ebxObj.GetType(), ebxObj);
         }
 
         GenerateImportOrder();
@@ -116,115 +131,102 @@ public abstract class BaseEbxWriter
 
     protected abstract void InternalWriteEbx(Guid inPartitionGuid, int inExportedInstanceCount);
 
-    protected void ExtractType(Type type, object obj, bool add = true)
+    protected abstract int CompareObjects(object inA, object inB);
+
+    protected abstract int AddType(Type inType);
+
+    protected void ProcessType(Type inType, object inObj)
     {
-        if (typeof(IPrimitive).IsAssignableFrom(type))
+        // make sure we dont add the same type multiple times
+        bool addType = FindExistingType(inType) == -1;
+        if (!m_processedObjects.Add(inObj))
         {
-            // ignore primitive types
             return;
         }
 
-        if (typeof(IDelegate).IsAssignableFrom(type))
+        if (inType == s_pointerType)
         {
-            IDelegate @delegate = (IDelegate)obj;
-
-            if (@delegate.FunctionType is not null && m_typesToProcessSet.Add(@delegate.FunctionType.GetHashCode()))
-            {
-                m_typesToProcess.Add(@delegate.FunctionType);
-            }
-        }
-
-        if (type == s_pointerType)
-        {
-            PointerRef value = (PointerRef)obj;
+            PointerRef value = (PointerRef)inObj;
 
             if (value.Type == PointerRefType.External)
             {
                 m_imports.Add(value.External);
             }
-        }
-
-        // arrays (stored as ObservableCollections in the sdk)
-        else if (type.Name.Equals(s_collectionName))
-        {
-            IList list = (IList)obj;
-
-            foreach (object o in list)
+            else if (value.Type == PointerRefType.Internal && value.Internal is not null)
             {
-                ExtractType(o.GetType(), o);
+                ProcessType(value.Internal.GetType(), value.Internal);
             }
         }
-
-        // type refs
-        else if (type == s_typeRefType)
+        else if (inType == s_boxedValueRefType)
         {
-            TypeRef typeRef = (TypeRef)((IPrimitive)obj).ToActualType();
-
-            if (typeRef.Type is not null && m_typesToProcessSet.Add(typeRef.Type.GetHashCode()))
-            {
-                m_typesToProcess.Add(typeRef.Type);
-            }
-        }
-
-        // boxed value refs
-        else if (type == s_boxedValueRefType)
-        {
-            BoxedValueRef boxedValueRef = (BoxedValueRef)((IPrimitive)obj).ToActualType();
+            BoxedValueRef boxedValueRef = (BoxedValueRef)((IPrimitive)inObj).ToActualType();
 
             if (boxedValueRef.Value is not null)
             {
-                ExtractType(boxedValueRef.Value!.GetType(), boxedValueRef.Value);
+                ProcessType(boxedValueRef.Value!.GetType(), boxedValueRef.Value);
             }
         }
-
-        // structs
-        else if (type.IsValueType)
+        else if (inType.IsAssignableTo(typeof(IPrimitive)))
         {
-            if (add && m_typesToProcessSet.Add(type.GetHashCode()))
+            // skip other primitive types
+        }
+        else if (inType.IsEnum)
+        {
+            if (addType)
             {
-                m_typesToProcess.Add(type);
+                AddType(inType);
+            }
+        }
+        else if (inType.Name.Equals(s_collectionName))
+        {
+            IList list = (IList)inObj;
+
+            foreach (object o in list)
+            {
+                ProcessType(o.GetType(), o);
             }
 
-            PropertyInfo[] ebxObjFields = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-
-            for (int i = ebxObjFields.Length - 1; i >= 0 ; i--)
+            if (addType)
             {
-                PropertyInfo ebxField = ebxObjFields[i];
-                if (ebxField.GetCustomAttribute<IsTransientAttribute>() is not null)
+                AddType(inType);
+            }
+        }
+        else if (inType.IsClass)
+        {
+            if (addType)
+            {
+                AddType(inType);
+            }
+
+            PropertyInfo[] allProps = inType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (PropertyInfo pi in allProps)
+            {
+                // ignore transients if saving to project
+                if (pi.GetCustomAttribute<IsTransientAttribute>() is not null)
                 {
-                    // transient field, do not write
                     continue;
                 }
 
-                ExtractType(ebxField.PropertyType, ebxField.GetValue(obj)!, !m_useSharedTypeDescriptors);
+                ProcessType(pi.PropertyType, pi.GetValue(inObj)!);
             }
         }
-
-        // class
-        else if (type.IsClass)
+        else if (inType.IsValueType)
         {
-            if (add && m_typesToProcessSet.Add(type.GetHashCode()))
+            if (addType)
             {
-                m_typesToProcess.Add(type);
+                AddType(inType);
             }
 
-            PropertyInfo[] ebxObjFields = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-
-            for (int i = ebxObjFields.Length - 1; i >= 0 ; i--)
+            PropertyInfo[] allProps = inType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            foreach (PropertyInfo pi in allProps)
             {
-                PropertyInfo ebxField = ebxObjFields[i];
-                if (ebxField.GetCustomAttribute<IsTransientAttribute>() is not null)
+                // ignore transients if saving to project
+                if (pi.GetCustomAttribute<IsTransientAttribute>() is not null)
                 {
-                    // transient field, do not write
                     continue;
                 }
 
-                ExtractType(ebxField.PropertyType, ebxField.GetValue(obj)!, !m_useSharedTypeDescriptors);
-            }
-
-            if (type.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
-            {
-                ExtractType(type.BaseType!, obj, false);
+                ProcessType(pi.PropertyType, pi.GetValue(inObj)!);
             }
         }
     }
@@ -265,24 +267,7 @@ public abstract class BaseEbxWriter
 
     protected int FindExistingType(Type inType)
     {
-        uint hash;
-        if (inType.Name.Equals(s_collectionName))
-        {
-            Type elementType = inType.GenericTypeArguments[0].Name == "PointerRef" ? s_dataContainerType : inType.GenericTypeArguments[0];
-
-            string name = elementType.GetCustomAttribute<ArrayNameAttribute>()?.Name ??
-                          $"{elementType.GetName()}-Array";
-            hash = m_useSharedTypeDescriptors
-                ? inType.GetCustomAttribute<ArrayHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
-                : (uint)Utils.Utils.HashString(name);
-        }
-        else
-        {
-            string name = inType.GetName();
-            hash = m_useSharedTypeDescriptors
-                ? inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
-                : (uint)Utils.Utils.HashString(name);
-        }
+        uint hash = m_useSharedTypeDescriptors ? inType.GetNameHash() : (uint)Utils.Utils.HashString(inType.GetName());
 
         return m_typeToDescriptor.GetValueOrDefault(hash, -1);
     }

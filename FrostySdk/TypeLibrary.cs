@@ -154,7 +154,7 @@ public static class TypeLibrary
         {
             Type elementType = (type as Type)!.GenericTypeArguments[0].Name == "PointerRef" ? GetType("DataContainer")! : (type as Type)!.GenericTypeArguments[0];
 
-            return (elementType.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name) + "-Array";
+            return elementType.GetCustomAttribute<ArrayNameAttribute>()?.Name ?? type.Name + "-Array";
         }
         return type.GetCustomAttribute<DisplayNameAttribute>()?.Name ?? type.Name;
     }
@@ -165,7 +165,7 @@ public static class TypeLibrary
         {
             Type elementType = (type as Type)!.GenericTypeArguments[0].Name == "PointerRef" ? GetType("DataContainer")! : (type as Type)!.GenericTypeArguments[0];
 
-            return elementType.GetCustomAttribute<GuidAttribute>()?.Guid ??  Guid.Empty;
+            return elementType.GetCustomAttribute<ArrayGuidAttribute>()?.Guid ??  Guid.Empty;
         }
         return type.GetCustomAttribute<GuidAttribute>()?.Guid ?? Guid.Empty;
     }
