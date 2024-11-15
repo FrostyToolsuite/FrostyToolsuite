@@ -121,18 +121,17 @@ public class EbxReader : BaseEbxReader
                     {
                         if (value is null)
                         {
-                            Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
                             return;
                         }
 
-                        if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType.GenericTypeArguments[0]))
+                        if (typeof(IPrimitive).IsAssignableFrom(propertyInfo.PropertyType.GenericTypeArguments[0]))
                         {
                             IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType.GenericTypeArguments[0])!;
                             primitive.FromActualType(value);
                             value = primitive;
                         }
 
-                        IList? list = (IList?)propertyInfo?.GetValue(obj);
+                        IList? list = (IList?)propertyInfo.GetValue(obj);
                         list?.Add(value);
                     });
                     break;
@@ -146,17 +145,16 @@ public class EbxReader : BaseEbxReader
                     {
                         if (value is null)
                         {
-                            Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
                             return;
                         }
 
-                        if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType))
+                        if (typeof(IPrimitive).IsAssignableFrom(propertyInfo.PropertyType))
                         {
                             IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType)!;
                             primitive.FromActualType(value);
                             value = primitive;
                         }
-                        propertyInfo?.SetValue(obj, value);
+                        propertyInfo.SetValue(obj, value);
                     });
                     break;
             }
