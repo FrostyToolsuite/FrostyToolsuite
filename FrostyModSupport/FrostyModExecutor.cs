@@ -178,7 +178,7 @@ public partial class FrostyModExecutor
         {
             DbObjectDict layout = DbObject.Deserialize(Path.Combine(m_gamePatchPath, "layout.toc"))!.AsDict();
             byte[]? layeredInstallChunkFiles = layout.AsBlob("layeredInstallChunkFiles");
-            if (layeredInstallChunkFiles is not null)
+            if (layeredInstallChunkFiles is not null && m_installChunkWriters.Count > 0)
             {
                 List<CasFileIdentifier> final;
                 using (DataStream stream = new(new MemoryStream(layeredInstallChunkFiles)))
@@ -211,7 +211,11 @@ public partial class FrostyModExecutor
 
                 layout.Set("layeredInstallChunkFiles", data.ToArray());
 
-                DbObject.Serialize(Path.Combine(m_modDataPath, "layout.toc"), layout);
+                using (DataStream stream = new(File.Create(Path.Combine(m_modDataPath, "layout.toc"))))
+                {
+                    ObfuscationHeader.Write(stream);
+                    DbObject.Serialize(stream, layout);
+                }
             }
         }
 

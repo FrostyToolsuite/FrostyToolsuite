@@ -11,7 +11,7 @@ internal class PrimitiveInfoData : TypeInfoData
     {
         switch (m_flags.GetTypeEnum())
         {
-            case TypeFlags.TypeEnum.Inherited:
+            case TypeFlags.TypeEnum.Void:
                 break;
             case TypeFlags.TypeEnum.String:
                 break;
@@ -81,7 +81,7 @@ internal class PrimitiveInfoData : TypeInfoData
 
         switch (m_flags.GetTypeEnum())
         {
-            case TypeFlags.TypeEnum.Inherited:
+            case TypeFlags.TypeEnum.Void:
                 sb.AppendLine($$"""
                         public struct {{m_name}}
                         {

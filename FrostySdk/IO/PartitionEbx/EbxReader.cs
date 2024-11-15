@@ -107,11 +107,16 @@ public class EbxReader : BaseEbxReader
             TypeFlags.TypeEnum type = fieldDescriptor.Flags.GetTypeEnum();
             switch (type)
             {
-                case TypeFlags.TypeEnum.Inherited:
+                case TypeFlags.TypeEnum.Void:
                     // read superclass first
                     ReadType(m_typeResolver.ResolveType(inTypeDescriptor, fieldDescriptor.TypeDescriptorRef), obj, inStartOffset);
                     break;
                 case TypeFlags.TypeEnum.Array:
+                    if (propertyInfo is null)
+                    {
+                        //FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", inTypeDescriptor.Name, fieldDescriptor.Name);
+                        continue;
+                    }
                     ReadField(inTypeDescriptor, type, fieldDescriptor.TypeDescriptorRef, value =>
                     {
                         if (value is null)
@@ -132,6 +137,11 @@ public class EbxReader : BaseEbxReader
                     });
                     break;
                 default:
+                    if (propertyInfo is null)
+                    {
+                        //FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", inTypeDescriptor.Name, fieldDescriptor.Name);
+                        continue;
+                    }
                     ReadField(inTypeDescriptor, type, fieldDescriptor.TypeDescriptorRef, value =>
                     {
                         if (value is null)
@@ -297,6 +307,11 @@ public class EbxReader : BaseEbxReader
         if (index == 0)
         {
             return new PointerRef();
+        }
+
+        if (index - 1 == 1)
+        {
+
         }
 
         m_refCounts[(int)(index - 1)]++;

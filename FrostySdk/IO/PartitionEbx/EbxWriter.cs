@@ -35,7 +35,7 @@ public class EbxWriter : BaseEbxWriter
     private ushort m_uniqueClassCount;
     private ushort m_numExports;
 
-    private EbxTypeResolver m_typeResolver;
+    private readonly EbxTypeResolver m_typeResolver;
 
     public EbxWriter(DataStream inStream)
         : base(inStream)
@@ -45,11 +45,6 @@ public class EbxWriter : BaseEbxWriter
 
     protected override void InternalWriteEbx(Guid inPartitionGuid, int inExportedInstanceCount)
     {
-        foreach (Type objTypes in m_typesToProcess)
-        {
-            ProcessType(objTypes);
-        }
-
         ProcessData();
 
         WriteHeader(inPartitionGuid);
@@ -110,15 +105,17 @@ public class EbxWriter : BaseEbxWriter
 
         m_stream.Pad(16);
 
+        long arrayPos = m_stream.Position;
         for (int i = 0; i < m_arrays.Count; i++)
         {
             m_stream.WriteUInt32(m_arrays[i].Offset);
-            m_stream.WriteUInt32(m_arrays[i].Count);
+            m_stream.WriteInt32(m_arrays[i].Count);
             m_stream.WriteInt32(m_arrays[i].TypeDescriptorRef);
         }
 
         m_stream.Pad(16);
 
+        long boxedValuesPos = m_stream.Position;
         for (int i = 0; i < m_boxedValues.Count; i++)
         {
             m_stream.WriteUInt32(m_boxedValues[i].Offset);
@@ -147,19 +144,52 @@ public class EbxWriter : BaseEbxWriter
 
         uint dataLen = (uint)(m_stream.Position - offset);
 
-        if (m_arrayData is not null)
+        if (m_arrayData.Count > 0)
         {
-            m_arrayWriter?.Dispose();
-            m_stream.Write(m_arrayData);
-            m_arrayData.Dispose();
+            offset = m_stream.Position;
+            for (int i = 0, j = 0; i < m_arrays.Count; i++)
+            {
+                EbxArray array = m_arrays[i];
+                if (array.Count > 0)
+                {
+                    // make sure the array data is padded correctly for the first item TODO: proper alignment
+                    m_stream.Position += sizeof(int);
+                    m_stream.Pad(16);
+                    m_stream.Position -= sizeof(int);
+                    m_stream.WriteInt32(array.Count);
+
+                    array.Offset = (uint)(m_stream.Position - offset);
+                    m_stream.StepIn(arrayPos + i * 12);
+                    m_stream.WriteUInt32(array.Offset);
+                    m_stream.StepOut();
+
+                    m_stream.Write(m_arrayData[j]);
+                    m_arrayData[j++].Dispose();
+                }
+            }
+            m_stream.Pad(16);
         }
 
         uint boxedValueOffset = (uint)(m_stream.Position - m_stringsLength - stringsOffset);
-        if (m_boxedValueWriter?.Length > 0)
+        if (m_boxedValues.Count > 0)
         {
-            m_boxedValueWriter.Dispose();
-            m_stream.Write(m_boxedValueData!);
-            m_boxedValueData!.Dispose();
+            for (int i = 0; i < m_boxedValues.Count; i++)
+            {
+                EbxBoxedValue boxedValue = m_boxedValues[i];
+
+                // TODO: proper alignment
+                m_stream.Pad(16);
+
+                boxedValue.Offset = (uint)(m_stream.Position - boxedValueOffset - m_stringsLength - stringsOffset);
+                m_stream.StepIn(boxedValuesPos + i * 8);
+                m_stream.WriteUInt32(boxedValue.Offset);
+                m_stream.StepOut();
+
+                m_stream.Write(m_boxedValueData[i]);
+                m_boxedValueData[i].Dispose();
+
+                m_boxedValues[i] = boxedValue;
+            }
         }
 
         m_stream.Pad(16);
@@ -186,14 +216,22 @@ public class EbxWriter : BaseEbxWriter
         m_stream.Position = stringsOffset + stringsAndDataLen;
     }
 
-    private ushort ProcessType(Type inType)
+    protected override int CompareObjects(object inA, object inB)
     {
-        int index = FindExistingType(inType);
-        if (index != -1)
+        return string.Compare(inA.GetType().GetName(), inB.GetType().GetName(), StringComparison.Ordinal);
+    }
+
+    protected override int AddType(Type inType)
+    {
+        if (m_useSharedTypeDescriptors)
         {
-            return (ushort)index;
+            m_typeDescriptors.Add(EbxSharedTypeDescriptors.GetKey(inType.GetNameHash()));
+            m_typeToDescriptor.Add(inType.GetNameHash(), m_typeDescriptors.Count - 1);
+
+            return m_typeDescriptors.Count - 1;
         }
 
+        int index;
         EbxTypeMetaAttribute? typeMeta = inType.GetCustomAttribute<EbxTypeMetaAttribute>();
 
         if (inType.IsEnum)
@@ -203,9 +241,7 @@ public class EbxWriter : BaseEbxWriter
 
             string name = inType.GetName();
 
-            uint nameHash = m_useSharedTypeDescriptors
-                ? inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
-                : (uint)Utils.Utils.HashString(name);
+            uint nameHash = (uint)Utils.Utils.HashString(name);
 
             index = AddType(name,
                 nameHash,
@@ -215,11 +251,6 @@ public class EbxWriter : BaseEbxWriter
                 typeMeta!.Flags,
                 4,
                 0);
-
-            if (m_useSharedTypeDescriptors)
-            {
-                return (ushort)index;
-            }
 
             for (int i = 0; i < enumNames.Length; i++)
             {
@@ -235,24 +266,16 @@ public class EbxWriter : BaseEbxWriter
                 ? s_dataContainerType
                 : inType.GenericTypeArguments[0];
 
-            string name = elementType.GetCustomAttribute<ArrayNameAttribute>()?.Name ??
-                          $"{elementType.GetName()}-Array";
+            string name = inType.GetName();
 
-            uint nameHash = m_useSharedTypeDescriptors
-                ? inType.GetCustomAttribute<ArrayHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
-                : (uint)Utils.Utils.HashString(name);
+            uint nameHash = (uint)Utils.Utils.HashString(name);
 
             index = AddType(name, nameHash, m_fieldDescriptors.Count, 1, 4,
                 elementType.GetCustomAttribute<EbxArrayMetaAttribute>()!.Flags, 4, 0);
 
-            if (m_useSharedTypeDescriptors)
-            {
-                return (ushort)index;
-            }
-
             ReserveFields(1);
 
-            ushort arrayClassRef = typeof(IPrimitive).IsAssignableFrom(elementType) ? (ushort)0 : ProcessType(elementType);
+            ushort arrayClassRef = (ushort)(typeof(IPrimitive).IsAssignableFrom(elementType) ? 0 : FindOrAddType(elementType));
 
             AddField("member", (uint)Utils.Utils.HashString("member"),
                 elementType.GetCustomAttribute<EbxTypeMetaAttribute>()!.Flags,
@@ -264,7 +287,7 @@ public class EbxWriter : BaseEbxWriter
             ushort superClassRef = 0;
             if (inType.BaseType!.Namespace!.StartsWith(s_ebxNamespace))
             {
-                superClassRef = ProcessType(inType.BaseType);
+                superClassRef = FindOrAddType(inType.BaseType);
                 inherited = true;
             }
 
@@ -281,20 +304,11 @@ public class EbxWriter : BaseEbxWriter
 
                 classProperties.Add(pi);
             }
-
             string name = inType.GetName();
 
-            uint nameHash = m_useSharedTypeDescriptors
-                ? inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
-                : (uint)Utils.Utils.HashString(name);
-
+            uint nameHash = (uint)Utils.Utils.HashString(name);
             index = AddType(name, nameHash, m_fieldDescriptors.Count, (byte)classProperties.Count, 4, typeMeta!.Flags,
                 8, 0);
-
-            if (m_useSharedTypeDescriptors)
-            {
-                return (ushort)index;
-            }
 
             EbxTypeDescriptor typeDesc = m_typeDescriptors[index];
 
@@ -359,26 +373,19 @@ public class EbxWriter : BaseEbxWriter
 
             string name = inType.GetName();
 
-            uint nameHash = m_useSharedTypeDescriptors
-                ? inType.GetCustomAttribute<NameHashAttribute>()?.Hash ?? (uint)Utils.Utils.HashString(name)
-                : (uint)Utils.Utils.HashString(name);
+            uint nameHash = (uint)Utils.Utils.HashString(name);
 
             index = AddType(name, nameHash, m_fieldDescriptors.Count, (byte)objProperties.Count, 1, typeMeta!.Flags, 0,
                 0);
-
-            if (m_useSharedTypeDescriptors)
-            {
-                return (ushort)index;
-            }
 
             EbxTypeDescriptor typeDesc = m_typeDescriptors[index];
 
             ReserveFields(typeDesc.GetFieldCount());
 
             int fieldIndex = 0;
-            foreach (PropertyInfo fieldProperty in objProperties)
+            foreach (PropertyInfo pi in objProperties)
             {
-                ProcessField(fieldProperty, ref typeDesc, typeDesc.FieldIndex + fieldIndex++);
+                ProcessField(pi, ref typeDesc, typeDesc.FieldIndex + fieldIndex++);
             }
 
             if (typeMeta.Flags.GetFlags().HasFlag(Flags.LayoutImmutable))
@@ -394,7 +401,21 @@ public class EbxWriter : BaseEbxWriter
 
             m_typeDescriptors[index] = typeDesc;
         }
+        else
+        {
+            throw new Exception();
+        }
 
+        return index;
+    }
+
+    private ushort FindOrAddType(Type inType)
+    {
+        int index = FindExistingType(inType);
+        if (index == -1)
+        {
+            index = AddType(inType);
+        }
         return (ushort)index;
     }
 
@@ -424,13 +445,13 @@ public class EbxWriter : BaseEbxWriter
                 alignment = 4;
                 break;
             case TypeEnum.Array:
-                classRef = ProcessType(propType);
+                classRef = FindOrAddType(propType);
                 alignment = m_typeDescriptors[classRef].GetAlignment();
                 fieldSize = m_typeDescriptors[classRef].Size;
                 break;
             case TypeEnum.Struct:
             case TypeEnum.Enum:
-                classRef = ProcessType(propType);
+                classRef = FindOrAddType(propType);
                 alignment = m_typeDescriptors[classRef].GetAlignment();
                 fieldSize = m_typeDescriptors[classRef].Size;
                 break;
@@ -536,13 +557,6 @@ public class EbxWriter : BaseEbxWriter
     private int AddType(string name, uint nameHash, int fieldIndex, byte fieldCount, byte alignment, ushort typeFlags,
         ushort size, ushort secondSize)
     {
-        if (m_useSharedTypeDescriptors)
-        {
-            m_typeDescriptors.Add(EbxSharedTypeDescriptors.GetKey(nameHash));
-            m_typeToDescriptor.Add(nameHash, m_typeDescriptors.Count - 1);
-
-            return m_typeDescriptors.Count - 1;
-        }
         EbxTypeDescriptor typeDesc = new()
         {
             Name = name,
@@ -621,7 +635,7 @@ public class EbxWriter : BaseEbxWriter
             TypeEnum type = field.Flags.GetTypeEnum();
             switch (type)
             {
-                case TypeEnum.Inherited:
+                case TypeEnum.Void:
                     // read superclass first
                     WriteType(obj, m_typeResolver.ResolveType(inTypeDescriptor, field.TypeDescriptorRef), writer, startPos);
                     break;
@@ -701,7 +715,7 @@ public class EbxWriter : BaseEbxWriter
                 if (m_arrays.Count == 0)
                 {
                     m_arrays.Add(
-                        new EbxArray()
+                        new EbxArray
                         {
                             Count = 0,
                             TypeDescriptorRef = typeDescriptorRef
@@ -710,31 +724,23 @@ public class EbxWriter : BaseEbxWriter
 
                 if (count > 0)
                 {
-                    m_arrayWriter ??= new BlockStream(m_arrayData = new Block<byte>(1), true);
-
-                    // make sure the array data is padded correctly for the first item
-                    byte alignment = m_typeDescriptors[elementFieldDescriptor.TypeDescriptorRef].GetAlignment();
-                    if ((m_arrayWriter.Position + 4) % alignment != 0)
-                    {
-                        m_arrayWriter.Position += alignment - (m_arrayWriter.Position + 4) % alignment;
-                    }
-
-                    m_arrayWriter.WriteInt32(count);
-
                     arrayIdx = m_arrays.Count;
                     m_arrays.Add(
                         new EbxArray
                         {
-                            Count = (uint)count,
-                            TypeDescriptorRef = typeDescriptorRef,
-                            Offset = (uint)m_arrayWriter.Position
+                            Count = count,
+                            TypeDescriptorRef = typeDescriptorRef
                         });
-
-                    for (int i = 0; i < count; i++)
+                    Block<byte> data = new(0);
+                    m_arrayData.Add(data);
+                    using (BlockStream arrayWriter = new(data, true))
                     {
-                        object subValue = arrayObj[i]!;
+                        for (int i = 0; i < count; i++)
+                        {
+                            object subValue = arrayObj[i]!;
 
-                        WriteField(subValue, arrayTypeDescriptor, ebxType, elementFieldDescriptor.TypeDescriptorRef, m_arrayWriter);
+                            WriteField(subValue, arrayTypeDescriptor, ebxType, elementFieldDescriptor.TypeDescriptorRef, arrayWriter);
+                        }
                     }
                 }
                 writer.WriteInt32(arrayIdx);
@@ -794,18 +800,14 @@ public class EbxWriter : BaseEbxWriter
                 BoxedValueRef value = (BoxedValueRef)((IPrimitive)ebxObj).ToActualType();
                 int index = m_boxedValues.Count;
 
-                if (value.Type == TypeEnum.Inherited)
+                if (value.Type == TypeEnum.Void)
                 {
                     index = -1;
                 }
                 else
                 {
-                    m_boxedValueWriter ??= new BlockStream(m_boxedValueData = new Block<byte>(1), true);
-
-                    m_boxedValueWriter!.WriteInt32(0);
                     EbxBoxedValue boxedValue = new()
                     {
-                        Offset = (uint)m_boxedValueWriter.Position,
                         Type = (ushort)value.Type
                     };
 
@@ -819,7 +821,13 @@ public class EbxWriter : BaseEbxWriter
                             break;
                     }
 
-                    WriteField(value.Value!, null, value.Type, boxedValue.TypeDescriptorRef, m_boxedValueWriter);
+                    Block<byte> data = new(0);
+                    m_boxedValueData.Add(data);
+                    using (BlockStream stream = new(data, true))
+                    {
+                        WriteField(value.Value!, null, value.Type, boxedValue.TypeDescriptorRef, stream);
+                    }
+
                     m_boxedValues.Add(boxedValue);
                 }
 
@@ -828,7 +836,6 @@ public class EbxWriter : BaseEbxWriter
                 writer.WriteUInt32(0);
             }
             break;
-
 
             default:
             {

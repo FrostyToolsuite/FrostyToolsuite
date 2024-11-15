@@ -164,6 +164,11 @@ public class EbxReader : BaseEbxReader
 
             if (fieldDescriptor.Flags.GetCategoryEnum() == TypeFlags.CategoryEnum.Array)
             {
+                if (propertyInfo is null)
+                {
+                    //FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", objType.GetName(), fieldDescriptor.NameHash);
+                    continue;
+                }
                 ReadArray(fieldDescriptor, value =>
                 {
                     if (value is null)
@@ -194,10 +199,15 @@ public class EbxReader : BaseEbxReader
             {
                 switch (type)
                 {
-                    case TypeFlags.TypeEnum.Inherited:
+                    case TypeFlags.TypeEnum.Void:
                         ReadType(m_typeResolver.ResolveTypeFromField(fieldDescriptor.TypeDescriptorRef), obj, inStartOffset);
                         break;
                     default:
+                        if (propertyInfo is null)
+                        {
+                            //FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", objType.GetName(), fieldDescriptor.NameHash);
+                            continue;
+                        }
                         ReadField(fieldDescriptor, value =>
                         {
                             if (typeof(IDelegate).IsAssignableFrom(propertyInfo?.PropertyType))
@@ -560,7 +570,7 @@ public class EbxReader : BaseEbxReader
         Type type;
         switch (inFlags.GetTypeEnum())
         {
-            case TypeFlags.TypeEnum.Inherited: type = s_voidType;
+            case TypeFlags.TypeEnum.Void: type = s_voidType;
                 break;
             case TypeFlags.TypeEnum.Struct: type = TypeLibrary.GetType(m_fixup.TypeGuids[inTypeDescriptorRef])!;
                 break;

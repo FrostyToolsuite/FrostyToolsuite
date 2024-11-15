@@ -75,7 +75,7 @@ internal class TypeInfoData
             case TypeFlags.TypeEnum.Interface:
                 retVal = new InterfaceInfoData();
                 break;
-            case TypeFlags.TypeEnum.Inherited:
+            case TypeFlags.TypeEnum.Void:
             case TypeFlags.TypeEnum.String:
             case TypeFlags.TypeEnum.CString:
             case TypeFlags.TypeEnum.FileRef:
