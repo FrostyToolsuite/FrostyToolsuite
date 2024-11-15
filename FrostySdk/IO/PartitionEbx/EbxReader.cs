@@ -247,7 +247,8 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.DbObject:
                 throw new InvalidDataException("DbObject");
             default:
-                throw new InvalidDataException("Unknown");
+                FrostyLogger.Logger?.LogError("Not implemented type {} in ebx", inType);
+                break;
         }
     }
 
