@@ -172,27 +172,25 @@ public class EbxReader : BaseEbxReader
                 }
                 ReadArray(fieldDescriptor, value =>
                 {
-                    if (value is null)
+                    if (typeof(IDelegate).IsAssignableFrom(propertyInfo.PropertyType.GenericTypeArguments[0]))
                     {
-                        Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
+                        IDelegate @delegate = (IDelegate)Activator.CreateInstance(propertyInfo.PropertyType.GenericTypeArguments[0])!;
+                        @delegate.FunctionType = (Type?)value;
+                        value = @delegate;
+                    }
+                    else if (value is null)
+                    {
                         return;
                     }
 
-                    if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType.GenericTypeArguments[0]))
+                    if (typeof(IPrimitive).IsAssignableFrom(propertyInfo.PropertyType.GenericTypeArguments[0]))
                     {
                         IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType.GenericTypeArguments[0])!;
                         primitive.FromActualType(value);
                         value = primitive;
                     }
 
-                    if (typeof(IDelegate).IsAssignableFrom(propertyInfo?.PropertyType))
-                    {
-                        IDelegate @delegate = (IDelegate)Activator.CreateInstance(propertyInfo.PropertyType)!;
-                        @delegate.FunctionType = (Type)value;
-                        value = @delegate;
-                    }
-
-                    IList? list = (IList?)propertyInfo?.GetValue(obj);
+                    IList? list = (IList?)propertyInfo.GetValue(obj);
                     list?.Add(value);
                 });
             }
@@ -211,7 +209,7 @@ public class EbxReader : BaseEbxReader
                         }
                         ReadField(fieldDescriptor, value =>
                         {
-                            if (typeof(IDelegate).IsAssignableFrom(propertyInfo?.PropertyType))
+                            if (typeof(IDelegate).IsAssignableFrom(propertyInfo.PropertyType))
                             {
                                 IDelegate @delegate = (IDelegate)Activator.CreateInstance(propertyInfo.PropertyType)!;
                                 @delegate.FunctionType = (Type?)value;
@@ -219,17 +217,16 @@ public class EbxReader : BaseEbxReader
                             }
                             else if (value is null)
                             {
-                                Debug.Assert(propertyInfo is null, "Struct does not exist in TypeInfo");
                                 return;
                             }
 
-                            if (typeof(IPrimitive).IsAssignableFrom(propertyInfo?.PropertyType))
+                            if (typeof(IPrimitive).IsAssignableFrom(propertyInfo.PropertyType))
                             {
                                 IPrimitive primitive = (IPrimitive)Activator.CreateInstance(propertyInfo.PropertyType)!;
                                 primitive.FromActualType(value);
                                 value = primitive;
                             }
-                            propertyInfo?.SetValue(obj, value);
+                            propertyInfo.SetValue(obj, value);
                         });
                         break;
                 }
