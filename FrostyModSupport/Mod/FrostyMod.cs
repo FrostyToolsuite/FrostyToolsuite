@@ -87,7 +87,7 @@ public class FrostyMod : IResourceContainer
 
             if (ProfilesLibrary.ProfileName != stream.ReadNullTerminatedString())
             {
-                //return null;
+                return null;
             }
 
             uint head = stream.ReadUInt32();
