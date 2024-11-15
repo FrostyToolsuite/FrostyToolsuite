@@ -10,6 +10,7 @@ using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
 using Frosty.Sdk.Sdk;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk.IO.PartitionEbx;
 
@@ -114,7 +115,7 @@ public class EbxReader : BaseEbxReader
                 case TypeFlags.TypeEnum.Array:
                     if (propertyInfo is null)
                     {
-                        //FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", inTypeDescriptor.Name, fieldDescriptor.Name);
+                        FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", inTypeDescriptor.Name, fieldDescriptor.Name);
                         continue;
                     }
                     ReadField(inTypeDescriptor, type, fieldDescriptor.TypeDescriptorRef, value =>
@@ -139,7 +140,7 @@ public class EbxReader : BaseEbxReader
                 default:
                     if (propertyInfo is null)
                     {
-                        //FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", inTypeDescriptor.Name, fieldDescriptor.Name);
+                        FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", inTypeDescriptor.Name, fieldDescriptor.Name);
                         continue;
                     }
                     ReadField(inTypeDescriptor, type, fieldDescriptor.TypeDescriptorRef, value =>
