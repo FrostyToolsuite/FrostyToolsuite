@@ -541,6 +541,12 @@ public static class AssetManager
                 else
                 {
                     s_ebxGuidMapping.Add(entry.Guid, entry);
+
+                    if (TypeLibrary.IsSubClassOf(entry.Type, "TypeInfoAsset"))
+                    {
+                        EbxAsset asset = reader.ReadAsset<EbxAsset>();
+                        TypeLibrary.AddTypeInfoAsset(asset.RootInstanceGuid, asset.RootObject);
+                    }
                 }
             }
 
@@ -733,6 +739,8 @@ public static class AssetManager
                     s_chunkGuidMapping.Add(entry.Id, entry);
                 }
             }
+
+            TypeLibrary.ReadCache(stream);
         }
 
         return !isPatched;
@@ -824,6 +832,8 @@ public static class AssetManager
                     stream.WriteInt32(bundleId);
                 }
             }
+
+            TypeLibrary.WriteCache(stream);
         }
     }
 

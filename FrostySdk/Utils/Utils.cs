@@ -40,12 +40,7 @@ public static class Utils
         return (int)hash;
     }
 
-    public static Guid GenerateDeterministicGuid(IEnumerable<object> objects, string type, Guid fileGuid)
-    {
-        return GenerateDeterministicGuid(objects, TypeLibrary.GetType(type)!, fileGuid);
-    }
-
-    public static Guid GenerateDeterministicGuid(IEnumerable<object> objects, Type type, Guid fileGuid)
+    public static Guid GenerateDeterministicGuid(IEnumerable<object> objects, Guid fileGuid)
     {
         Guid outGuid;
 

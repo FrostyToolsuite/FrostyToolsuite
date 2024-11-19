@@ -18,31 +18,26 @@ public abstract class BaseEbxWriter
     protected readonly List<object> m_objsSorted = new();
 
     protected static readonly Type s_pointerType = typeof(PointerRef);
-    protected static readonly Type s_valueType = typeof(ValueType);
-    protected static readonly Type s_objectType = typeof(object);
-    protected static readonly Type s_dataContainerType = TypeLibrary.GetType("DataContainer")!;
-    protected static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef");
-    protected static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef");
+    protected static readonly Type s_dataContainerType = TypeLibrary.GetType("DataContainer")!.Type;
+    protected static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef")?.Type;
 
     protected static readonly string s_ebxNamespace = "Frostbite";
     protected static readonly string s_collectionName = "ObservableCollection`1";
 
     protected uint m_stringsLength;
-    protected List<string> m_strings = new();
+    protected readonly List<string> m_strings = new();
 
-    protected HashSet<int> m_typesToProcessSet = new();
-    protected List<Type> m_typesToProcess = new();
-    protected Dictionary<uint, int> m_typeToDescriptor = new();
+    protected readonly Dictionary<uint, int> m_typeToDescriptor = new();
 
-    protected HashSet<EbxImportReference> m_imports = new();
-    protected Dictionary<EbxImportReference, int> m_importOrderFw = new();
+    protected readonly HashSet<EbxImportReference> m_imports = new();
+    protected readonly Dictionary<EbxImportReference, int> m_importOrderFw = new();
 
-    protected List<Block<byte>> m_arrayData = new();
-    protected List<Block<byte>> m_boxedValueData = new();
+    protected readonly List<Block<byte>> m_arrayData = new();
+    protected readonly List<Block<byte>> m_boxedValueData = new();
 
-    protected bool m_useSharedTypeDescriptors;
+    protected readonly bool m_useSharedTypeDescriptors;
 
-    protected HashSet<object> m_processedObjects = new();
+    private readonly HashSet<object> m_processedObjects = new();
 
     protected BaseEbxWriter(DataStream inStream)
     {
@@ -268,6 +263,13 @@ public abstract class BaseEbxWriter
     protected int FindExistingType(Type inType)
     {
         uint hash = m_useSharedTypeDescriptors ? inType.GetNameHash() : (uint)Utils.Utils.HashString(inType.GetName());
+
+        return m_typeToDescriptor.GetValueOrDefault(hash, -1);
+    }
+
+    protected int FindExistingType(IType inType)
+    {
+        uint hash = m_useSharedTypeDescriptors ? inType.NameHash : (uint)Utils.Utils.HashString(inType.Name);
 
         return m_typeToDescriptor.GetValueOrDefault(hash, -1);
     }

@@ -1,14 +1,15 @@
 using System;
+using Frosty.Sdk.Interfaces;
 
 namespace Frosty.Sdk.Ebx;
 
 public readonly struct TypeRef : IEquatable<TypeRef>
 {
-    public string? Name => m_type?.GetName();
-    public Guid Guid => m_type?.GetGuid() ?? Guid.Empty;
-    public Type? Type => m_type;
+    public string? Name => m_type?.Name;
+    public Guid Guid => m_type?.Guid ?? Guid.Empty;
+    public Type? Type => m_type?.Type;
 
-    private readonly Type? m_type;
+    internal readonly IType? m_type;
 
     public TypeRef()
     {
@@ -24,7 +25,7 @@ public readonly struct TypeRef : IEquatable<TypeRef>
         m_type = TypeLibrary.GetType(inGuid);
     }
 
-    public TypeRef(Type? inType)
+    public TypeRef(IType? inType)
     {
         m_type = inType;
     }
