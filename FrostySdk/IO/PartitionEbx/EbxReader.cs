@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -330,10 +329,12 @@ public class EbxReader : BaseEbxReader
 
         if (Guid.TryParse(str, out Guid guid))
         {
-            if (guid != Guid.Empty)
+            if (guid == Guid.Empty)
             {
-                return new TypeRef(guid);
+                return new TypeRef();
             }
+
+            return new TypeRef(guid);
         }
 
         return new TypeRef(str);
@@ -374,7 +375,8 @@ public class EbxReader : BaseEbxReader
                         primitive.FromActualType(obj);
                         obj = primitive;
                     }
-                    fieldType.GetMethod("Add")?.Invoke(value, new[] { obj });
+
+                    ((IList?)value)?.Add(obj);
                 });
                 break;
             case TypeFlags.TypeEnum.Enum:
@@ -405,7 +407,7 @@ public class EbxReader : BaseEbxReader
 
         m_stream.Position = pos;
 
-        return new BoxedValueRef(value, (TypeFlags.TypeEnum)boxedValue.Type);
+        return new BoxedValueRef(value, new TypeFlags((TypeFlags.TypeEnum)boxedValue.Type));
     }
 
     private Type GetTypeFromEbxField(TypeFlags.TypeEnum inFlags, ushort inTypeDescriptorRef)
@@ -449,10 +451,10 @@ public class EbxReader : BaseEbxReader
     {
         if (string.IsNullOrEmpty(inTypeDescriptor.Name))
         {
-            return TypeLibrary.GetType(inTypeDescriptor.NameHash) ?? throw new Exception();
+            return TypeLibrary.GetType(inTypeDescriptor.NameHash)?.Type ?? throw new Exception();
         }
 
-        return TypeLibrary.GetType(inTypeDescriptor.Name) ?? throw new Exception();
+        return TypeLibrary.GetType(inTypeDescriptor.Name)?.Type ?? throw new Exception();
     }
 
     private object? CreateObject(EbxTypeDescriptor inTypeDescriptor)

@@ -8,28 +8,22 @@ namespace Frosty.Sdk.Ebx;
 public struct BoxedValueRef : IEquatable<BoxedValueRef>
 {
     public object? Value => m_value;
-    public TypeFlags.TypeEnum Type => m_type;
-    public TypeFlags.CategoryEnum Category => m_category;
+    public TypeFlags.TypeEnum Type => m_flags.GetTypeEnum();
+    public TypeFlags.CategoryEnum Category => m_flags.GetCategoryEnum();
 
     private object? m_value;
-    private readonly TypeFlags.TypeEnum m_type;
-    private readonly TypeFlags.CategoryEnum m_category;
+    private TypeFlags m_flags;
+
+    private static readonly string s_collectionName = "ObservableCollection`1";
 
     public BoxedValueRef()
     {
     }
 
-    public BoxedValueRef(object? inValue, TypeFlags.TypeEnum inType)
+    public BoxedValueRef(object? inValue, TypeFlags inFlags)
     {
         m_value = inValue;
-        m_type = inType;
-    }
-
-    public BoxedValueRef(object? inValue, TypeFlags.TypeEnum inType, TypeFlags.CategoryEnum inCategory)
-    {
-        m_value = inValue;
-        m_type = inType;
-        m_category = inCategory;
+        m_flags = inFlags;
     }
 
     public void SetValue(object inValue)
@@ -47,7 +41,7 @@ public struct BoxedValueRef : IEquatable<BoxedValueRef>
         Type type = m_value.GetType();
 
         return
-            $"BoxedValueRef '{(m_type == TypeFlags.TypeEnum.Array ? $"Array<{type.GenericTypeArguments[0].GetName()}>" : type.GetName())}'";
+            $"BoxedValueRef '{(type.Name == s_collectionName ? $"Array<{type.GenericTypeArguments[0].GetName()}>" : type == typeof(PointerRef) ? "Class" : type.GetName())}'";
     }
 
     public override bool Equals(object? obj)
@@ -57,17 +51,17 @@ public struct BoxedValueRef : IEquatable<BoxedValueRef>
             return false;
         }
 
-        return m_value == b.m_value && m_type == b.m_type && m_category == b.m_category;
+        return Equals(b);
     }
 
     public bool Equals(BoxedValueRef other)
     {
-        return Equals(m_value, other.m_value) && m_type == other.m_type && m_category == other.m_category;
+        return m_value == other.m_value && m_flags == other.m_flags;
     }
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(m_value, (int)m_type, (int)m_category);
+        return HashCode.Combine(m_value, (ushort)m_flags);
     }
 
     public static bool operator ==(BoxedValueRef a, object b) => a.Equals(b);

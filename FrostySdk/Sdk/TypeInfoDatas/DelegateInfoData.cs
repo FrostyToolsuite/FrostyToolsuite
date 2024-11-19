@@ -70,7 +70,7 @@ internal class DelegateInfoData : TypeInfoData
                         [{{nameof(FunctionAttribute)}}({{arguments}})]
                         public struct {{CleanUpName()}} : {{nameof(IDelegate)}}
                         {
-                            public Type? {{nameof(IDelegate.FunctionType)}} { get; set; }
+                            public IType? {{nameof(IDelegate.FunctionType)}} { get; set; }
                         }
                         """);
     }

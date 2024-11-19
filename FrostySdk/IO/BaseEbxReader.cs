@@ -12,27 +12,27 @@ public abstract class BaseEbxReader
 
     #region -- PrimitiveTypes --
 
-    protected static readonly Type s_voidType = TypeLibrary.GetType("Void")!;
-    protected static readonly Type s_stringType = TypeLibrary.GetType("String")!;
-    protected static readonly Type s_sbyteType = TypeLibrary.GetType("Int8")!;
-    protected static readonly Type s_byteType = TypeLibrary.GetType("Uint8") ?? TypeLibrary.GetType("UInt8")!;
-    protected static readonly Type s_boolType = TypeLibrary.GetType("Boolean")!;
-    protected static readonly Type s_ushortType = TypeLibrary.GetType("Uint16") ?? TypeLibrary.GetType("UInt16")!;
-    protected static readonly Type s_shortType = TypeLibrary.GetType("Int16")!;
-    protected static readonly Type s_uintType = TypeLibrary.GetType("Uint32") ?? TypeLibrary.GetType("UInt32")!;
-    protected static readonly Type s_intType = TypeLibrary.GetType("Int32")!;
-    protected static readonly Type s_ulongType = TypeLibrary.GetType("Uint64") ?? TypeLibrary.GetType("UInt64")!;
-    protected static readonly Type s_longType = TypeLibrary.GetType("Int64")!;
-    protected static readonly Type s_floatType = TypeLibrary.GetType("Float32")!;
-    protected static readonly Type s_doubleType = TypeLibrary.GetType("Float64")!;
+    protected static readonly Type s_voidType = TypeLibrary.GetType("Void")!.Type;
+    protected static readonly Type s_stringType = TypeLibrary.GetType("String")!.Type;
+    protected static readonly Type s_sbyteType = TypeLibrary.GetType("Int8")!.Type;
+    protected static readonly Type s_byteType = TypeLibrary.GetType("Uint8")?.Type ?? TypeLibrary.GetType("UInt8")!.Type;
+    protected static readonly Type s_boolType = TypeLibrary.GetType("Boolean")!.Type;
+    protected static readonly Type s_ushortType = TypeLibrary.GetType("Uint16")?.Type ?? TypeLibrary.GetType("UInt16")!.Type;
+    protected static readonly Type s_shortType = TypeLibrary.GetType("Int16")!.Type;
+    protected static readonly Type s_uintType = TypeLibrary.GetType("Uint32")?.Type ?? TypeLibrary.GetType("UInt32")!.Type;
+    protected static readonly Type s_intType = TypeLibrary.GetType("Int32")!.Type;
+    protected static readonly Type s_ulongType = TypeLibrary.GetType("Uint64")?.Type ?? TypeLibrary.GetType("UInt64")!.Type;
+    protected static readonly Type s_longType = TypeLibrary.GetType("Int64")!.Type;
+    protected static readonly Type s_floatType = TypeLibrary.GetType("Float32")!.Type;
+    protected static readonly Type s_doubleType = TypeLibrary.GetType("Float64")!.Type;
     protected static readonly Type s_pointerType = typeof(PointerRef);
-    protected static readonly Type s_guidType = TypeLibrary.GetType("Guid")!;
-    protected static readonly Type s_sha1Type = TypeLibrary.GetType("SHA1")!;
-    protected static readonly Type s_cStringType = TypeLibrary.GetType("CString")!;
-    protected static readonly Type s_resourceRefType = TypeLibrary.GetType("ResourceRef")!;
-    protected static readonly Type s_fileRefType = TypeLibrary.GetType("FileRef")!;
-    protected static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef");
-    protected static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef");
+    protected static readonly Type s_guidType = TypeLibrary.GetType("Guid")!.Type;
+    protected static readonly Type s_sha1Type = TypeLibrary.GetType("SHA1")!.Type;
+    protected static readonly Type s_cStringType = TypeLibrary.GetType("CString")!.Type;
+    protected static readonly Type s_resourceRefType = TypeLibrary.GetType("ResourceRef")!.Type;
+    protected static readonly Type s_fileRefType = TypeLibrary.GetType("FileRef")!.Type;
+    protected static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef")?.Type;
+    protected static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef")?.Type;
 
     #endregion
 

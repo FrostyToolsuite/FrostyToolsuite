@@ -4,6 +4,7 @@ using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
 using static Frosty.Sdk.Sdk.TypeFlags;
 using System;
+using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
 using System.Xml;
@@ -18,8 +19,8 @@ public sealed class DbxReader
 {
     private static readonly Type s_pointerType = typeof(PointerRef);
     private static readonly Type s_collectionType = typeof(ObservableCollection<>);
-    private static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef");
-    private static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef");
+    private static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef")?.Type;
+    private static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef")?.Type;
 
     // we only want to write out properties with these flags
     private static readonly BindingFlags s_propertyBindingFlags = BindingFlags.Public | BindingFlags.Instance;
@@ -219,7 +220,7 @@ public sealed class DbxReader
 
     private void CreateInstance(XmlNode node)
     {
-        Type? ebxType = TypeLibrary.GetType(GetAttributeValue(node, "type")!.Split('.')[^1]);
+        Type? ebxType = TypeLibrary.GetType(GetAttributeValue(node, "type")!.Split('.')[^1])?.Type;
         if(ebxType is null)
         {
             return;
@@ -311,11 +312,11 @@ public sealed class DbxReader
             {
                 if (isRef)
                 {
-                    objType.GetMethod("Add")?.Invoke(obj, new[] { (object)ParseRef(node, GetAttributeValue(node, "ref")!)});
+                    ((IList?)obj)?.Add(ParseRef(node, GetAttributeValue(node, "ref")!));
                 }
                 else
                 {
-                    objType.GetMethod("Add")?.Invoke(obj, new[] { GetValueFromString(arrayElementType!, node.InnerText, arrayElementTypeEnum) });
+                    ((IList?)obj)?.Add(GetValueFromString(arrayElementType!, node.InnerText, arrayElementTypeEnum));
                 }
                 break;
             }
@@ -332,7 +333,7 @@ public sealed class DbxReader
                 object structObj = ReadStruct(arrayElementType, node);
                 if (isArray)
                 {
-                    objType.GetMethod("Add")?.Invoke(obj, new[] { structObj });
+                    ((IList?)obj)?.Add(structObj);
                 }
                 else
                 {
@@ -342,38 +343,71 @@ public sealed class DbxReader
             }
             case "boxed":
             {
-                if (node.InnerText == "null")
+                BoxedValueRef boxed;
+
+                XmlNode? child = node.FirstChild;
+                if (child is not null)
                 {
-                    break;
-                }
+                    object value;
 
-                Type? valueType = TypeLibrary.GetType(GetAttributeValue(node, "type")!);
-                if (valueType is null)
+                    string typeName = GetAttributeValue(node, "typeName")!;
+                    IType? valueType = typeName == "PointerRef" ? new SdkType(typeof(PointerRef)) : TypeLibrary.GetType(typeName);
+                    if (valueType is not SdkType)
+                    {
+                        break;
+                    }
+
+                    switch (child.Name)
+                    {
+                        case "complex":
+                            value = ReadStruct(arrayElementType, child);
+                            break;
+                        case "array":
+                            value = ReadArray(child);
+                            break;
+                        default:
+                            string? refGuid = GetAttributeValue(node, "ref");
+                            if (refGuid is not null)
+                            {
+                                value = ParseRef(node, refGuid);
+                            }
+                            else
+                            {
+                                value = GetValueFromString(valueType.Type, node.InnerText, valueType.GetFlags().GetTypeEnum());
+                            }
+                            break;
+                    }
+
+                    boxed = new BoxedValueRef(value, valueType.GetFlags());
+                }
+                else
                 {
-                    break;
+                    boxed = new BoxedValueRef();
                 }
-
-                EbxTypeMetaAttribute? typeMeta = valueType.GetCustomAttribute<EbxTypeMetaAttribute>();
-
-                object value = GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
-                BoxedValueRef boxed = new(value, typeMeta.Flags.GetTypeEnum());
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(boxed, s_boxedValueRefType!));
                 break;
             }
             case "typeref":
             {
-                string typeGuid = GetAttributeValue(node, "typeGuid")!;
+                string? typeName = GetAttributeValue(node, "typeName");
+                TypeRef typeRef;
 
-                Type? type = TypeLibrary.GetType(typeGuid) ?? TypeLibrary.GetType(GetAttributeValue(node, "typeName")!);
-                TypeRef typeRef = type is null ? new TypeRef() : new TypeRef(type);
+                if (typeName is not null)
+                {
+                    typeRef = new TypeRef(TypeLibrary.GetType(typeName));
+                }
+                else
+                {
+                    typeRef = new TypeRef();
+                }
+
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(typeRef, s_typeRefType!));
                 break;
             }
             case "delegate":
             {
-                string typeGuid = GetAttributeValue(node, "typeGuid")!;
-
-                Type? type = TypeLibrary.GetType(typeGuid) ?? TypeLibrary.GetType(GetAttributeValue(node, "typeName")!);
+                string? typeName = GetAttributeValue(node, "typeName");
+                IType? type = typeName is null ? null : TypeLibrary.GetType(typeName);
                 PropertyInfo? property = objType.GetProperty(GetAttributeValue(node, "name")!, s_propertyBindingFlags);
                 if (property is not null && property.CanWrite)
                 {
@@ -390,7 +424,7 @@ public sealed class DbxReader
         string arrayTypeStr = GetAttributeValue(node, "type")!;
         bool isRef = arrayTypeStr.StartsWith("ref(");
 
-        Type arrayElementType = (isRef ? s_pointerType : TypeLibrary.GetType(arrayTypeStr))
+        Type arrayElementType = (isRef ? s_pointerType : TypeLibrary.GetType(arrayTypeStr)?.Type)
                                 ?? throw new ArgumentException($"array element type doesn't exist? {arrayTypeStr}");
 
         EbxTypeMetaAttribute? arrayTypeMeta = arrayElementType.GetCustomAttribute<EbxTypeMetaAttribute>();
@@ -412,7 +446,7 @@ public sealed class DbxReader
 
     private object ReadStruct(Type? structType, XmlNode node)
     {
-        Type type = (structType ?? TypeLibrary.GetType(GetAttributeValue(node, "type")!))
+        Type type = (structType ?? TypeLibrary.GetType(GetAttributeValue(node, "type")!)?.Type)
                     ?? throw new ArgumentException($"struct type doesn't exist?");
 
         object obj = Activator.CreateInstance(type)

@@ -286,6 +286,20 @@ public class EbxWriter : BaseEbxWriter
         return m_fixup.TypeGuids.Count - 1;
     }
 
+    private int AddType(IType inType, bool inAddSignature)
+    {
+        m_typeToDescriptor.Add(inType.NameHash, m_fixup.TypeGuids.Count);
+
+        m_fixup.TypeGuids.Add(inType.Guid);
+
+        if (inAddSignature)
+        {
+            m_fixup.TypeSignatures.Add(inType.Signature);
+        }
+
+        return m_fixup.TypeGuids.Count - 1;
+    }
+
     private void WriteType(object obj, EbxTypeDescriptor type, DataStream writer, long startPos)
     {
         Type objType = obj.GetType();
@@ -459,8 +473,8 @@ public class EbxWriter : BaseEbxWriter
     private void WriteBoxedValueRef(BoxedValueRef inBoxedValueRef, DataStream inWriter)
     {
         Type? type = inBoxedValueRef.Value?.GetType();
-        TypeRef typeRef = type is null ? new TypeRef() : new TypeRef(type);
-        (ushort, ushort) tiPair = WriteTypeRef(typeRef, inWriter, true);
+        TypeRef typeRef = type is null ? new TypeRef() : new TypeRef(new SdkType(type));
+        (TypeFlags Flags, ushort TypeDescriptorRef) tiPair = WriteTypeRef(typeRef, inWriter, true);
 
         int index = m_boxedValues.Count;
         if (inBoxedValueRef.Value is not null)
@@ -468,8 +482,8 @@ public class EbxWriter : BaseEbxWriter
             EbxExtra boxedValue = new()
             {
                 Count = 1,
-                Flags = tiPair.Item1,
-                TypeDescriptorRef = tiPair.Item2
+                Flags = tiPair.Flags,
+                TypeDescriptorRef = tiPair.TypeDescriptorRef
             };
             m_boxedValues.Add(boxedValue);
 
@@ -495,44 +509,39 @@ public class EbxWriter : BaseEbxWriter
         inWriter.WriteInt64(index);
     }
 
-    private (ushort, ushort) WriteTypeRef(TypeRef typeRef, DataStream writer, bool inAddSignature)
+    private (TypeFlags, ushort) WriteTypeRef(TypeRef typeRef, DataStream writer, bool inAddSignature)
     {
-        if (typeRef.IsNull() || typeRef.Name == "0" || typeRef.Name == "Inherited")
+        if (typeRef.IsNull())
         {
             writer.WriteInt32(0x00);
             writer.WriteInt32(0x00);
             return (0, 0);
         }
 
-        Type typeRefType = typeRef.Type!;
-        int typeIdx = FindExistingType(typeRefType);
+        ushort typeIdx;
 
-        (ushort, ushort) tiPair;
-        tiPair.Item1 = typeRefType.GetCustomAttribute<EbxTypeMetaAttribute>()!.Flags;
-
-        uint typeFlags = tiPair.Item1;
-        if (typeRefType.IsAssignableTo(typeof(IPrimitive)))
+        TypeFlags typeFlags = typeRef.m_type!.GetFlags();
+        if (typeRef.m_type is not TypeInfoAsset &&
+            (typeRef.Type!.IsAssignableTo(typeof(IPrimitive)) || typeRef.Type == s_pointerType))
         {
-            typeFlags |= 0x80000000;
-            tiPair.Item2 = (ushort)typeIdx;
+            typeIdx = ushort.MaxValue;
+            writer.WriteUInt32(typeFlags | 0x80000000);
+            writer.WriteInt32(-1);
         }
         else
         {
-            if (typeIdx == -1)
+            typeIdx = (ushort)FindExistingType(typeRef.m_type!);
+            if (typeIdx == ushort.MaxValue)
             {
                 // boxed value type refs shouldn't end up here, as they're already handled when processing classes
-                typeIdx = AddType(typeRefType, inAddSignature);
+                typeIdx = (ushort)AddType(typeRef.m_type!, inAddSignature);
             }
-            typeFlags = (uint)(typeIdx << 2);
-            typeFlags |= 2;
-            // boxed value info in the EBXX section needs the class index
-            // the type ref just sets it to zero
-            tiPair.Item2 = (ushort)typeIdx;
-            typeIdx = 0;
+
+            writer.WriteUInt32((uint)(typeIdx << 2) | 2);
+            writer.WriteInt32(0);
         }
-        writer.WriteUInt32(typeFlags);
-        writer.WriteInt32(typeIdx);
-        return tiPair;
+
+        return (typeFlags, typeIdx);
     }
 
     private void WriteArray(object inObj, EbxFieldDescriptor inFieldDescriptor, DataStream writer)

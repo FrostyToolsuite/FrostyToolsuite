@@ -24,7 +24,7 @@ public class EbxFieldMetaAttribute : Attribute
     {
         if (!string.IsNullOrEmpty(baseType))
         {
-            BaseType = TypeLibrary.GetType(baseType);
+            BaseType = TypeLibrary.GetType(baseType)?.Type;
         }
 
         Flags = new TypeFlags(type);
