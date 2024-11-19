@@ -67,7 +67,7 @@ internal static partial class Program
 	{
 		ILoggerFactory loggerFactory = LoggerFactory.Create(delegate(ILoggingBuilder builder)
 		{
-			builder.AddSimpleConsole(delegate(SimpleConsoleFormatterOptions options)
+			builder.SetMinimumLevel(s_logLevel).AddSimpleConsole(delegate(SimpleConsoleFormatterOptions options)
 			{
 				options.IncludeScopes = true;
 				options.SingleLine = true;

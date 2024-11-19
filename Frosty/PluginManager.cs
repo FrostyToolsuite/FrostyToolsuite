@@ -34,13 +34,13 @@ public static class PluginManager
                         continue;
                     }
                     ExportEbxDelegate export = method.CreateDelegate<ExportEbxDelegate>();
-                    foreach (Type t in TypeLibrary.EnumerateTypes())
+                    foreach (IType t in TypeLibrary.EnumerateTypes())
                     {
                         if (!TypeLibrary.IsSubClassOf(t, attr.Type))
                         {
                             continue;
                         }
-                        EbxExportDelegates.Add(t.GetName(), export);
+                        EbxExportDelegates.Add(t.Name, export);
                     }
                 }
             }

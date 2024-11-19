@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Frosty.Sdk;
 using Frosty.Sdk.Managers;
+using Microsoft.Extensions.Logging;
 using Pastel;
 
 namespace Frosty;
@@ -26,8 +27,12 @@ internal static partial class Program
         "The path to a file containing a 16384 byte key for the cas archives or the key itself in hexadecimal form",
         16384, "CasObfuscationKey");
 
+    private static LogLevel s_logLevel = LogLevel.Information;
+
 	public static async Task<int> Main(string[] args)
 	{
+        s_logLevel = Enum.Parse<LogLevel>(Environment.GetEnvironmentVariable("FROSTY_LOG_LEVEL") ?? "Information");
+
 		RootCommand root = new();
         root.AddGlobalOption(s_initFsKey);
         root.AddGlobalOption(s_bundleKey);
