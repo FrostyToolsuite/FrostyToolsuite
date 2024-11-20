@@ -79,9 +79,18 @@ public static class TypeLibrary
         TypeInfoAsset type = new(inGuid, inTypeInfoAsset);
         const int flag = 1 << 31;
         int index = s_typeInfoAssets.Count | flag;
-        s_nameMapping.Add(type.Name, index);
-        s_guidMapping.Add(type.Guid, index);
-        s_nameHashMapping.Add(type.NameHash, index);
+        if (!s_nameMapping.TryAdd(type.Name, index))
+        {
+            FrostyLogger.Logger?.LogDebug("Tried to add TypeInfoAsset with the same name \"{}\"", type.Name);
+        }
+        if (!s_guidMapping.TryAdd(type.Guid, index))
+        {
+            FrostyLogger.Logger?.LogDebug("Tried to add TypeInfoAsset with the same guid \"{}\"", type.Name);
+        }
+        if (!s_nameHashMapping.TryAdd(type.NameHash, index))
+        {
+            FrostyLogger.Logger?.LogDebug("Tried to add TypeInfoAsset with the same namehash \"{}\"", type.Name);
+        }
         s_typeInfoAssets.Add(type);
     }
 
@@ -220,9 +229,9 @@ public static class TypeLibrary
             TypeInfoAsset type = new(inStream.ReadNullTerminatedString(), inStream.ReadUInt32(), inStream.ReadGuid());
             const int flag = 1 << 31;
             int index = s_typeInfoAssets.Count | flag;
-            s_nameMapping.Add(type.Name, index);
-            s_guidMapping.Add(type.Guid, index);
-            s_nameHashMapping.Add(type.NameHash, index);
+            s_nameMapping.TryAdd(type.Name, index);
+            s_guidMapping.TryAdd(type.Guid, index);
+            s_nameHashMapping.TryAdd(type.NameHash, index);
             s_typeInfoAssets.Add(type);
         }
     }
