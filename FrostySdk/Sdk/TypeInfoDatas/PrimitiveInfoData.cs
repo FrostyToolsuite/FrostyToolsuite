@@ -54,7 +54,7 @@ internal class PrimitiveInfoData : TypeInfoData
                     return "default";
                 }
 
-                return $"new Frosty.Sdk.Ebx.TypeRef(typeof({type.GetFullName()}))";
+                return $"new Frosty.Sdk.Ebx.TypeRef(new SdkType(typeof({type.GetFullName()})))";
             case TypeFlags.TypeEnum.BoxedValueRef:
                 ptr = reader.ReadLong();
                 long valuePtr = reader.ReadLong();

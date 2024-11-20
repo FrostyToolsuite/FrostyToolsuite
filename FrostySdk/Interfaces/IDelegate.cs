@@ -1,5 +1,3 @@
-using System;
-
 namespace Frosty.Sdk.Interfaces;
 
 public interface IDelegate
