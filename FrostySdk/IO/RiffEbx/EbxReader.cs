@@ -428,8 +428,14 @@ public class EbxReader : BaseEbxReader
         long instanceOffset = m_stream.Position - 8 + index - m_payloadOffset;
         int objIndex = m_fixup.InstanceMapping[(uint)instanceOffset];
 
-        m_refCounts[objIndex]++;
-        return new PointerRef(m_objects[objIndex]);
+        object? obj = m_objects[objIndex];
+        if (obj is not null)
+        {
+            m_refCounts[objIndex]++;
+            return new PointerRef(obj);
+        }
+
+        return new PointerRef();
     }
 
     private TypeRef ReadTypeRef()

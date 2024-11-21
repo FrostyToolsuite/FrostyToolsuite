@@ -311,8 +311,14 @@ public class EbxReader : BaseEbxReader
 
         }
 
-        m_refCounts[(int)(index - 1)]++;
-        return new PointerRef(m_objects[(int)(index - 1)]);
+        object? obj = m_objects[(int)(index - 1)];
+        if (obj is not null)
+        {
+            m_refCounts[(int)(index - 1)]++;
+            return new PointerRef(obj);
+        }
+
+        return new PointerRef();
     }
 
     private TypeRef ReadTypeRef()

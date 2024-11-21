@@ -44,6 +44,12 @@ public static class TypeLibrary
 
         foreach (Type type in types)
         {
+            if (type.GetCustomAttribute<EbxTypeMetaAttribute>() is null)
+            {
+                // should only happen for types that only contain another type
+                continue;
+            }
+
             s_nameMapping.Add(type.GetName(), s_types.Count);
 
             uint nameHash = type.GetNameHash();
