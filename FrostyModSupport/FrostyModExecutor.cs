@@ -176,7 +176,7 @@ public partial class FrostyModExecutor
         if (FileSystemManager.BundleFormat == BundleFormat.Manifest2019)
         {
             DbObjectDict layout = DbObject.Deserialize(Path.Combine(m_gamePatchPath, "layout.toc"))!.AsDict();
-            byte[]? layeredInstallChunkFiles = layout.AsBlob("layeredInstallChunkFiles");
+            byte[]? layeredInstallChunkFiles = layout.AsBlob("layeredInstallChunkFiles", null);
             if (layeredInstallChunkFiles is not null && m_installChunkWriters.Count > 0)
             {
                 List<CasFileIdentifier> final;
