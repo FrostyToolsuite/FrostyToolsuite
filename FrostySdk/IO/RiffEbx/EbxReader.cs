@@ -437,6 +437,7 @@ public class EbxReader : BaseEbxReader
             return new PointerRef(obj);
         }
 
+        FrostyLogger.Logger?.LogDebug("Ref to null instance");
         return new PointerRef();
     }
 

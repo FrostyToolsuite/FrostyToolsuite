@@ -49,6 +49,7 @@ public static class TypeLibrary
             if (type.GetCustomAttribute<EbxTypeMetaAttribute>() is null)
             {
                 // should only happen for types that only contain another type
+                FrostyLogger.Logger?.LogDebug("Ignoring type \"{}\" from sdk", type.Name);
                 continue;
             }
 
