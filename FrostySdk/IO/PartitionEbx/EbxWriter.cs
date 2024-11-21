@@ -441,6 +441,8 @@ public class EbxWriter : BaseEbxWriter
         {
             case TypeEnum.Class:
             case TypeEnum.CString:
+            case TypeEnum.TypeRef:
+            case TypeEnum.FileRef:
                 fieldSize = 4;
                 alignment = 4;
                 break;
@@ -658,12 +660,12 @@ public class EbxWriter : BaseEbxWriter
         {
             case TypeEnum.TypeRef:
             {
-                writer.WriteUInt64(AddString(TypeInfo.Version > 4 ? ((TypeRef)((IPrimitive)ebxObj).ToActualType()).Guid.ToString().ToUpper() : (TypeRef)((IPrimitive)ebxObj).ToActualType()));
+                writer.WriteUInt32(AddString(TypeInfo.Version > 4 ? ((TypeRef)((IPrimitive)ebxObj).ToActualType()).Guid.ToString().ToUpper() : (TypeRef)((IPrimitive)ebxObj).ToActualType()));
                 break;
             }
             case TypeEnum.FileRef:
             {
-                writer.WriteUInt64(AddString((FileRef)((IPrimitive)ebxObj).ToActualType()));
+                writer.WriteUInt32(AddString((FileRef)((IPrimitive)ebxObj).ToActualType()));
                 break;
             }
             case TypeEnum.CString:

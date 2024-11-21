@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -31,7 +32,7 @@ public class EbxReader : BaseEbxReader
         EbxTypeDescriptor type = m_typeResolver.ResolveType(m_header.Instances[0].TypeDescriptorRef);
         if (m_header.TypeNameTableLength > 0)
         {
-            // we can just use the name of the type if its not stripped
+            // we can just use the name of the type if it's not stripped
             return type.Name;
         }
 
@@ -49,7 +50,7 @@ public class EbxReader : BaseEbxReader
             EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(instance.TypeDescriptorRef);
             for (int i = 0; i < instance.Count; i++)
             {
-                m_objects.Add(CreateObject(typeDescriptor) ?? throw new Exception());
+                m_objects.Add(CreateObject(typeDescriptor));
                 m_refCounts.Add(0);
             }
         }
@@ -69,8 +70,8 @@ public class EbxReader : BaseEbxReader
                     m_stream.Position += 8;
                 }
 
-                object obj = m_objects[objectIndex];
-                ((dynamic)obj).SetInstanceGuid(new AssetClassGuid(instanceGuid, objectIndex++));
+                object? obj = m_objects[objectIndex];
+                ((dynamic?)obj)?.SetInstanceGuid(new AssetClassGuid(instanceGuid, objectIndex++));
                 ReadType(typeDescriptor, obj, m_stream.Position - 8);
             }
         }
@@ -254,15 +255,14 @@ public class EbxReader : BaseEbxReader
         int index = m_stream.ReadInt32();
         EbxArray array = m_header.Arrays[index];
 
-        long arrayPos = m_stream.Position;
-        m_stream.Position = m_header.ArrayOffset + array.Offset;
+        m_stream.StepIn(m_header.ArrayOffset + array.Offset);
 
         EbxFieldDescriptor elementFieldDescriptor = m_typeResolver.ResolveField(arrayTypeDescriptor.FieldIndex);
         for (int i = 0; i < array.Count; i++)
         {
             ReadField(arrayTypeDescriptor, elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef, inAddFunc);
         }
-        m_stream.Position = arrayPos;
+        m_stream.StepOut();
     }
 
     private string ReadString(uint offset)
@@ -318,7 +318,6 @@ public class EbxReader : BaseEbxReader
     private TypeRef ReadTypeRef()
     {
         string str = ReadString(m_stream.ReadUInt32());
-        m_stream.Position += 4;
 
         if (string.IsNullOrEmpty(str))
         {
@@ -436,7 +435,7 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.Array:
                 EbxTypeDescriptor arrayTypeDescriptor = m_typeResolver.ResolveType(inTypeDescriptorRef);
                 EbxFieldDescriptor elementFieldDescriptor = m_typeResolver.ResolveField(arrayTypeDescriptor.FieldIndex);
-                return typeof(List<>).MakeGenericType(GetTypeFromEbxField(elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef));
+                return typeof(ObservableCollection<>).MakeGenericType(GetTypeFromEbxField(elementFieldDescriptor.Flags.GetTypeEnum(), elementFieldDescriptor.TypeDescriptorRef));
             case TypeFlags.TypeEnum.Enum:
                 return GetType(m_typeResolver.ResolveType(inTypeDescriptorRef));
 
