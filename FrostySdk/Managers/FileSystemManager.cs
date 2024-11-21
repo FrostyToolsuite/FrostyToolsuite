@@ -289,7 +289,8 @@ public static class FileSystemManager
 
         if (initFs.IsDict())
         {
-            if (!initFs.AsDict().ContainsKey("encrypted"))
+            byte[]? encrypted = initFs.AsDict().AsBlob("encrypted", null);
+            if (encrypted is null)
             {
                 return false;
             }
@@ -299,7 +300,7 @@ public static class FileSystemManager
                 return false;
             }
 
-            using (BlockStream stream = new(new Block<byte>(initFs.AsDict().AsBlob("encrypted"))))
+            using (BlockStream stream = new(new Block<byte>(encrypted)))
             {
                 stream.Decrypt(KeyManager.GetKey("InitFsKey"), PaddingMode.PKCS7);
 
