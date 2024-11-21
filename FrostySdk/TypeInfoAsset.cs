@@ -16,9 +16,16 @@ public class TypeInfoAsset : IType
     public TypeInfoAsset(Guid inGuid, object inAsset)
     {
         Name = inAsset.GetProperty<string>("TypeName");
-        NameHash = inAsset.GetProperty<uint>("TypeNameHash");
+        if (inAsset.TryGetProperty("TypeNameHash", out uint hash))
+        {
+            NameHash = hash;
+        }
+        else
+        {
+            NameHash = uint.MaxValue;
+        }
         Guid = inGuid;
-        Signature = 0;
+        Signature = uint.MaxValue;
     }
 
     public TypeInfoAsset(string inName, uint inNameHash, Guid inGuid)
@@ -26,7 +33,7 @@ public class TypeInfoAsset : IType
         Name = inName;
         NameHash = inNameHash;
         Guid = inGuid;
-        Signature = 0;
+        Signature = uint.MaxValue;
     }
 
     public bool IsSubClassOf(IType inType)

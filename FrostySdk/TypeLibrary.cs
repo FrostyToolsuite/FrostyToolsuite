@@ -44,27 +44,39 @@ public static class TypeLibrary
 
         foreach (Type type in types)
         {
-            NameHashAttribute? nameHashAttribute = type.GetCustomAttribute<NameHashAttribute>();
-            if (nameHashAttribute is null)
-            {
-                // issue described in #25 we are just ignoring these cases
-                continue;
-            }
-            uint nameHash = nameHashAttribute.Hash;
-            string name = type.GetName();
-            Guid? guid = type.GetCustomAttribute<GuidAttribute>()?.Guid;
+            s_nameMapping.Add(type.GetName(), s_types.Count);
 
-            s_nameMapping.Add(name, s_types.Count);
-            s_nameHashMapping.Add(nameHash, s_types.Count);
-            if (guid.HasValue)
+            uint nameHash = type.GetNameHash();
+            if (nameHash != uint.MaxValue)
             {
-                s_guidMapping.Add(guid.Value, s_types.Count);
+                s_nameHashMapping.Add(nameHash, s_types.Count);
             }
+
+            Guid guid = type.GetGuid();
+            if (guid != Guid.Empty)
+            {
+                s_guidMapping.Add(guid, s_types.Count);
+            }
+
             s_types.Add(new SdkType(type));
+
+            bool addArray = false;
+            string? arrayName = type.GetCustomAttribute<ArrayNameAttribute>()?.Name;
+            if (arrayName is not null)
+            {
+                s_nameMapping.Add(arrayName, s_types.Count);
+                addArray = true;
+            }
+
             Guid? arrayGuid = type.GetCustomAttribute<ArrayGuidAttribute>()?.Guid;
             if (arrayGuid.HasValue)
             {
                 s_guidMapping.Add(arrayGuid.Value, s_types.Count);
+                addArray = true;
+            }
+
+            if (addArray)
+            {
                 s_types.Add(new SdkType(typeof(ObservableCollection<>).MakeGenericType(type)));
             }
         }
@@ -76,11 +88,22 @@ public static class TypeLibrary
     public static void AddTypeInfoAsset(Guid inGuid, object inTypeInfoAsset)
     {
         TypeInfoAsset type = new(inGuid, inTypeInfoAsset);
+
         const int flag = 1 << 31;
         int index = s_typeInfoAssets.Count | flag;
-        s_nameMapping.Add(type.Name, index);
+
+        if (!string.IsNullOrEmpty(type.Name))
+        {
+            s_nameMapping.Add(type.Name, index);
+        }
+
         s_guidMapping.Add(type.Guid, index);
-        s_nameHashMapping.Add(type.NameHash, index);
+
+        if (type.NameHash != uint.MaxValue)
+        {
+            s_nameHashMapping.Add(type.NameHash, index);
+        }
+
         s_typeInfoAssets.Add(type);
     }
 
@@ -219,9 +242,19 @@ public static class TypeLibrary
             TypeInfoAsset type = new(inStream.ReadNullTerminatedString(), inStream.ReadUInt32(), inStream.ReadGuid());
             const int flag = 1 << 31;
             int index = s_typeInfoAssets.Count | flag;
-            s_nameMapping.Add(type.Name, index);
+
+            if (!string.IsNullOrEmpty(type.Name))
+            {
+                s_nameMapping.Add(type.Name, index);
+            }
+
             s_guidMapping.Add(type.Guid, index);
-            s_nameHashMapping.Add(type.NameHash, index);
+
+            if (type.NameHash != uint.MaxValue)
+            {
+                s_nameHashMapping.Add(type.NameHash, index);
+            }
+
             s_typeInfoAssets.Add(type);
         }
     }
@@ -234,7 +267,6 @@ public static class TypeLibrary
         int count = 0;
         foreach (TypeInfoAsset type in s_typeInfoAssets)
         {
-
             count++;
 
             inStream.WriteNullTerminatedString(type.Name);

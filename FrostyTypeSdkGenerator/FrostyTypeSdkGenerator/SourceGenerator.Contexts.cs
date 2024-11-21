@@ -7,7 +7,7 @@ namespace FrostyTypeSdkGenerator;
 
 public sealed partial class SourceGenerator
 {
-    private readonly record struct TypeContext(string? Namespace, string Name, bool IsValueType, ImmutableArray<FieldContext> Fields);
+    private record TypeContext(string? Namespace, string Name, bool IsValueType, ImmutableArray<FieldContext> Fields, TypeContext? ContainingType);
 
     private readonly record struct FieldContext(string Name, string Type, ImmutableArray<string> Attributes);
 
