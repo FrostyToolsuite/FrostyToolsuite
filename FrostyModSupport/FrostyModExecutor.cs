@@ -238,6 +238,13 @@ public partial class FrostyModExecutor
             }
         }
 
+        // symlink shader_cache, else dx12 games will perform not as good
+        string shaderCache = Path.Combine(FileSystemManager.BasePath, "shader_cache");
+        if (Directory.Exists(shaderCache))
+        {
+            Directory.CreateSymbolicLink(Path.Combine(inModPackPath, "shader_cache"), shaderCache);
+        }
+
         if (FileSystemManager.Sources.Count > 1)
         {
             // symlink all other sources
