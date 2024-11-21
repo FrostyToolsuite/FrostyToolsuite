@@ -7,7 +7,7 @@ namespace Frosty.Sdk.IO;
 public abstract class BaseEbxReader
 {
     protected readonly DataStream m_stream;
-    protected readonly List<object> m_objects = new();
+    protected readonly List<object?> m_objects = new();
     protected readonly List<int> m_refCounts = new();
 
     #region -- PrimitiveTypes --
@@ -51,8 +51,20 @@ public abstract class BaseEbxReader
         T asset = new();
         InternalReadObjects();
 
+        for (int i = m_objects.Count - 1; i >= 0 ; i--)
+        {
+            if (m_objects[i] is not null)
+            {
+                continue;
+            }
+
+            // instance type is not in type info
+            m_objects.RemoveAt(i);
+            m_refCounts.RemoveAt(i);
+        }
+
         asset.partitionGuid = GetPartitionGuid();
-        asset.objects = m_objects;
+        asset.objects = m_objects!;
         asset.refCounts = m_refCounts;
         asset.dependencies = GetDependencies();
         asset.OnLoadComplete();

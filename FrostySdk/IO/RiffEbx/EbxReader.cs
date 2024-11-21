@@ -23,7 +23,7 @@ public class EbxReader : BaseEbxReader
 
     private readonly Dictionary<uint, EbxExtra> m_boxedValues = new();
 
-    protected static readonly string s_collectionName = "ObservableCollection`1";
+    private static readonly string s_collectionName = "ObservableCollection`1";
 
     public EbxReader(DataStream inStream)
         : base(inStream)
@@ -85,7 +85,7 @@ public class EbxReader : BaseEbxReader
             ushort typeRef = m_stream.ReadUInt16();
             typeRefs[j++] = typeRef;
 
-            m_objects.Add(TypeLibrary.CreateObject(m_typeResolver.ResolveType(typeRef).NameHash) ?? throw new Exception());
+            m_objects.Add(TypeLibrary.CreateObject(m_typeResolver.ResolveType(typeRef).NameHash));
             m_refCounts.Add(0);
         }
 
@@ -101,8 +101,8 @@ public class EbxReader : BaseEbxReader
 
             Debug.Assert(m_stream.Position - m_payloadOffset == m_fixup.InstanceOffsets[i]);
 
-            object obj = m_objects[i];
-            ((dynamic)obj).SetInstanceGuid(new AssetClassGuid(instanceGuid, i));
+            object? obj = m_objects[i];
+            ((dynamic?)obj)?.SetInstanceGuid(new AssetClassGuid(instanceGuid, i));
             ReadType(typeDescriptor, obj, m_stream.Position);
         }
     }

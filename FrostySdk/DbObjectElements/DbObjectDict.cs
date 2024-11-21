@@ -107,8 +107,13 @@ public class DbObjectDict : DbObject
         return m_items.TryGetValue(name, out DbObject? item) ? item.AsSha1() : defaultValue;
     }
 
+    public byte[] AsBlob(string name)
+    {
+        return m_items[name].AsBlob();
+    }
+
     [return: NotNullIfNotNull(nameof(defaultValue))]
-    public byte[]? AsBlob(string name, byte[]? defaultValue = default)
+    public byte[]? AsBlob(string name, byte[]? defaultValue)
     {
         return m_items.TryGetValue(name, out DbObject? item) ? item.AsBlob() : defaultValue;
     }

@@ -18,6 +18,11 @@ public readonly struct TypeRef : IEquatable<TypeRef>
 
     public TypeRef(string inName)
     {
+        if (inName == "null")
+        {
+            m_type = null;
+            return;
+        }
         m_type = TypeLibrary.GetType(inName);
         if (m_type is null)
         {
