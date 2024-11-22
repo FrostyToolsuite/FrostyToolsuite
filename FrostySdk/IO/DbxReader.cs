@@ -357,25 +357,25 @@ public sealed class DbxReader
                         break;
                     }
 
-                    switch (child.Name)
+                    string? refGuid = GetAttributeValue(node, "ref");
+                    if (refGuid is not null)
                     {
-                        case "complex":
-                            value = ReadStruct(arrayElementType, child);
-                            break;
-                        case "array":
-                            value = ReadArray(child);
-                            break;
-                        default:
-                            string? refGuid = GetAttributeValue(node, "ref");
-                            if (refGuid is not null)
-                            {
-                                value = ParseRef(node, refGuid);
-                            }
-                            else
-                            {
+                        value = ParseRef(node, refGuid);
+                    }
+                    else
+                    {
+                        switch (child.Name)
+                        {
+                            case "complex":
+                                value = ReadStruct(arrayElementType, child);
+                                break;
+                            case "array":
+                                value = ReadArray(child);
+                                break;
+                            default:
                                 value = GetValueFromString(valueType.Type, node.InnerText, valueType.GetFlags().GetTypeEnum());
-                            }
-                            break;
+                                break;
+                        }
                     }
 
                     boxed = new BoxedValueRef(value, valueType.GetFlags());

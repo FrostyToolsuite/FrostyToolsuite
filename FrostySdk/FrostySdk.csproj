@@ -20,6 +20,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0" />
         <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+        <PackageReference Include="Octokit" Version="13.0.1" />
     </ItemGroup>
 
     <ItemGroup>

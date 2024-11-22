@@ -605,7 +605,7 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter.WriteAttributeString("type", type);
         }
-        if (name is not null)
+        else if (name is not null)
         {
             m_xmlWriter.WriteAttributeString("name", name);
         }

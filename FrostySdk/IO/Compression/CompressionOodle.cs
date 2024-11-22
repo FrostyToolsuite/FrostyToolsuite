@@ -8,9 +8,8 @@ namespace Frosty.Sdk.IO.Compression;
 
 public partial class CompressionOodle : ICompressionFormat
 {
-    public static int MajorVersion = 9;
     public string Identifier => "Oodle";
-    private const string NativeLibName = "ThirdParty/oo2core";
+    private const string NativeLibName = "ThirdParty/liboo2core";
 
     internal enum OodleLZ_FuzzSafe
     {
@@ -135,12 +134,6 @@ public partial class CompressionOodle : ICompressionFormat
 
     public int GetCompressBounds(int inRawSize, CompressionFlags inFlags = CompressionFlags.None)
     {
-        // 2.8.0 - add compressor
-        if (MajorVersion >= 8)
-        {
-            return (int)OodleLZ_GetCompressedBufferSizeNeeded(m_compressors[inFlags], (nuint)inRawSize);
-        }
-
-        return (int)OodleLZ_GetCompressedBufferSizeNeeded_Old((nuint)inRawSize);
+        return (int)OodleLZ_GetCompressedBufferSizeNeeded(m_compressors[inFlags], (nuint)inRawSize);
     }
 }
