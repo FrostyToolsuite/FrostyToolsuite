@@ -896,7 +896,7 @@ public partial class FrostyModExecutor
                 string sbPath = tocPath.Replace(".toc", ".sb");
                 if (File.Exists(sbPath))
                 {
-                    File.CreateSymbolicLink(modifiedToc.FullName.Replace(".toc", ".sb"), sbPath);
+                    Frosty.Sdk.Utils.Utils.File.CreateSymbolicLink(modifiedToc.FullName.Replace(".toc", ".sb"), sbPath);
                 }
             }
         }

@@ -1,6 +1,9 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.IO;
@@ -106,5 +109,75 @@ public static class Utils
         } while (ulongRand > max - (max % uRange + 1) % uRange);
 
         return (ulongRand % uRange + min) | 1;
+    }
+
+    public static class File
+    {
+        public static FileSystemInfo CreateSymbolicLink(string inPath, string inPathToTarget)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // windows is ass and needs admin rights for symlinks
+                ProcessStartInfo startInfo = new()
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c mklink \"{inPath}\" \"{inPathToTarget}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    Verb = "runas"
+                };
+
+                using (Process? process = Process.Start(startInfo))
+                {
+                    process?.WaitForExit();
+
+                    if (process?.ExitCode != 0)
+                    {
+                        string? error = process?.StandardError.ReadToEnd();
+                        throw new Exception($"Faile to create symbolic link: {error}");
+                    }
+
+                    return new FileInfo(inPath);
+                }
+            }
+            return System.IO.File.CreateSymbolicLink(inPath, inPathToTarget);
+        }
+    }
+
+    public static class Directory
+    {
+        public static FileSystemInfo CreateSymbolicLink(string inPath, string inPathToTarget)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // windows is ass and needs admin rights for symlinks
+                ProcessStartInfo startInfo = new()
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c mklink /D \"{inPath}\" \"{inPathToTarget}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    Verb = "runas"
+                };
+
+                using (Process? process = Process.Start(startInfo))
+                {
+                    process?.WaitForExit();
+
+                    if (process?.ExitCode != 0)
+                    {
+                        string? error = process?.StandardError.ReadToEnd();
+                        throw new Exception($"Faile to create symbolic link: {error}");
+                    }
+
+                    return new DirectoryInfo(inPath);
+                }
+            }
+            return System.IO.Directory.CreateSymbolicLink(inPath, inPathToTarget);
+        }
     }
 }
