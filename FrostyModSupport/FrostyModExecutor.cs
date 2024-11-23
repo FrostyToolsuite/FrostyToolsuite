@@ -50,6 +50,11 @@ public partial class FrostyModExecutor
     /// <param name="inModPaths">The full paths of the mods.</param>
     public Errors GenerateMods(string inModPackPath, IEnumerable<string> inModPaths)
     {
+        if (!FileSystemManager.Initialize(inModPackPath))
+        {
+            return Errors.FailedToInitialize;
+        }
+
         // define some paths we are going to need
         m_patchPath = FileSystemManager.Sources.Count == 1
             ? FileSystemSource.Base.Path
@@ -60,18 +65,23 @@ public partial class FrostyModExecutor
         // check if we need to generate new data
         string modInfosPath = Path.Combine(m_modDataPath, "mods.json");
         List<ModInfo> modInfos = GenerateModInfoList(inModPaths);
-        if (File.Exists(modInfosPath))
+
+        string headPath = Path.Combine(m_modDataPath, "head.txt");
+        if (File.Exists(modInfosPath) && File.Exists(headPath))
         {
             List<ModInfo>? oldModInfos = JsonSerializer.Deserialize<List<ModInfo>>(File.ReadAllText(modInfosPath));
-            if (oldModInfos?.SequenceEqual(modInfos) == true)
+            string head = File.ReadAllText(headPath);
+            if (oldModInfos?.SequenceEqual(modInfos) == true && FileSystemManager.Head == uint.Parse(head))
             {
                 return Errors.NoUpdateNeeded;
             }
         }
 
         // make sure the managers are initialized
-        ResourceManager.Initialize();
-        AssetManager.Initialize();
+        if (!ResourceManager.Initialize() || !AssetManager.Initialize())
+        {
+            return Errors.FailedToInitialize;
+        }
 
         // load handlers from Handlers directory
         LoadHandlers();
@@ -126,6 +136,9 @@ public partial class FrostyModExecutor
             Directory.Delete(inModPackPath, true);
         }
         Directory.CreateDirectory(m_modDataPath);
+
+        // write head to file so we know for which game version this data was generated
+        File.WriteAllText(headPath, FileSystemManager.Head.ToString());
 
         // modify the superbundles and write them to mod data
         foreach (KeyValuePair<int, SuperBundleModInfo> sb in m_superBundleModInfos)
