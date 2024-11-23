@@ -604,10 +604,11 @@ public sealed class DbxWriter : IDisposable
         if (type is not null)
         {
             m_xmlWriter.WriteAttributeString("type", type);
-        }
-        else if (name is not null)
-        {
-            m_xmlWriter.WriteAttributeString("name", name);
+
+            if (name is not null)
+            {
+                m_xmlWriter.WriteAttributeString("name", name);
+            }
         }
     }
 
