@@ -63,10 +63,10 @@ public partial class FrostyModExecutor
         m_gamePatchPath = Path.Combine(FileSystemManager.BasePath, m_patchPath);
 
         // check if we need to generate new data
-        string modInfosPath = Path.Combine(m_modDataPath, "mods.json");
+        string modInfosPath = Path.Combine(inModPackPath, "mods.json");
         List<ModInfo> modInfos = GenerateModInfoList(inModPaths);
 
-        string headPath = Path.Combine(m_modDataPath, "head.txt");
+        string headPath = Path.Combine(inModPackPath, "head.txt");
         if (File.Exists(modInfosPath) && File.Exists(headPath))
         {
             List<ModInfo>? oldModInfos = JsonSerializer.Deserialize<List<ModInfo>>(File.ReadAllText(modInfosPath));
@@ -138,6 +138,7 @@ public partial class FrostyModExecutor
         Directory.CreateDirectory(m_modDataPath);
 
         // write head to file so we know for which game version this data was generated
+        File.WriteAllText(modInfosPath, JsonSerializer.Serialize(modInfos));
         File.WriteAllText(headPath, FileSystemManager.Head.ToString());
 
         // modify the superbundles and write them to mod data
