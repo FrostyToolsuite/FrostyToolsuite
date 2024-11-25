@@ -337,6 +337,7 @@ public partial class FrostyModExecutor
     {
         foreach (BaseModResource resource in container.Resources)
         {
+            Sha1 sha1 = resource.Sha1;
             HashSet<int> modifiedBundles = new();
             switch (resource)
             {
@@ -351,9 +352,10 @@ public partial class FrostyModExecutor
                 case EbxModResource ebx:
                 {
                     bool exists;
-                    if ((exists = m_modifiedEbx.ContainsKey(resource.Name)) && !resource.HasHandler)
+                    if ((exists = m_modifiedEbx.TryGetValue(resource.Name, out EbxModEntry? existing)) && !resource.HasHandler)
                     {
                         // asset was already modified by another mod so just skip to the bundle part
+                        sha1 = existing!.Sha1;
                         break;
                     }
 
@@ -368,7 +370,7 @@ public partial class FrostyModExecutor
 
                         if (exists)
                         {
-                            modEntry = m_modifiedEbx[resource.Name];
+                            modEntry = existing!;
                             if (modEntry.Handler is null)
                             {
                                 break;
@@ -426,9 +428,10 @@ public partial class FrostyModExecutor
                 case ResModResource res:
                 {
                     bool exists;
-                    if ((exists = m_modifiedRes.ContainsKey(resource.Name)) && !resource.HasHandler)
+                    if ((exists = m_modifiedRes.TryGetValue(resource.Name, out ResModEntry? existing)) && !resource.HasHandler)
                     {
                         // asset was already modified by another mod so just skip to the bundle part
+                        sha1 = existing!.Sha1;
                         break;
                     }
 
@@ -443,7 +446,7 @@ public partial class FrostyModExecutor
 
                         if (exists)
                         {
-                            modEntry = m_modifiedRes[resource.Name];
+                            modEntry = existing!;
                             if (modEntry.Handler is null)
                             {
                                 break;
@@ -502,9 +505,10 @@ public partial class FrostyModExecutor
                 {
                     Guid id = Guid.Parse(resource.Name);
                     bool exists;
-                    if ((exists = m_modifiedChunks.ContainsKey(id)) && !resource.HasHandler)
+                    if ((exists = m_modifiedChunks.TryGetValue(id, out ChunkModEntry? existing)) && !resource.HasHandler)
                     {
                         // asset was already modified by another mod so just skip to the bundle part
+                        sha1 = existing!.Sha1;
                         break;
                     }
 
@@ -519,7 +523,7 @@ public partial class FrostyModExecutor
 
                         if (exists)
                         {
-                            modEntry = m_modifiedChunks[id];
+                            modEntry = existing!;
                             if (modEntry.Handler is null)
                             {
                                 break;
@@ -607,9 +611,9 @@ public partial class FrostyModExecutor
             {
                 SuperBundleModInfo sb = GetSuperBundleModInfoFromBundle(addedBundle);
 
-                if (resource.Sha1 != Sha1.Zero)
+                if (sha1 != Sha1.Zero)
                 {
-                    sb.Data.Add(resource.Sha1);
+                    sb.Data.Add(sha1);
                 }
 
                 if (!sb.Modified.Bundles.TryGetValue(addedBundle, out BundleModInfo? modInfo))
