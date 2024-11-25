@@ -7,6 +7,8 @@ using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
+using Frosty.Sdk.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk;
 
@@ -37,7 +39,7 @@ public static class TypeLibrary
 
         if ((sdk.GetCustomAttribute<SdkVersionAttribute>()?.Head ?? 0) != FileSystemManager.Head)
         {
-            FrostyLogger.Logger?.LogInfo("Outdated Type Sdk, please regenerate it to avoid issues");
+            FrostyLogger.Logger?.LogInformation("Outdated Type Sdk, please regenerate it to avoid issues");
         }
 
         Type[] types = sdk.GetExportedTypes();
@@ -47,6 +49,7 @@ public static class TypeLibrary
             if (type.GetCustomAttribute<EbxTypeMetaAttribute>() is null)
             {
                 // should only happen for types that only contain another type
+                FrostyLogger.Logger?.LogDebug("Ignoring type \"{}\" from sdk", type.Name);
                 continue;
             }
 
@@ -101,6 +104,10 @@ public static class TypeLibrary
         if (!string.IsNullOrEmpty(type.Name))
         {
             s_nameMapping.Add(type.Name, index);
+        }
+        else
+        {
+            FrostyLogger.Logger?.LogDebug("Weird empty type name in TypeInfoAsset \"{}\"", inTypeInfoAsset.GetProperty<string>("Name"));
         }
 
         s_guidMapping.Add(type.Guid, index);

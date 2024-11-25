@@ -1,0 +1,14 @@
+{
+  "Name": "bf4",
+  "DisplayName": "Battlefield™ 4",
+  "InternalName": "bf4",
+  "TypeInfoSignature": "",
+  "DataVersion": 20131101,
+  "FrostbiteVersion": "2013.2",
+  "EbxVersion": 2,
+  "EbxCompression": 2,
+  "ResCompression": 2,
+  "ChunkCompression": 2,
+  "TextureChunkCompression": 2,
+  "MaxBufferSize": 65536
+}

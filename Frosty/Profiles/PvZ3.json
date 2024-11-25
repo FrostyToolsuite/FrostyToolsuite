@@ -1,0 +1,15 @@
+{
+  "Name": "PVZBattleforNeighborville",
+  "DisplayName": "Plants vs Zombies: Battle for Neighborville™",
+  "InternalName": "pvz3",
+  "TypeInfoSignature": "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ??",
+  "DataVersion": 20191017,
+  "FrostbiteVersion": "2018.2",
+  "EbxVersion": 5,
+  "RequiresInitFsKey": true,
+  "EbxCompression": 17,
+  "ResCompression": 17,
+  "ChunkCompression": 17,
+  "TextureChunkCompression": 17,
+  "MaxBufferSize": 65536
+}
