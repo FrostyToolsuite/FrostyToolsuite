@@ -57,7 +57,9 @@ https://github.com/user-attachments/assets/3a3b93ea-e034-4ef6-b0fb-1729310cb111
 
 After generating a mod data folder, pass the datapath argument to the games launch options to apply the mods as such:
 
-```-datapath '<mod data path>'```
+```-dataPath "<mod data path>"```
+the dataPath argument takes either absolute paths or paths relative to the games directory, so for example if your mod data folder is in the games folder, it'd look like:
+```-dataPath "Moddata"```
 
 Or as an alternative to the datapath launch command, you can use the `GAME_DATA_DIR` environment variable instead as such:
 
