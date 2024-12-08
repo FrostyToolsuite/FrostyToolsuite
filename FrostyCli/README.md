@@ -49,7 +49,8 @@ Using the interactive CLI mode:
 $ ./FrostyCli
 ```
 Example clip using the interactive mode to generate mod data:
-[![asciicast](https://asciinema.org/a/0xrPBcC5NfbEnQnFq2A4Knhph.svg)](https://asciinema.org/a/0xrPBcC5NfbEnQnFq2A4Knhph)
+[![GitHub Video](https://img.youtube.com/vi/Gy4sFT9FtVU/hqdefault.jpg)](https://youtu.be/Gy4sFT9FtVU)
+
 
 
 After generating a mod data folder, pass the datapath argument to the games launch options to apply the mods as such:
