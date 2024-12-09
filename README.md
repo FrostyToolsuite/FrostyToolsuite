@@ -67,7 +67,7 @@ git clone https://github.com/FrostyToolsuite/FrostyToolsuite.git
 cd FrostyToolsuite
 dotnet build
 ```
-After that the executable for the editor can be found in `FrostyToolsuite/FrostyEditor/bin/Debug/net7.0`, for the ModManager in `FrostyToolsuite/FrostyModManager/bin/Debug/net7.0`.
+After that the executable for the editor can be found in `FrostyToolsuite/FrostyEditor/bin/Debug/net8.0`, for the ModManager in `FrostyToolsuite/FrostyModManager/bin/Debug/net8.0`.
 
 # Documentation
 Todo
