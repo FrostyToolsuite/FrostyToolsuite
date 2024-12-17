@@ -19,8 +19,6 @@ chmod +x FrostyCli
 ```
 
 # Usage
-> [!WARNING]
-> There is currently [a bug](https://github.com/McSimp/linoodle/issues/5) in FrostyCLI **on Linux** (Windows is unaffected) where it crashes when working with games that use Oodle 2.8.x. To resolve this issue, please download the oo2core_6_win64 DLL from an older game that uses Oodle and place it in the games directory.
 
 ## Overview
 > [!NOTE]
