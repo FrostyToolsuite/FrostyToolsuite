@@ -11,6 +11,7 @@ using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.Sdk;
 using Frosty.Sdk.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk.IO.RiffEbx;
 
@@ -166,7 +167,7 @@ public class EbxReader : BaseEbxReader
             {
                 if (propertyInfo is null)
                 {
-                    //FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", objType.GetName(), fieldDescriptor.NameHash);
+                    FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", objType.GetName(), fieldDescriptor.NameHash);
                     continue;
                 }
                 ReadArray(fieldDescriptor, value =>
@@ -203,7 +204,7 @@ public class EbxReader : BaseEbxReader
                     default:
                         if (propertyInfo is null)
                         {
-                            //FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", objType.GetName(), fieldDescriptor.NameHash);
+                            FrostyLogger.Logger?.LogDebug("Skipping field \"{}.{}\", because it does not exist in the type info", objType.GetName(), fieldDescriptor.NameHash);
                             continue;
                         }
                         ReadField(fieldDescriptor, value =>
@@ -311,7 +312,8 @@ public class EbxReader : BaseEbxReader
             case TypeFlags.TypeEnum.DbObject:
                 throw new InvalidDataException("DbObject");
             default:
-                throw new InvalidDataException("Unknown");
+                FrostyLogger.Logger?.LogError("Not implemented type {} in ebx", inType);
+                break;
         }
     }
 
@@ -435,6 +437,7 @@ public class EbxReader : BaseEbxReader
             return new PointerRef(obj);
         }
 
+        FrostyLogger.Logger?.LogDebug("Ref to null instance");
         return new PointerRef();
     }
 

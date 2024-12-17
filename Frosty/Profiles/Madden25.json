@@ -1,0 +1,17 @@
+{
+  "Name": "Madden25",
+  "DisplayName": "Madden NFL 25™",
+  "InternalName": "madden25",
+  "TypeInfoSignature": "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10",
+  "DataVersion": 20240816,
+  "FrostbiteVersion": "2023.1.1",
+  "EbxVersion": 6,
+  "RequiresInitFsKey": true,
+  "HasAntiCheat": true,
+  "EbxCompression": 15,
+  "ResCompression": 15,
+  "ChunkCompression": 15,
+  "TextureChunkCompression": 15,
+  "MaxBufferSize": 65536,
+  "ZStdCompressionLevel": 16
+}

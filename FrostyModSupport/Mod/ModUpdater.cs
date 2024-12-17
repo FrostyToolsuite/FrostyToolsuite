@@ -15,6 +15,7 @@ using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Profiles;
 using Frosty.Sdk.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.ModSupport.Mod;
 
@@ -107,7 +108,7 @@ public class ModUpdater
             block.Dispose();
         }
 
-        FrostyLogger.Logger?.LogInfo("Successfully updated mod to newest format version.");
+        FrostyLogger.Logger?.LogInformation("Successfully updated mod to newest format version.");
         return true;
     }
 
@@ -130,7 +131,7 @@ public class ModUpdater
             inStream.ReadNullTerminatedString(), inStream.ReadNullTerminatedString(),
             inStream.ReadNullTerminatedString(), version > 4 ? inStream.ReadNullTerminatedString() : string.Empty);
 
-        FrostyLogger.Logger?.LogInfo(
+        FrostyLogger.Logger?.LogInformation(
             $"Converting fbmod (v{version}) \"{modDetails.Title}\" to fbmod (v{FrostyMod.Version})");
 
         int resourceCount = inStream.ReadInt32();
@@ -261,7 +262,7 @@ public class ModUpdater
         FrostyModDetails modDetails = new(mod.AsString("title"), mod.AsString("author"), mod.AsString("category"),
             mod.AsString("version"), mod.AsString("description"), string.Empty);
 
-        FrostyLogger.Logger?.LogInfo(
+        FrostyLogger.Logger?.LogInformation(
             $"Converting legacy fbmod (v{version}) \"{modDetails.Title}\" to fbmod (v{FrostyMod.Version})");
 
         if (modDetails.Description.Contains("(Converted from .daimod)"))
@@ -486,7 +487,7 @@ public class ModUpdater
             detailsElem?["version"]?.InnerText ?? string.Empty,
             "Converted from DAI Mod\n" + detailsElem?["description"]?.InnerText, string.Empty);
 
-        FrostyLogger.Logger?.LogInfo(
+        FrostyLogger.Logger?.LogInformation(
             $"Converting daimod \"{details.Title}\" to fbmod (v{FrostyMod.Version})");
 
         // get bundle actions

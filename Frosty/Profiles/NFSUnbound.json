@@ -1,0 +1,15 @@
+{
+  "Name": "NeedForSpeedUnbound",
+  "DisplayName": "Need for Speed™ Unbound",
+  "InternalName": "nfsunbound",
+  "TypeInfoSignature": "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10",
+  "DataVersion": 20221202,
+  "FrostbiteVersion": "2021.2.3",
+  "EbxVersion": 6,
+  "RequiresInitFsKey": true,
+  "EbxCompression": 25,
+  "ResCompression": 25,
+  "ChunkCompression": 25,
+  "TextureChunkCompression": 25,
+  "MaxBufferSize": 65536
+}

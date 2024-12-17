@@ -18,6 +18,7 @@ using FrostyTypeSdkGenerator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk.Sdk;
 
@@ -47,7 +48,7 @@ public class TypeSdkGenerator
                 offset = reader.ScanPatter(sig);
                 if (offset != nint.Zero)
                 {
-                    FrostyLogger.Logger?.LogInfo($"No TypeInfoSig set, found offset for \"{sig}\"");
+                    FrostyLogger.Logger?.LogInformation($"No TypeInfoSig set, found offset for \"{sig}\"");
                     break;
                 }
             }
@@ -74,7 +75,7 @@ public class TypeSdkGenerator
             return false;
         }
 
-        FrostyLogger.Logger?.LogInfo($"Dumping types at offset {typeInfoOffset:X8}");
+        FrostyLogger.Logger?.LogInformation($"Dumping types at offset {typeInfoOffset:X8}");
 
         string stringsDir = Path.Combine(Utils.Utils.BaseDirectory, "Sdk", "Strings");
         string typeNamesPath = Path.Combine(stringsDir, $"{ProfilesLibrary.InternalName}_types.json");
@@ -170,7 +171,7 @@ public class TypeSdkGenerator
                         // a type with this hash was already added, check if its the same (ignore case)
                         if (!currentName.Equals(name, StringComparison.OrdinalIgnoreCase))
                         {
-                            FrostyLogger.Logger?.LogInfo($"Type hash {hash:X8} duplicate. Using \"{currentName}\" instead of \"{name}\"");
+                            FrostyLogger.Logger?.LogInformation($"Type hash {hash:X8} duplicate. Using \"{currentName}\" instead of \"{name}\"");
                         }
                     }
                 }
@@ -221,7 +222,7 @@ public class TypeSdkGenerator
                             // a field with this hash was already added, check if its the same (ignore case)
                             if (!name.Equals(name, StringComparison.OrdinalIgnoreCase))
                             {
-                                FrostyLogger.Logger?.LogInfo($"Type hash {fieldHash:X8} duplicate. Using \"{name}\" instead of \"{field}\"");
+                                FrostyLogger.Logger?.LogInformation($"Type hash {fieldHash:X8} duplicate. Using \"{name}\" instead of \"{field}\"");
                             }
                         }
                     }
@@ -239,8 +240,8 @@ public class TypeSdkGenerator
                 }
             }
 
-            FrostyLogger.Logger?.LogInfo($"Resolved {Strings.TypeMapping.Count - toRemove.Count} type names");
-            FrostyLogger.Logger?.LogInfo($"{toRemove.Count} unresolved type names left");
+            FrostyLogger.Logger?.LogInformation($"Resolved {Strings.TypeMapping.Count - toRemove.Count} type names");
+            FrostyLogger.Logger?.LogInformation($"{toRemove.Count} unresolved type names left");
 
             foreach (uint key in toRemove)
             {
@@ -273,8 +274,8 @@ public class TypeSdkGenerator
                 }
             }
 
-            FrostyLogger.Logger?.LogInfo($"Resolved {totalFieldNames - unresolvedFieldNames} field names");
-            FrostyLogger.Logger?.LogInfo($"{unresolvedFieldNames} unresolved field names left");
+            FrostyLogger.Logger?.LogInformation($"Resolved {totalFieldNames - unresolvedFieldNames} field names");
+            FrostyLogger.Logger?.LogInformation($"{unresolvedFieldNames} unresolved field names left");
 
             Strings.TypeNames.UnionWith(Strings.TypeMapping.Values);
             foreach (KeyValuePair<uint,Dictionary<uint,string>> pair in Strings.FieldMapping)
@@ -321,7 +322,7 @@ public class TypeSdkGenerator
                 }
             }
 
-            FrostyLogger.Logger?.LogInfo($"Found {TypeInfo.TypeInfoMapping.Count} types in the games memory");
+            FrostyLogger.Logger?.LogInformation($"Found {TypeInfo.TypeInfoMapping.Count} types in the games memory");
             return true;
         }
 
@@ -332,7 +333,7 @@ public class TypeSdkGenerator
 
     public bool CreateSdk(string filePath)
     {
-        FrostyLogger.Logger?.LogInfo("Creating sdk");
+        FrostyLogger.Logger?.LogInformation("Creating sdk");
 
         if (TypeInfo.TypeInfoMapping is null)
         {
@@ -436,7 +437,7 @@ public class TypeSdkGenerator
                 return false;
             }
             File.WriteAllBytes(filePath, stream.ToArray());
-            FrostyLogger.Logger?.LogInfo("Successfully compiled sdk");
+            FrostyLogger.Logger?.LogInformation("Successfully compiled sdk");
         }
 
         return true;
