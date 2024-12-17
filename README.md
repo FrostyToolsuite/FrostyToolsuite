@@ -59,7 +59,7 @@ A source generator which is used to improve the type sdk which gets dumped from 
 Download the latest release from the [release page](https://github.com/FrostyToolsuite/FrostyToolsuite/releases/latest).
 
 ## From source
-Make sure u have [git](https://git-scm.com/downloads) and the [dotnet7 sdk](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) installed and in your path.
+Make sure u have [git](https://git-scm.com/downloads) and the [.NET SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) installed and in your path.
 
 Then just clone and build the Editor using these commands.
 ```
@@ -67,7 +67,7 @@ git clone https://github.com/FrostyToolsuite/FrostyToolsuite.git
 cd FrostyToolsuite
 dotnet build
 ```
-After that the executable for the editor can be found in `FrostyToolsuite/FrostyEditor/bin/Debug/net7.0`, for the ModManager in `FrostyToolsuite/FrostyModManager/bin/Debug/net7.0`.
+After that the executable for the editor can be found in `FrostyToolsuite/FrostyEditor/bin/Debug/net8.0`, for the ModManager in `FrostyToolsuite/FrostyModManager/bin/Debug/net8.0`.
 
 # Documentation
 Todo
