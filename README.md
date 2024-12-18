@@ -1,10 +1,4 @@
-<p align="center">  
-  <a href="https://frostytoolsuite.com/">
-    <picture>
-        <img src="./Resources/FrostyBannerChucky296.svg">
-      </picture>
-  </a>
-</p>
+<img align="center" src="Resources/FrostyBannerChucky296.svg">
 
 <p align="center">
   <a title="Discord Server" href="https://discord.gg/nrq7G5Q9">
