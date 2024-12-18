@@ -49,7 +49,7 @@ $ ./FrostyCli
 Example clip using the interactive mode to generate mod data:
 
 
-![Frosty CLI Interactive Mode](https://github.com/FrostyToolsuite/FrostyToolsuite/tree/master/Resources/FrostyCLIDemo.gif)
+![Frosty CLI Interactive Mode](../Resources/FrostyCLIDemo.gif)
 
 
 
