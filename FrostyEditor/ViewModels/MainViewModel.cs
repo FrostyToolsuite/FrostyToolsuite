@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Frosty.Sdk;
 using FrostyEditor.Models;
 
@@ -47,5 +48,11 @@ public partial class MainViewModel : ViewModelBase
             Header = inHeader,
             Content = inContent,
         });
+    }
+
+    [RelayCommand]
+    private void RemoveTabItem(DocumentModel tab)
+    {
+        Documents.Remove(tab);
     }
 }

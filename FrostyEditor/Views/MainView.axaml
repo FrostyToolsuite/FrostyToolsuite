@@ -9,14 +9,28 @@
              x:DataType="viewModels:MainViewModel"
              x:CompileBindings="True">
   
-  <Grid RowDefinitions="Auto,2*,*" ColumnDefinitions="*,2*">
+  <Grid RowDefinitions="Auto,2*,*" ColumnDefinitions="*,2*" x:Name="Root">
     <ContentControl Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Content="{Binding Menu}" />
     <ContentControl Grid.Row="1" Grid.RowSpan="2" Grid.Column="0"  Content="{Binding DataExplorer}" />
     <ContentControl Grid.Row="2" Grid.Column="1" Content="{Binding Logger}" />
     <TabControl Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" ItemsSource="{Binding Documents}">
       <TabControl.ItemTemplate>
-        <DataTemplate>
-          <TextBlock Text="{Binding Header}" />
+        <DataTemplate x:DataType="models:DocumentModel">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding Header}" FontSize="20"/>
+            <Button Command="{Binding #Root.((viewModels:MainViewModel)DataContext).RemoveTabItemCommand}"
+                    CommandParameter="{Binding .}"
+                    Width="20"
+                    Height="20"
+                    Margin="10,0,0,0"
+                    VerticalAlignment="Center">
+              <Image Source="/Assets/CloseWindow.png" 
+                     Width="14" 
+                     Height="14"
+                     VerticalAlignment="Center"
+                     HorizontalAlignment="Center"/>
+            </Button>
+          </StackPanel>
         </DataTemplate>
       </TabControl.ItemTemplate>
       <TabControl.ContentTemplate>
