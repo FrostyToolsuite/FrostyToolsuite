@@ -7,4 +7,5 @@ using System.Threading.Tasks;
 namespace FrostyEditor.ViewModels;
 internal class PropertyGridViewModel
 {
+
 }

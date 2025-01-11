@@ -16,14 +16,15 @@
     <TabControl Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" ItemsSource="{Binding Documents}">
       <TabControl.ItemTemplate>
         <DataTemplate x:DataType="models:DocumentModel">
-          <StackPanel Orientation="Horizontal">
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding IsVisible}">
             <TextBlock Text="{Binding Header}" FontSize="20"/>
             <Button Command="{Binding #Root.((viewModels:MainViewModel)DataContext).RemoveTabItemCommand}"
                     CommandParameter="{Binding .}"
                     Width="20"
                     Height="20"
                     Margin="10,0,0,0"
-                    VerticalAlignment="Center">
+                    VerticalAlignment="Center"
+                    IsVisible="{Binding IsClosable}">
               <Image Source="/Assets/CloseWindow.png" 
                      Width="14" 
                      Height="14"
@@ -35,7 +36,7 @@
       </TabControl.ItemTemplate>
       <TabControl.ContentTemplate>
         <DataTemplate x:DataType="models:DocumentModel">
-          <ContentControl Content="{Binding Content}" />
+          <ContentControl Content="{Binding Content}" IsVisible="{Binding IsVisible}"/>
         </DataTemplate>
       </TabControl.ContentTemplate>
     </TabControl>

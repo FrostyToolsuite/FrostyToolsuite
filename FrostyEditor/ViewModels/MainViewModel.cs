@@ -28,7 +28,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         App.MainViewModel = this;
-        AddTabItem("Start Page", "Nothing here yet, please someone implement a PropertyGrid");
+        AddTabItem("Start Page", "Nothing here yet.", false);
 
         if (FrostyLogger.Logger is LoggerViewModel logger)
         {
@@ -39,14 +39,20 @@ public partial class MainViewModel : ViewModelBase
     public void AddEditor(AssetEditorViewModel inEditor)
     {
         AddTabItem(inEditor.Header, inEditor);
+
+        // Hide the start menu, if not already hidden
+        Documents[0].IsVisible = false;
     }
 
-    private void AddTabItem(string inHeader, object? inContent)
+    private void AddTabItem(string inHeader, object? inContent, bool closable=true)
     {
         Documents.Add(new DocumentModel()
         {
             Header = inHeader,
             Content = inContent,
+            // Icon = inContent.icon,
+            IsVisible = true,
+            IsClosable = closable
         });
     }
 
@@ -54,5 +60,11 @@ public partial class MainViewModel : ViewModelBase
     private void RemoveTabItem(DocumentModel tab)
     {
         Documents.Remove(tab);
+
+        // Make the start page visible again if there are no other tabs open
+        if (Documents.Count == 1)
+        {
+            Documents[0].IsVisible = true;
+        }
     }
 }
