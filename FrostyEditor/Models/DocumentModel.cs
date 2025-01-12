@@ -6,10 +6,4 @@ public partial class DocumentModel : ObservableObject
 {
     public string? Header { get; set; }
     public object? Content { get; set; }
-
-    [ObservableProperty]
-    public bool m_isVisible;
-
-    [ObservableProperty]
-    private bool m_isClosable;
 }

@@ -9,6 +9,8 @@ namespace FrostyEditor.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
+    public ObservableCollection<DocumentModel> Documents { get; } = new();
+
     [ObservableProperty]
     private MenuViewModel m_menu = new();
 
@@ -18,7 +20,8 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     private LoggerViewModel m_logger = new();
 
-    public ObservableCollection<DocumentModel> Documents { get; } = new();
+    [ObservableProperty]
+    private bool m_showStartMenu = true;
 
     public MainViewModel()
     {
@@ -28,7 +31,6 @@ public partial class MainViewModel : ViewModelBase
         }
 
         App.MainViewModel = this;
-        AddTabItem("Start Page", "Nothing here yet.", false);
 
         if (FrostyLogger.Logger is LoggerViewModel logger)
         {
@@ -41,18 +43,16 @@ public partial class MainViewModel : ViewModelBase
         AddTabItem(inEditor.Header, inEditor);
 
         // Hide the start menu, if not already hidden
-        Documents[0].IsVisible = false;
+        ShowStartMenu = false;
     }
 
-    private void AddTabItem(string inHeader, object? inContent, bool closable=true)
+    private void AddTabItem(string inHeader, object? inContent)
     {
         Documents.Add(new DocumentModel()
         {
             Header = inHeader,
             Content = inContent,
             // Icon = inContent.icon,
-            IsVisible = true,
-            IsClosable = closable
         });
     }
 
@@ -62,9 +62,9 @@ public partial class MainViewModel : ViewModelBase
         Documents.Remove(tab);
 
         // Make the start page visible again if there are no other tabs open
-        if (Documents.Count == 1)
+        if (Documents.Count == 0)
         {
-            Documents[0].IsVisible = true;
+            ShowStartMenu = true;
         }
     }
 }

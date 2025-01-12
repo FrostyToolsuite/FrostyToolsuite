@@ -13,18 +13,26 @@
     <ContentControl Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Content="{Binding Menu}" />
     <ContentControl Grid.Row="1" Grid.RowSpan="2" Grid.Column="0"  Content="{Binding DataExplorer}" />
     <ContentControl Grid.Row="2" Grid.Column="1" Content="{Binding Logger}" />
+    <!--Start page-->
+    <TabControl Grid.Row="0" Grid.RowSpan="2" Grid.Column="1">
+      <TabItem Header="Start Page" IsVisible="{Binding ShowStartMenu}">
+        <Panel IsVisible="{Binding ShowStartMenu}">
+          <TextBlock>Nothing here yet.</TextBlock>
+        </Panel>
+      </TabItem>
+    </TabControl>
+    <!--Document handler-->
     <TabControl Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" ItemsSource="{Binding Documents}">
       <TabControl.ItemTemplate>
         <DataTemplate x:DataType="models:DocumentModel">
-          <StackPanel Orientation="Horizontal" IsVisible="{Binding IsVisible}">
+          <StackPanel Orientation="Horizontal">
             <TextBlock Text="{Binding Header}" FontSize="20"/>
             <Button Command="{Binding #Root.((viewModels:MainViewModel)DataContext).RemoveTabItemCommand}"
                     CommandParameter="{Binding .}"
                     Width="20"
                     Height="20"
                     Margin="10,0,0,0"
-                    VerticalAlignment="Center"
-                    IsVisible="{Binding IsClosable}">
+                    VerticalAlignment="Center">
               <Image Source="/Assets/CloseWindow.png" 
                      Width="14" 
                      Height="14"
@@ -36,7 +44,7 @@
       </TabControl.ItemTemplate>
       <TabControl.ContentTemplate>
         <DataTemplate x:DataType="models:DocumentModel">
-          <ContentControl Content="{Binding Content}" IsVisible="{Binding IsVisible}"/>
+          <ContentControl Content="{Binding Content}"/>
         </DataTemplate>
       </TabControl.ContentTemplate>
     </TabControl>
