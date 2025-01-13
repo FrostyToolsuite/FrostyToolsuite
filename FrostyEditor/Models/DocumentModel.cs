@@ -1,8 +1,6 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-
 namespace FrostyEditor.Models;
 
-public partial class DocumentModel : ObservableObject
+public class DocumentModel
 {
     public string? Header { get; set; }
     public object? Content { get; set; }

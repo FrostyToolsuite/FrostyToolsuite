@@ -13,10 +13,6 @@
         <AvaloniaResource Include="Assets\**" />
     </ItemGroup>
 
-    <ItemGroup>
-      <AvaloniaXaml Remove="Views\PropertyGridView.axaml" />
-    </ItemGroup>
-
 
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="11.0.10" />
