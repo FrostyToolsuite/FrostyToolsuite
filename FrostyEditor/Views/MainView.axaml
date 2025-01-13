@@ -13,16 +13,181 @@
     <ContentControl Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Content="{Binding Menu}" />
     <ContentControl Grid.Row="1" Grid.RowSpan="2" Grid.Column="0"  Content="{Binding DataExplorer}" />
     <ContentControl Grid.Row="2" Grid.Column="1" Content="{Binding Logger}" />
-    <!--Start page-->
-    <TabControl Grid.Row="0" Grid.RowSpan="2" Grid.Column="1">
-      <TabItem Header="Start Page" IsVisible="{Binding ShowStartMenu}">
-        <Panel IsVisible="{Binding ShowStartMenu}">
-          <TextBlock>Nothing here yet.</TextBlock>
-        </Panel>
+    <!-- Static Start Page -->
+    <TabControl Grid.Row="0" 
+                Grid.RowSpan="2" 
+                Grid.Column="1" 
+                IsVisible="{Binding ShowStartMenu}">
+      <TabItem Header="Start Page">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="64" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <!-- Multiplayer Warning -->
+          <Grid Margin="2"
+                Background="{StaticResource ListBackground}">
+            <Grid Grid.Row="0"
+                  Margin="5">
+              <Image Source="avares://FrostyEditor/Assets/Warning.png"
+                     Width="32"
+                     HorizontalAlignment="Left"
+                     Margin="20,0,0,0"
+                     VerticalAlignment="Center" />
+              <TextBlock Text="The developers do not support this tool being used to modify files that impact multiplayer in any way shape or form, and will not provide support to anyone who attempts this."
+                         Foreground="{StaticResource FontColor}"
+                         VerticalAlignment="Center"
+                         HorizontalAlignment="Left"
+                         TextWrapping="Wrap"
+                         TextAlignment="Left"
+                         Margin="80,0,50,0" />
+            </Grid>
+          </Grid>
+          <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <!-- Loaded Plugins / Convenient Links -->
+            <Grid Grid.Column="0">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="1*" />
+                <RowDefinition Height="2*" />
+              </Grid.RowDefinitions>
+
+              <Grid Grid.Row="0"
+                    Margin="2"
+                    Background="{StaticResource ListBackground}">
+                <ScrollViewer Grid.Row="0"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                  <StackPanel Orientation="Vertical">
+                    <TextBlock Text="Convenient Links"
+                               Foreground="{StaticResource FontColor}"
+                               Margin="8"
+                               FontWeight="Bold" />
+                    <StackPanel Orientation="Horizontal"
+                                Margin="8,8,0,0">
+                      <TextBlock Text="Frosty Website:"
+                                 Foreground="{StaticResource FontColor}"
+                                 Margin="0,0,20,0" />
+                      <TextBlock>
+                        http://www.frostytoolsuite.com
+                      </TextBlock>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Margin="8,8,0,0">
+                      <TextBlock Text="Frosty Support:"
+                                 Foreground="{StaticResource FontColor}"
+                                 Margin="0,0,20,0" />
+                      <TextBlock>
+                        https://discord.gg/sB8ZUAT
+                      </TextBlock>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Margin="8,8,0,0">
+                      <TextBlock Text="Frosty Source Code:"
+                                 Foreground="{StaticResource FontColor}"
+                                 Margin="0,0,20,0" />
+                      <TextBlock>
+                        https://github.com/CadeEvs/FrostyToolsuite  
+                      </TextBlock>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Margin="8,8,0,0">
+                      <TextBlock Text="Intel® Texture Works Plugin for Photoshop:"
+                                 Foreground="{StaticResource FontColor}"
+                                 Margin="0,0,20,0" />
+                      <TextBlock>
+                        https://software.intel.com/en-us/articles/intel-texture-works-plugin
+                      </TextBlock>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Margin="8,8,0,0">
+                      <TextBlock Text="GPUOpen-Tools/Compressonator:"
+                                 Foreground="{StaticResource FontColor}"
+                                 Margin="0,0,20,0" />
+                      <TextBlock>
+                        https://github.com/GPUOpen-Tools/Compressonator/releases
+                      </TextBlock>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Margin="8,8,0,0">
+                      <TextBlock Text="DirectX Texture Library:"
+                                 Foreground="{StaticResource FontColor}"
+                                 Margin="0,0,20,0" />
+                      <TextBlock>
+                        https://github.com/Microsoft/DirectXTex/releases
+                      </TextBlock>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal"
+                                Margin="8,8,0,0">
+                      <TextBlock Text="DirectX End-User Runtime Web Installer:"
+                                 Foreground="{StaticResource FontColor}"
+                                 Margin="0,0,20,0" />
+                      <TextBlock>
+                        https://www.microsoft.com/en-au/download/details.aspx?id=35
+                      </TextBlock>
+                    </StackPanel>
+                  </StackPanel>
+                </ScrollViewer>
+              </Grid>
+              <!--Plugins List-->
+              <GridSplitter Grid.Row="1"
+                            Background="Transparent"
+                            Height="3"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Top" />
+              <Grid Grid.Row="1"
+                    Margin="2"
+                    Background="{StaticResource ListBackground}">
+                <ListBox x:Name="LoadedPluginsList"/>
+                <TextBlock HorizontalAlignment="Right"
+                           Margin="5"
+                           Text="{Binding Path=Items.Count, ElementName=LoadedPluginsList, StringFormat='{}{0:N0} plugin(s)'}"
+                           VerticalAlignment="Bottom" />
+              </Grid>
+            </Grid>
+            
+            <GridSplitter HorizontalAlignment="Right"
+                          VerticalAlignment="Stretch"
+                          Width="3"
+                          Background="Transparent" />
+
+            <!-- Changelog -->
+            <Grid Grid.Column="1"
+                  Margin="2"
+                  Background="{StaticResource ListBackground}">
+              <ScrollViewer  HorizontalScrollBarVisibility="Disabled"
+                             VerticalScrollBarVisibility="Auto"
+                             Padding="4">
+                <StackPanel Orientation="Vertical">
+                  <TextBlock Text="Change Log"
+                             Foreground="{StaticResource FontColor}"
+                             Margin="8"
+                             FontWeight="Bold" />
+                  <StackPanel Orientation="Vertical"
+                              Margin="8,8,0,0">
+                    <TextBlock x:Name="changeLogTextBlock"
+                               Foreground="{StaticResource FontColor}"
+                               Text=""
+                               FontFamily="Consolas"
+                               TextWrapping="Wrap"
+                               Margin="0,0,8,0" />
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+            </Grid>
+          </Grid>
+        </Grid>
       </TabItem>
     </TabControl>
-    <!--Document handler-->
-    <TabControl Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" ItemsSource="{Binding Documents}">
+    <!-- Document handler -->
+    <TabControl Grid.Row="0" 
+                Grid.RowSpan="2" 
+                Grid.Column="1" 
+                IsVisible="{Binding !ShowStartMenu}" 
+                ItemsSource="{Binding Documents}">
       <TabControl.ItemTemplate>
         <DataTemplate x:DataType="models:DocumentModel">
           <StackPanel Orientation="Horizontal">
