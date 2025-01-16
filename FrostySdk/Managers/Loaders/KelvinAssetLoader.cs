@@ -8,6 +8,7 @@ using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Infos.FileInfos;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk.Managers.Loaders;
 

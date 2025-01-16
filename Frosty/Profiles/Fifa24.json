@@ -1,0 +1,17 @@
+{
+  "Name": "FC24",
+  "DisplayName": "FC™ 24",
+  "InternalName": "fifa24",
+  "TypeInfoSignature": "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10",
+  "DataVersion": 20230929,
+  "FrostbiteVersion": "2022.2.1",
+  "EbxVersion": 6,
+  "RequiresInitFsKey": true,
+  "HasAntiCheat": true,
+  "EbxCompression": 15,
+  "ResCompression": 25,
+  "ChunkCompression": 25,
+  "TextureChunkCompression": 25,
+  "MaxBufferSize": 262144,
+  "ZStdCompressionLevel": 16
+}

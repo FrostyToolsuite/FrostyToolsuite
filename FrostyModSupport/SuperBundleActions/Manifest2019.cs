@@ -15,6 +15,7 @@ using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Loaders;
 using Frosty.Sdk.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.ModSupport;
 

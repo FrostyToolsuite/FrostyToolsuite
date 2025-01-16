@@ -1,0 +1,15 @@
+﻿{
+  "Name": "MassEffectAndromeda",
+  "DisplayName": "Mass Effect: Andromeda",
+  "InternalName": "masseffect",
+  "TypeInfoSignature" : "48 8b 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? 48 8d 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E9",
+  "DataVersion": 20170320,
+  "FrostbiteVersion": "2015.4.6",
+  "EbxVersion": 2,
+  "EbxCompression": 15,
+  "ResCompression": 15,
+  "ChunkCompression": 15,
+  "TextureChunkCompression": 15,
+  "MaxBufferSize": 65536,
+  "ZStdCompressionLevel": 16
+}
