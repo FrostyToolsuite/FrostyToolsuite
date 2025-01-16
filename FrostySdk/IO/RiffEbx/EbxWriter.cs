@@ -668,7 +668,6 @@ public class EbxWriter : BaseEbxWriter
                         }
                         FixupField(ebxProperty.GetValue(obj)!, field, writer);
                         break;
-
                 }
             }
         }
@@ -902,7 +901,6 @@ public class EbxWriter : BaseEbxWriter
                 object subValue = arrayObj[i]!;
                 FixupBoxedField(subValue, inType, inTypeDescriptorRef, writer);
             }
-
             writer.StepOut();
         }
     }
@@ -942,7 +940,7 @@ public class EbxWriter : BaseEbxWriter
         int boxedValIdx = (int)writer.ReadInt64();
         writer.Position = fieldOffset;
         // null boxed values always have an offset of zero
-        if (value.Value == null)
+        if (value.Value is null)
         {
             writer.WriteUInt64(0);
             return;
@@ -959,8 +957,7 @@ public class EbxWriter : BaseEbxWriter
         writer.WriteUInt32((uint)offset);
         writer.WriteInt32(0);
 
-        long oldPos = writer.Position;
-        writer.Position = boxedVal.Offset;
+        writer.StepIn(boxedVal.Offset);
 
         if (boxedVal.Flags.GetCategoryEnum() == TypeFlags.CategoryEnum.Array)
         {
@@ -971,6 +968,6 @@ public class EbxWriter : BaseEbxWriter
             FixupBoxedField(value.Value, boxedVal.Flags.GetTypeEnum(), boxedVal.TypeDescriptorRef, writer);
         }
 
-        writer.Position = oldPos;
+        writer.StepOut();
     }
 }

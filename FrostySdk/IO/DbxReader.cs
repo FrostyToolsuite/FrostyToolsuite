@@ -345,12 +345,11 @@ public sealed class DbxReader
             {
                 BoxedValueRef boxed;
 
-                XmlNode? child = node.FirstChild;
-                if (child is not null)
+                string? typeName = GetAttributeValue(node, "typeName");
+                if (typeName is not null)
                 {
-                    object value;
+                    object? value;
 
-                    string typeName = GetAttributeValue(node, "typeName")!;
                     IType? valueType = typeName == "PointerRef" ? new SdkType(typeof(PointerRef)) : TypeLibrary.GetType(typeName);
                     if (valueType is not SdkType)
                     {
@@ -362,20 +361,25 @@ public sealed class DbxReader
                     {
                         value = ParseRef(node, refGuid);
                     }
-                    else
+                    else if (node.FirstChild is not null)
                     {
-                        switch (child.Name)
+                        switch (node.FirstChild.Name)
                         {
                             case "complex":
-                                value = ReadStruct(arrayElementType, child);
+                                value = ReadStruct(arrayElementType, node.FirstChild);
                                 break;
                             case "array":
-                                value = ReadArray(child);
+                                value = ReadArray(node.FirstChild);
                                 break;
                             default:
                                 value = GetValueFromString(valueType.Type, node.InnerText, valueType.GetFlags().GetTypeEnum());
                                 break;
                         }
+                    }
+                    else
+                    {
+                        // this should not happen
+                        value = null;
                     }
 
                     boxed = new BoxedValueRef(value, valueType.GetFlags());
