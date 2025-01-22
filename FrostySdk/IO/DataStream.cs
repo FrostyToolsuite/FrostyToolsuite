@@ -69,7 +69,6 @@ public unsafe class DataStream : IDisposable
 
     /// <inheritdoc cref="Stream.Read(byte[], int, int)"/>
     public int Read(byte[] buffer, int offset, int count) => m_stream.Read(buffer, offset, count);
-    public int Read(Span<byte> buffer) => m_stream.Read(buffer);
 
     /// <inheritdoc cref="Stream.Read(Span{byte})"/>
     public int Read(Span<byte> buffer) => m_stream.Read(buffer);
