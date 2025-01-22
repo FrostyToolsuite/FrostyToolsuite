@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Frosty.ModSupport;
 using Frosty.ModSupport.Mod;
+using Frosty.Sdk;
 using Frosty.Sdk.Managers;
 using FrostyCli.Project;
 
@@ -36,17 +38,23 @@ internal static partial class Program
             List<string>? loadOrder = JsonSerializer.Deserialize<List<string>>(stream);
             if (loadOrder is not null)
             {
-                mods = loadOrder;
+                if (!loadOrder.All(File.Exists))
+                {
+                    FrostyLogger.Logger?.LogError("load_order.json contains invalid paths, ignoring the load order");
+                }
+                else
+                {
+                    mods = loadOrder;
+                }
             }
-        }
-        else
-        {
-            using FileStream stream = modLoadOrderPath.OpenWrite();
-            JsonSerializer.Serialize(stream, mods, new JsonSerializerOptions { WriteIndented = true });
         }
 
         FrostyModExecutor executor = new();
-        executor.GenerateMods(inModDataDirInfo.FullName, mods);
+        Errors error;
+        if ((error = executor.GenerateMods(inModDataDirInfo.FullName, mods)) != Errors.Success)
+        {
+            FrostyLogger.Logger?.LogError($"Failed to generate mod data: {error}");
+        }
     }
 
     private static void UpdateMod(FileInfo? inGameFileInfo = null, int? inPid = null,

@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using Frosty.Sdk.DbObjectElements;
-using Frosty.Sdk.Deobfuscators;
-using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Utils;
@@ -35,14 +32,13 @@ public static class FileSystemManager
     public static InstallChunkInfo? DefaultInstallChunk;
 
     private static readonly Dictionary<string, SuperBundleInfo> s_superBundleMapping = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly Dictionary<int, int> s_persistentIndexMapping = new();
-    private static readonly Dictionary<int, int> s_reversePersistentIndexMapping = new();
+    private static readonly Dictionary<uint, int> s_persistentIndexMapping = new();
+    private static readonly Dictionary<int, uint> s_reversePersistentIndexMapping = new();
     private static readonly Dictionary<Guid, int> s_idMapping = new();
     private static readonly List<InstallChunkInfo> s_installChunks = new();
     private static readonly Dictionary<int, SuperBundleInstallChunk> s_sbIcMapping = new();
     private static readonly Dictionary<int, string> s_casFiles = new();
 
-    private static Type? s_deobfuscator;
     private static readonly Dictionary<string, Block<byte>> s_memoryFs = new();
 
     public static bool Initialize(string basePath)
@@ -67,9 +63,6 @@ public static class FileSystemManager
         BasePath = Path.GetFullPath(basePath);
 
         CacheName = Path.Combine(Utils.Utils.BaseDirectory, "Caches", $"{ProfilesLibrary.InternalName}");
-        s_deobfuscator = ProfilesLibrary.FrostbiteVersion > "2014.4.11"
-            ? typeof(SignatureDeobfuscator)
-            : typeof(LegacyDeobfuscator);
 
         if (Directory.Exists($"{BasePath}/Update"))
         {
@@ -221,8 +214,6 @@ public static class FileSystemManager
         return s_casFiles[casIndex];
     }
 
-    public static IDeobfuscator? CreateDeobfuscator() => s_deobfuscator != null ? (IDeobfuscator?)Activator.CreateInstance(s_deobfuscator) : null;
-
     public static IEnumerable<SuperBundleInfo> EnumerateSuperBundles()
     {
         foreach (SuperBundleInfo sbInfo in s_superBundleMapping.Values)
@@ -239,7 +230,7 @@ public static class FileSystemManager
         }
     }
 
-    public static InstallChunkInfo GetInstallChunkInfo(int index)
+    public static InstallChunkInfo GetInstallChunkInfo(uint index)
     {
         return s_installChunks[s_persistentIndexMapping[index]];
     }
@@ -249,7 +240,7 @@ public static class FileSystemManager
         return s_installChunks[s_idMapping[id]];
     }
 
-    public static int GetInstallChunkIndex(InstallChunkInfo info)
+    public static uint GetInstallChunkIndex(InstallChunkInfo info)
     {
         return s_reversePersistentIndexMapping[s_idMapping[info.Id]];
     }
@@ -298,7 +289,8 @@ public static class FileSystemManager
 
         if (initFs.IsDict())
         {
-            if (!initFs.AsDict().ContainsKey("encrypted"))
+            byte[]? encrypted = initFs.AsDict().AsBlob("encrypted", null);
+            if (encrypted is null)
             {
                 return false;
             }
@@ -308,7 +300,7 @@ public static class FileSystemManager
                 return false;
             }
 
-            using (BlockStream stream = new(new Block<byte>(initFs.AsDict().AsBlob("encrypted"))))
+            using (BlockStream stream = new(new Block<byte>(encrypted)))
             {
                 stream.Decrypt(KeyManager.GetKey("InitFsKey"), PaddingMode.PKCS7);
 
@@ -497,7 +489,7 @@ public static class FileSystemManager
                     DefaultInstallChunk ??= ic;
                 }
 
-                int index = installChunk.AsDict().AsInt("persistentIndex", s_installChunks.Count);
+                uint index = installChunk.AsDict().AsUInt("persistentIndex", (uint)s_installChunks.Count);
                 s_persistentIndexMapping.Add(index, s_installChunks.Count);
                 s_reversePersistentIndexMapping.Add(s_installChunks.Count, index);
                 s_idMapping.Add(ic.Id, s_installChunks.Count);

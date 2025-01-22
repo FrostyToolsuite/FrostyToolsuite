@@ -1,4 +1,7 @@
-using System.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using Frosty.ModSupport.Archive;
@@ -9,6 +12,8 @@ using Frosty.ModSupport.Mod.Resources;
 using Frosty.ModSupport.ModEntries;
 using Frosty.ModSupport.ModInfos;
 using Frosty.Sdk;
+using Frosty.Sdk.DbObjectElements;
+using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
@@ -45,6 +50,11 @@ public partial class FrostyModExecutor
     /// <param name="inModPaths">The full paths of the mods.</param>
     public Errors GenerateMods(string inModPackPath, IEnumerable<string> inModPaths)
     {
+        if (!FileSystemManager.Initialize(inModPackPath))
+        {
+            return Errors.FailedToInitialize;
+        }
+
         // define some paths we are going to need
         m_patchPath = FileSystemManager.Sources.Count == 1
             ? FileSystemSource.Base.Path
@@ -53,20 +63,25 @@ public partial class FrostyModExecutor
         m_gamePatchPath = Path.Combine(FileSystemManager.BasePath, m_patchPath);
 
         // check if we need to generate new data
-        string modInfosPath = Path.Combine(m_modDataPath, "mods.json");
+        string modInfosPath = Path.Combine(inModPackPath, "mods.json");
         List<ModInfo> modInfos = GenerateModInfoList(inModPaths);
-        if (File.Exists(modInfosPath))
+
+        string headPath = Path.Combine(inModPackPath, "head.txt");
+        if (File.Exists(modInfosPath) && File.Exists(headPath))
         {
             List<ModInfo>? oldModInfos = JsonSerializer.Deserialize<List<ModInfo>>(File.ReadAllText(modInfosPath));
-            if (oldModInfos?.SequenceEqual(modInfos) == true)
+            string head = File.ReadAllText(headPath);
+            if (oldModInfos?.SequenceEqual(modInfos) == true && FileSystemManager.Head == uint.Parse(head))
             {
                 return Errors.NoUpdateNeeded;
             }
         }
 
         // make sure the managers are initialized
-        ResourceManager.Initialize();
-        AssetManager.Initialize();
+        if (!ResourceManager.Initialize() || !AssetManager.Initialize())
+        {
+            return Errors.FailedToInitialize;
+        }
 
         // load handlers from Handlers directory
         LoadHandlers();
@@ -122,6 +137,10 @@ public partial class FrostyModExecutor
         }
         Directory.CreateDirectory(m_modDataPath);
 
+        // write head to file so we know for which game version this data was generated
+        File.WriteAllText(modInfosPath, JsonSerializer.Serialize(modInfos));
+        File.WriteAllText(headPath, FileSystemManager.Head.ToString());
+
         // modify the superbundles and write them to mod data
         foreach (KeyValuePair<int, SuperBundleModInfo> sb in m_superBundleModInfos)
         {
@@ -168,6 +187,51 @@ public partial class FrostyModExecutor
             }
         }
 
+        if (FileSystemManager.BundleFormat == BundleFormat.Manifest2019)
+        {
+            DbObjectDict layout = DbObject.Deserialize(Path.Combine(m_gamePatchPath, "layout.toc"))!.AsDict();
+            byte[]? layeredInstallChunkFiles = layout.AsBlob("layeredInstallChunkFiles", null);
+            if (layeredInstallChunkFiles is not null && m_installChunkWriters.Count > 0)
+            {
+                List<CasFileIdentifier> final;
+                using (DataStream stream = new(new MemoryStream(layeredInstallChunkFiles)))
+                {
+                    final = new List<CasFileIdentifier>((int)(stream.Length / 8));
+                    for (int i = 0; i < stream.Length / 8; i++)
+                    {
+                        final.Add(CasFileIdentifier.FromFileIdentifier(stream.ReadUInt64()));
+                    }
+                }
+
+                foreach (InstallChunkWriter writer in m_installChunkWriters.Values)
+                {
+                    foreach (CasFileIdentifier file in writer.GetFiles())
+                    {
+                        final.Add(file);
+                    }
+                }
+
+                final.Sort();
+
+                using Block<byte> data = new(final.Count * 8);
+                using (BlockStream stream = new(data, true))
+                {
+                    foreach (CasFileIdentifier file in final)
+                    {
+                        stream.WriteUInt64(CasFileIdentifier.ToFileIdentifierLong(file));
+                    }
+                }
+
+                layout.Set("layeredInstallChunkFiles", data.ToArray());
+
+                using (DataStream stream = new(File.Create(Path.Combine(m_modDataPath, "layout.toc"))))
+                {
+                    ObfuscationHeader.Write(stream);
+                    DbObject.Serialize(stream, layout);
+                }
+            }
+        }
+
         foreach (Block<byte> data in m_memoryData.Values)
         {
             data.Dispose();
@@ -186,6 +250,13 @@ public partial class FrostyModExecutor
                 Directory.CreateDirectory(Directory.GetParent(modPath)!.FullName);
                 File.CreateSymbolicLink(modPath, file);
             }
+        }
+
+        // symlink shader_cache, else dx12 games will perform not as good
+        string shaderCache = Path.Combine(FileSystemManager.BasePath, "shader_cache");
+        if (Directory.Exists(shaderCache))
+        {
+            Directory.CreateSymbolicLink(Path.Combine(inModPackPath, "shader_cache"), shaderCache);
         }
 
         if (FileSystemManager.Sources.Count > 1)
@@ -265,6 +336,7 @@ public partial class FrostyModExecutor
     {
         foreach (BaseModResource resource in container.Resources)
         {
+            Sha1 sha1 = resource.Sha1;
             HashSet<int> modifiedBundles = new();
             switch (resource)
             {
@@ -279,9 +351,10 @@ public partial class FrostyModExecutor
                 case EbxModResource ebx:
                 {
                     bool exists;
-                    if ((exists = m_modifiedEbx.ContainsKey(resource.Name)) && !resource.HasHandler)
+                    if ((exists = m_modifiedEbx.TryGetValue(resource.Name, out EbxModEntry? existing)) && !resource.HasHandler)
                     {
                         // asset was already modified by another mod so just skip to the bundle part
+                        sha1 = existing!.Sha1;
                         break;
                     }
 
@@ -296,7 +369,7 @@ public partial class FrostyModExecutor
 
                         if (exists)
                         {
-                            modEntry = m_modifiedEbx[resource.Name];
+                            modEntry = existing!;
                             if (modEntry.Handler is null)
                             {
                                 break;
@@ -354,9 +427,10 @@ public partial class FrostyModExecutor
                 case ResModResource res:
                 {
                     bool exists;
-                    if ((exists = m_modifiedRes.ContainsKey(resource.Name)) && !resource.HasHandler)
+                    if ((exists = m_modifiedRes.TryGetValue(resource.Name, out ResModEntry? existing)) && !resource.HasHandler)
                     {
                         // asset was already modified by another mod so just skip to the bundle part
+                        sha1 = existing!.Sha1;
                         break;
                     }
 
@@ -371,7 +445,7 @@ public partial class FrostyModExecutor
 
                         if (exists)
                         {
-                            modEntry = m_modifiedRes[resource.Name];
+                            modEntry = existing!;
                             if (modEntry.Handler is null)
                             {
                                 break;
@@ -430,9 +504,10 @@ public partial class FrostyModExecutor
                 {
                     Guid id = Guid.Parse(resource.Name);
                     bool exists;
-                    if ((exists = m_modifiedChunks.ContainsKey(id)) && !resource.HasHandler)
+                    if ((exists = m_modifiedChunks.TryGetValue(id, out ChunkModEntry? existing)) && !resource.HasHandler)
                     {
                         // asset was already modified by another mod so just skip to the bundle part
+                        sha1 = existing!.Sha1;
                         break;
                     }
 
@@ -447,7 +522,7 @@ public partial class FrostyModExecutor
 
                         if (exists)
                         {
-                            modEntry = m_modifiedChunks[id];
+                            modEntry = existing!;
                             if (modEntry.Handler is null)
                             {
                                 break;
@@ -535,9 +610,9 @@ public partial class FrostyModExecutor
             {
                 SuperBundleModInfo sb = GetSuperBundleModInfoFromBundle(addedBundle);
 
-                if (resource.Sha1 != Sha1.Zero)
+                if (sha1 != Sha1.Zero)
                 {
-                    sb.Data.Add(resource.Sha1);
+                    sb.Data.Add(sha1);
                 }
 
                 if (!sb.Added.Bundles.TryGetValue(addedBundle, out BundleModInfo? modInfo) && !sb.Modified.Bundles.TryGetValue(addedBundle, out modInfo))

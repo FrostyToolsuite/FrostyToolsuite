@@ -1,3 +1,4 @@
+using System;
 using Frosty.ModSupport.Interfaces;
 using Frosty.ModSupport.Mod.Resources;
 using Frosty.Sdk;

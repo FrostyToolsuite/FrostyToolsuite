@@ -63,9 +63,7 @@ internal static partial class Program
         };
         rootCommand.AddCommand(modCommand);
 
-        modCommand.SetHandler(
-            (game, mods, modData, pid, key1, key2, key3) => ModGame(game, pid, key1, key2, key3, mods, modData),
-            gameArg, modsArg, modDataOption, pidOption, key1Option, key2Option, key3Option);
+        modCommand.SetHandler(ModGame, gameArg, pidOption, key1Option, key2Option, key3Option, modsArg, modDataOption);
     }
 
     private static void AddUpdateModCommand(RootCommand rootCommand)
@@ -90,9 +88,7 @@ internal static partial class Program
         };
         rootCommand.AddCommand(updateModCommand);
 
-        updateModCommand.SetHandler(
-            (game, mod, output, pid, key1, key2, key3) => UpdateMod(game, pid, key1, key2, key3, mod, output), gameArg,
-            modArg, outputOption, pidOption, key1Option, key2Option, key3Option);
+        updateModCommand.SetHandler(UpdateMod, gameArg, pidOption, key1Option, key2Option, key3Option, modArg, outputOption);
     }
 
     private static void AddCreateModCommand(RootCommand rootCommand)
@@ -117,8 +113,7 @@ internal static partial class Program
         };
         rootCommand.AddCommand(updateModCommand);
 
-        updateModCommand.SetHandler(
-            ((game, project, output, pid, key1, key2, key3) => CreateMod(game, pid, key1, key2, key3, project, output)),
-            gameArg, projectArg, outputOption, pidOption, key1Option, key2Option, key3Option);
+        updateModCommand.SetHandler(CreateMod, gameArg, pidOption, key1Option, key2Option, key3Option, projectArg,
+            outputOption);
     }
 }

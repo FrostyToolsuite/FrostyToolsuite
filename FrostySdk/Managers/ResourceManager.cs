@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
+using System.IO.Compression;
+using System.Linq;
+using System.Net.Http;
 using Frosty.Sdk.IO;
-using Frosty.Sdk.IO.Compression;
 using Frosty.Sdk.Managers.CatResources;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Infos.FileInfos;
+using Octokit;
 
 namespace Frosty.Sdk.Managers;
 
@@ -78,27 +79,55 @@ public static class ResourceManager
             }
         }
 
-        foreach (string libOodle in Directory.EnumerateFiles(FileSystemManager.BasePath, "oo2core_*"))
+        // get oodle libs from unreal
+        if (Directory.EnumerateFiles(FileSystemManager.BasePath, "oo2core_*").Any())
         {
-            string thirdPartyPath = Path.Combine(Utils.Utils.BaseDirectory, "ThirdParty");
-            Directory.CreateDirectory(thirdPartyPath);
-
-            string ext = Path.GetExtension(libOodle);
-            string path = Path.Combine(thirdPartyPath, $"oo2core{ext}");
-            File.Delete(path);
-            File.CreateSymbolicLink(path, libOodle);
-
-            // get major version X (2.X.y) from dll name (oo2core_X_win64.dll)
-            CompressionOodle.MajorVersion = int.Parse(Regex.Match(libOodle, "oo2core_(.*?)_win").Groups[1].Value);
-
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && ext == ".dll")
+            string oodleSo = Path.Combine(Utils.Utils.BaseDirectory, "ThirdParty", "liboo2core.so");
+            string oodleDll = Path.Combine(Utils.Utils.BaseDirectory, "ThirdParty", "liboo2core.dll");
+            if (!File.Exists(oodleSo) || !File.Exists(oodleDll))
             {
-                string oodleHack = Path.Combine(thirdPartyPath, "oo2core.so");
-                File.Delete(oodleHack);
-                File.CreateSymbolicLink(oodleHack, Path.Combine(thirdPartyPath, "liblinoodle.so"));
-            }
+                GitHubClient client = new(new ProductHeaderValue("Frosty"));
 
-            break;
+                // Get the latest release
+                Release? release = client.Repository.Release.Get("WorkingRobot", "OodleUE", "2024-11-01-726").Result;
+
+                if (release is null)
+                {
+                    FrostyLogger.Logger?.LogError(
+                        "Failed to get oodle release, grab oodle 2.9.13 or equivalent from unreal engine");
+                    return false;
+                }
+
+                ReleaseAsset? msvc = release.Assets.FirstOrDefault(a => a.Name == "msvc.zip");
+                ReleaseAsset? gcc = release.Assets.FirstOrDefault(a => a.Name == "gcc.zip");
+
+                if (msvc is null || gcc is null)
+                {
+                    FrostyLogger.Logger?.LogError("Failed to find oodle");
+                    return false;
+                }
+
+                using HttpClient httpClient = new();
+                Stream msvcStream = httpClient.GetStreamAsync(msvc.BrowserDownloadUrl).Result;
+                Stream gccStream = httpClient.GetStreamAsync(gcc.BrowserDownloadUrl).Result;
+
+                using ZipArchive msvcArchive = new(msvcStream, ZipArchiveMode.Read);
+                ZipArchiveEntry? dll = msvcArchive.GetEntry("bin/Release/oodle-data-shared.dll");
+                using ZipArchive gccArchive = new(gccStream, ZipArchiveMode.Read);
+                ZipArchiveEntry? so = gccArchive.GetEntry("lib/Release/liboodle-data-shared.so");
+                if (dll is null || so is null)
+                {
+                    FrostyLogger.Logger?.LogError("Failed to get extract oodle");
+                    return false;
+                }
+
+                using Stream stream = dll.Open();
+                using FileStream dllStream = File.Create(oodleDll);
+                stream.CopyTo(dllStream);
+                using Stream stream2 = so.Open();
+                using FileStream soStream = File.Create(oodleSo);
+                stream2.CopyTo(soStream);
+            }
         }
 
         IsInitialized = true;
@@ -167,7 +196,7 @@ public static class ResourceManager
             return;
         }
 
-        int installChunkIndex = FileSystemManager.GetInstallChunkIndex(info);
+        uint installChunkIndex = FileSystemManager.GetInstallChunkIndex(info);
         bool patch = inSource.Path == FileSystemSource.Patch.Path;
 
         using (CatStream stream = new(filePath))

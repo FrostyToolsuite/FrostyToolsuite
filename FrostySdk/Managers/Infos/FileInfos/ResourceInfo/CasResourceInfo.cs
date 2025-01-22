@@ -22,7 +22,7 @@ public class CasResourceInfo
         m_path = FileSystemManager.GetFilePath(m_casFileIdentifier);
     }
 
-    public CasResourceInfo(bool inIsPatch, int inInstallChunkIndex, int inCasIndex, uint inOffset, uint inSize, uint inLogicalOffset)
+    public CasResourceInfo(bool inIsPatch, uint inInstallChunkIndex, int inCasIndex, uint inOffset, uint inSize, uint inLogicalOffset)
     {
         m_casFileIdentifier = new CasFileIdentifier(inIsPatch, inInstallChunkIndex, inCasIndex);
         m_offset = inOffset;

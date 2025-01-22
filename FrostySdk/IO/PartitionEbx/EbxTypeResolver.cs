@@ -1,11 +1,13 @@
-﻿namespace Frosty.Sdk.IO.PartitionEbx;
+﻿using System.Collections.Generic;
+
+namespace Frosty.Sdk.IO.PartitionEbx;
 
 internal class EbxTypeResolver
 {
-    private readonly EbxTypeDescriptor[] m_typeDescriptors;
-    private readonly EbxFieldDescriptor[] m_fieldDescriptors;
+    private readonly IList<EbxTypeDescriptor> m_typeDescriptors;
+    private readonly IList<EbxFieldDescriptor> m_fieldDescriptors;
 
-    internal EbxTypeResolver(EbxTypeDescriptor[] inTypeDescriptors, EbxFieldDescriptor[] inFieldDescriptors)
+    internal EbxTypeResolver(IList<EbxTypeDescriptor> inTypeDescriptors, IList<EbxFieldDescriptor> inFieldDescriptors)
     {
         EbxSharedTypeDescriptors.Initialize();
         m_typeDescriptors = inTypeDescriptors;
@@ -35,7 +37,7 @@ internal class EbxTypeResolver
 
     public EbxFieldDescriptor ResolveField(int index)
     {
-        if (m_fieldDescriptors.Length == 0)
+        if (m_fieldDescriptors.Count == 0)
         {
             return EbxSharedTypeDescriptors.GetFieldDescriptor(index);
         }

@@ -2,12 +2,12 @@
 
 namespace Frosty.Sdk.IO.Ebx;
 
-public struct EbxImportReference
+public struct EbxImportReference : IEquatable<EbxImportReference>
 {
-    public Guid FileGuid;
-    public Guid ClassGuid;
+    public Guid PartitionGuid;
+    public Guid InstanceGuid;
 
-    public override string ToString() => FileGuid.ToString() + "/" + ClassGuid.ToString();
+    public override string ToString() => $"{PartitionGuid}/{InstanceGuid}";
 
     public static bool operator ==(EbxImportReference a, EbxImportReference b) => a.Equals(b);
 
@@ -17,7 +17,7 @@ public struct EbxImportReference
     {
         if (obj is EbxImportReference b)
         {
-            return (FileGuid == b.FileGuid && ClassGuid == b.ClassGuid);
+            return (PartitionGuid == b.PartitionGuid && InstanceGuid == b.InstanceGuid);
         }
 
         return false;
@@ -28,9 +28,14 @@ public struct EbxImportReference
         unchecked
         {
             int hash = (int)2166136261;
-            hash = (hash * 16777619) ^ FileGuid.GetHashCode();
-            hash = (hash * 16777619) ^ ClassGuid.GetHashCode();
+            hash = (hash * 16777619) ^ PartitionGuid.GetHashCode();
+            hash = (hash * 16777619) ^ InstanceGuid.GetHashCode();
             return hash;
         }
+    }
+
+    public bool Equals(EbxImportReference other)
+    {
+        return PartitionGuid.Equals(other.PartitionGuid) && InstanceGuid.Equals(other.InstanceGuid);
     }
 }

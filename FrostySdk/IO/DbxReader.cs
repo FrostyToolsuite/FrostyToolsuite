@@ -4,6 +4,7 @@ using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
 using static Frosty.Sdk.Sdk.TypeFlags;
 using System;
+using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
 using System.Xml;
@@ -18,8 +19,8 @@ public sealed class DbxReader
 {
     private static readonly Type s_pointerType = typeof(PointerRef);
     private static readonly Type s_collectionType = typeof(ObservableCollection<>);
-    private static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef");
-    private static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef");
+    private static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef")?.Type;
+    private static readonly Type? s_typeRefType = TypeLibrary.GetType("TypeRef")?.Type;
 
     // we only want to write out properties with these flags
     private static readonly BindingFlags s_propertyBindingFlags = BindingFlags.Public | BindingFlags.Instance;
@@ -88,7 +89,7 @@ public sealed class DbxReader
     private static void SetPropertyFromStringValue(object obj, Type objType, string propName, string propValue)
     {
         PropertyInfo? property = objType.GetProperty(propName, s_propertyBindingFlags);
-        if (property != null && property.CanWrite)
+        if (property is not null && property.CanWrite)
         {
             object? value = GetValueFromString(property.PropertyType, propValue, property.GetCustomAttribute<EbxFieldMetaAttribute>()?.Flags.GetTypeEnum());
             if (value is null)
@@ -106,82 +107,80 @@ public sealed class DbxReader
         {
             return Convert.ChangeType(propValue, propType);
         }
-        else
+
+        switch (frostbiteType)
         {
-            switch (frostbiteType)
+            case TypeEnum.Boolean:
             {
-                case TypeEnum.Boolean:
-                {
-                    return ValueToPrimitive(bool.Parse(propValue), propType);
-                }
-                case TypeEnum.Float32:
-                {
-                    return ValueToPrimitive(float.Parse(propValue), propType);
-                }
-                case TypeEnum.Float64:
-                {
-                    return ValueToPrimitive(double.Parse(propValue), propType);
-                }
-                case TypeEnum.Int8:
-                {
-                    return ValueToPrimitive(sbyte.Parse(propValue), propType);
-                }
-                case TypeEnum.Int16:
-                {
-                    return ValueToPrimitive(short.Parse(propValue), propType);
-                }
-                case TypeEnum.Int32:
-                {
-                    return ValueToPrimitive(int.Parse(propValue), propType);
-                }
-                case TypeEnum.Int64:
-                {
-                    return ValueToPrimitive(long.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt8:
-                {
-                    return ValueToPrimitive(byte.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt16:
-                {
-                    return ValueToPrimitive(ushort.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt32:
-                {
-                    return ValueToPrimitive(uint.Parse(propValue), propType);
-                }
-                case TypeEnum.UInt64:
-                {
-                    return ValueToPrimitive(ulong.Parse(propValue), propType);
-                }
-                case TypeEnum.Enum:
-                {
-                    return Enum.Parse(propType, propValue);
-                }
-                case TypeEnum.Guid:
-                {
-                    return ValueToPrimitive(Guid.Parse(propValue), propType);
-                }
-                case TypeEnum.FileRef:
-                {
-                    return ValueToPrimitive(new FileRef(propValue), propType);
-                }
-                case TypeEnum.String:
-                case TypeEnum.CString:
-                {
-                    return ValueToPrimitive(propValue, propType);
-                }
-                case TypeEnum.Class:
-                {
-                    return new PointerRef();
-                }
-                case TypeEnum.ResourceRef:
-                {
-                    return ValueToPrimitive(new ResourceRef(ulong.Parse(propValue, System.Globalization.NumberStyles.HexNumber)), propType);
-                }
-                default:
-                    throw new NotImplementedException("Unimplemented property type: " + frostbiteType);
+                return ValueToPrimitive(bool.Parse(propValue), propType);
             }
+            case TypeEnum.Float32:
+            {
+                return ValueToPrimitive(float.Parse(propValue), propType);
+            }
+            case TypeEnum.Float64:
+            {
+                return ValueToPrimitive(double.Parse(propValue), propType);
+            }
+            case TypeEnum.Int8:
+            {
+                return ValueToPrimitive(sbyte.Parse(propValue), propType);
+            }
+            case TypeEnum.Int16:
+            {
+                return ValueToPrimitive(short.Parse(propValue), propType);
+            }
+            case TypeEnum.Int32:
+            {
+                return ValueToPrimitive(int.Parse(propValue), propType);
+            }
+            case TypeEnum.Int64:
+            {
+                return ValueToPrimitive(long.Parse(propValue), propType);
+            }
+            case TypeEnum.UInt8:
+            {
+                return ValueToPrimitive(byte.Parse(propValue), propType);
+            }
+            case TypeEnum.UInt16:
+            {
+                return ValueToPrimitive(ushort.Parse(propValue), propType);
+            }
+            case TypeEnum.UInt32:
+            {
+                return ValueToPrimitive(uint.Parse(propValue), propType);
+            }
+            case TypeEnum.UInt64:
+            {
+                return ValueToPrimitive(ulong.Parse(propValue), propType);
+            }
+            case TypeEnum.Enum:
+            {
+                return Enum.Parse(propType, propValue);
+            }
+            case TypeEnum.Guid:
+            {
+                return ValueToPrimitive(Guid.Parse(propValue), propType);
+            }
+            case TypeEnum.FileRef:
+            {
+                return ValueToPrimitive(new FileRef(propValue), propType);
+            }
+            case TypeEnum.String:
+            case TypeEnum.CString:
+            {
+                return ValueToPrimitive(propValue, propType);
+            }
+            case TypeEnum.Class:
+            {
+                return new PointerRef();
+            }
+            case TypeEnum.ResourceRef:
+            {
+                return ValueToPrimitive(new ResourceRef(ulong.Parse(propValue, System.Globalization.NumberStyles.HexNumber)), propType);
+            }
+            default:
+                throw new NotImplementedException("Unimplemented property type: " + frostbiteType);
         }
     }
 
@@ -221,7 +220,7 @@ public sealed class DbxReader
 
     private void CreateInstance(XmlNode node)
     {
-        Type? ebxType = TypeLibrary.GetType(GetAttributeValue(node, "type")!.Split('.')[^1]);
+        Type? ebxType = TypeLibrary.GetType(GetAttributeValue(node, "type")!.Split('.')[^1])?.Type;
         if(ebxType is null)
         {
             return;
@@ -264,7 +263,7 @@ public sealed class DbxReader
         {
             Guid extGuid = Guid.Parse(refGuid.Split('\\')[1]);
             Guid ebxFileGuid = Guid.Parse(refEbxGuid);
-            EbxImportReference import = new() { ClassGuid = extGuid, FileGuid = ebxFileGuid };
+            EbxImportReference import = new() { InstanceGuid = extGuid, PartitionGuid = ebxFileGuid };
             m_ebx!.AddDependency(ebxFileGuid);
             return new PointerRef(import);
         }
@@ -313,11 +312,11 @@ public sealed class DbxReader
             {
                 if (isRef)
                 {
-                    objType.GetMethod("Add")?.Invoke(obj, new[] { (object)ParseRef(node, GetAttributeValue(node, "ref")!)});
+                    ((IList?)obj)?.Add(ParseRef(node, GetAttributeValue(node, "ref")!));
                 }
                 else
                 {
-                    objType.GetMethod("Add")?.Invoke(obj, new[] { GetValueFromString(arrayElementType!, node.InnerText, arrayElementTypeEnum) });
+                    ((IList?)obj)?.Add(GetValueFromString(arrayElementType!, node.InnerText, arrayElementTypeEnum));
                 }
                 break;
             }
@@ -334,7 +333,7 @@ public sealed class DbxReader
                 object structObj = ReadStruct(arrayElementType, node);
                 if (isArray)
                 {
-                    objType.GetMethod("Add")?.Invoke(obj, new[] { structObj });
+                    ((IList?)obj)?.Add(structObj);
                 }
                 else
                 {
@@ -344,36 +343,81 @@ public sealed class DbxReader
             }
             case "boxed":
             {
-                if (node.InnerText == "null")
+                BoxedValueRef boxed;
+
+                string? typeName = GetAttributeValue(node, "typeName");
+                if (typeName is not null)
                 {
-                    break;
-                }
+                    object? value;
 
-                Type? valueType = TypeLibrary.GetType(GetAttributeValue(node, "type")!);
-                if (valueType is null)
+                    IType? valueType = typeName == "PointerRef" ? new SdkType(typeof(PointerRef)) : TypeLibrary.GetType(typeName);
+                    if (valueType is not SdkType)
+                    {
+                        break;
+                    }
+
+                    string? refGuid = GetAttributeValue(node, "ref");
+                    if (refGuid is not null)
+                    {
+                        value = ParseRef(node, refGuid);
+                    }
+                    else if (node.FirstChild is not null)
+                    {
+                        switch (node.FirstChild.Name)
+                        {
+                            case "complex":
+                                value = ReadStruct(arrayElementType, node.FirstChild);
+                                break;
+                            case "array":
+                                value = ReadArray(node.FirstChild);
+                                break;
+                            default:
+                                value = GetValueFromString(valueType.Type, node.InnerText, valueType.GetFlags().GetTypeEnum());
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        // this should not happen
+                        value = null;
+                    }
+
+                    boxed = new BoxedValueRef(value, valueType.GetFlags());
+                }
+                else
                 {
-                    break;
+                    boxed = new BoxedValueRef();
                 }
-
-                EbxTypeMetaAttribute? typeMeta = valueType.GetCustomAttribute<EbxTypeMetaAttribute>();
-
-                object value = GetValueFromString(valueType, node.InnerText, typeMeta!.Flags.GetTypeEnum());
-                BoxedValueRef boxed = new(value, typeMeta.Flags.GetTypeEnum());
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(boxed, s_boxedValueRefType!));
                 break;
             }
             case "typeref":
             {
-                string typeGuid = GetAttributeValue(node, "typeGuid")!;
+                string? typeName = GetAttributeValue(node, "typeName");
+                TypeRef typeRef;
 
-                Type? type = TypeLibrary.GetType(typeGuid) ?? TypeLibrary.GetType(GetAttributeValue(node, "typeName")!);
-                if (type is null)
+                if (typeName is not null)
                 {
-                    throw new ArgumentException("TypeRef references a null type");
+                    typeRef = new TypeRef(TypeLibrary.GetType(typeName));
+                }
+                else
+                {
+                    typeRef = new TypeRef();
                 }
 
-                TypeRef typeRef = new(Guid.Parse(typeGuid));
                 SetProperty(obj, objType, GetAttributeValue(node, "name")!, ValueToPrimitive(typeRef, s_typeRefType!));
+                break;
+            }
+            case "delegate":
+            {
+                string? typeName = GetAttributeValue(node, "typeName");
+                IType? type = typeName is null ? null : TypeLibrary.GetType(typeName);
+                PropertyInfo? property = objType.GetProperty(GetAttributeValue(node, "name")!, s_propertyBindingFlags);
+                if (property is not null && property.CanWrite)
+                {
+                    IDelegate del = (IDelegate)Activator.CreateInstance(property.PropertyType)!;
+                    del.FunctionType = type;
+                }
                 break;
             }
         }
@@ -384,7 +428,7 @@ public sealed class DbxReader
         string arrayTypeStr = GetAttributeValue(node, "type")!;
         bool isRef = arrayTypeStr.StartsWith("ref(");
 
-        Type arrayElementType = (isRef ? s_pointerType : TypeLibrary.GetType(arrayTypeStr))
+        Type arrayElementType = (isRef ? s_pointerType : TypeLibrary.GetType(arrayTypeStr)?.Type)
                                 ?? throw new ArgumentException($"array element type doesn't exist? {arrayTypeStr}");
 
         EbxTypeMetaAttribute? arrayTypeMeta = arrayElementType.GetCustomAttribute<EbxTypeMetaAttribute>();
@@ -406,7 +450,7 @@ public sealed class DbxReader
 
     private object ReadStruct(Type? structType, XmlNode node)
     {
-        Type type = (structType ?? TypeLibrary.GetType(GetAttributeValue(node, "type")!))
+        Type type = (structType ?? TypeLibrary.GetType(GetAttributeValue(node, "type")!)?.Type)
                     ?? throw new ArgumentException($"struct type doesn't exist?");
 
         object obj = Activator.CreateInstance(type)

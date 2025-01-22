@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Utils;
@@ -86,8 +85,12 @@ public class BlockStream : DataStream
         Position += bufferSize;
     }
 
-    public override unsafe string ReadNullTerminatedString()
+    public override unsafe string ReadNullTerminatedString(Encoding? inEncoding = null)
     {
+        if (inEncoding is null || !inEncoding.Equals(Encoding.ASCII))
+        {
+            return base.ReadNullTerminatedString(inEncoding);
+        }
         string retVal = new((sbyte*)(m_block.Ptr + Position));
         Position += retVal.Length + 1;
         return retVal;
@@ -274,8 +277,15 @@ public class BlockStream : DataStream
         inStream.ReadExactly(stream.m_block);
 
         // deobfuscate the data
-        IDeobfuscator? deobfuscator = FileSystemManager.CreateDeobfuscator();
-        deobfuscator?.Deobfuscate(inHeader, stream.m_block);
+        if (ProfilesLibrary.FrostbiteVersion > "2014.4.11" || inHeader[3] == 0x03)
+        {
+            return true;
+        }
+
+        for (int i = 0; i < stream.m_block.Size; i++)
+        {
+            stream.m_block[i] ^= (byte)(0x7B ^ inHeader[0x128 + i % 0x101]);
+        }
 
         return true;
     }

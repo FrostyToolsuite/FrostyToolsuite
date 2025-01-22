@@ -23,10 +23,8 @@ namespace Frosty.Sdk.Sdk;
 
 public class TypeSdkGenerator
 {
-    private long FindTypeInfoOffset(Process process)
+    private long FindTypeInfoOffset(MemoryReader reader)
     {
-        MemoryReader reader = new(process);
-
         nint offset = nint.Zero;
 
         if (!string.IsNullOrEmpty(ProfilesLibrary.TypeInfoSignature))
@@ -68,7 +66,8 @@ public class TypeSdkGenerator
 
     public bool DumpTypes(Process process)
     {
-        long typeInfoOffset = FindTypeInfoOffset(process);
+        MemoryReader reader = new(process);
+        long typeInfoOffset = FindTypeInfoOffset(reader);
         if (typeInfoOffset == -1)
         {
             FrostyLogger.Logger?.LogError("No offset found for TypeInfo, maybe try a different TypeInfoSignature");
@@ -122,7 +121,7 @@ public class TypeSdkGenerator
             Strings.HasStrings = true;
         }
 
-        MemoryReader reader = new(process) { Position = typeInfoOffset };
+        reader.Position = typeInfoOffset;
         TypeInfo.TypeInfoMapping = new Dictionary<long, TypeInfo>();
         ArrayInfo.Mapping = new Dictionary<long, long>();
 
@@ -356,37 +355,15 @@ public class TypeSdkGenerator
 
         foreach (TypeInfo typeInfo in TypeInfo.TypeInfoMapping.Values)
         {
-            switch (typeInfo.GetFlags().GetTypeEnum())
+            switch (typeInfo)
             {
-                case TypeFlags.TypeEnum.Struct:
-                case TypeFlags.TypeEnum.Class:
-                case TypeFlags.TypeEnum.Enum:
-                case TypeFlags.TypeEnum.Function:
-                case TypeFlags.TypeEnum.Interface:
-                case TypeFlags.TypeEnum.Delegate:
-                    typeInfo.CreateType(sb);
-                    break;
-
-                // primitive types
-                case TypeFlags.TypeEnum.String:
-                case TypeFlags.TypeEnum.CString:
-                case TypeFlags.TypeEnum.FileRef:
-                case TypeFlags.TypeEnum.Boolean:
-                case TypeFlags.TypeEnum.Int8:
-                case TypeFlags.TypeEnum.UInt8:
-                case TypeFlags.TypeEnum.Int16:
-                case TypeFlags.TypeEnum.UInt16:
-                case TypeFlags.TypeEnum.Int32:
-                case TypeFlags.TypeEnum.UInt32:
-                case TypeFlags.TypeEnum.Int64:
-                case TypeFlags.TypeEnum.UInt64:
-                case TypeFlags.TypeEnum.Float32:
-                case TypeFlags.TypeEnum.Float64:
-                case TypeFlags.TypeEnum.Guid:
-                case TypeFlags.TypeEnum.Sha1:
-                case TypeFlags.TypeEnum.ResourceRef:
-                case TypeFlags.TypeEnum.TypeRef:
-                case TypeFlags.TypeEnum.BoxedValueRef:
+                case ClassInfo:
+                case StructInfo:
+                case EnumInfo:
+                case InterfaceInfo:
+                case DelegateInfo:
+                case FunctionInfo:
+                case PrimitiveInfo:
                     typeInfo.CreateType(sb);
                     break;
             }
@@ -487,7 +464,7 @@ public class TypeSdkGenerator
         return metadataReferenceList;
     }
 
-    private static uint HashTypeName(string inName)
+    public static uint HashTypeName(string inName)
     {
         Span<byte> hash = stackalloc byte[32];
         ReadOnlySpan<byte> str = Encoding.ASCII.GetBytes(inName.ToLower() + ProfilesLibrary.TypeHashSeed);

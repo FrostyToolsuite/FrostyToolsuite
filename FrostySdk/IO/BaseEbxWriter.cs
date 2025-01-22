@@ -1,43 +1,48 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
+using Frosty.Sdk.Managers;
+using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO;
 
 public abstract class BaseEbxWriter
 {
     protected readonly DataStream m_stream;
-    protected readonly List<object> m_objs = new();
     protected readonly List<object> m_objsSorted = new();
 
     protected static readonly Type s_pointerType = typeof(PointerRef);
-    protected static readonly Type s_valueType = typeof(ValueType);
-    protected static readonly Type s_objectType = typeof(object);
-    protected static readonly Type s_dataContainerType = TypeLibrary.GetType("DataContainer")!;
-    protected static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef");
+    protected static readonly Type s_dataContainerType = TypeLibrary.GetType("DataContainer")!.Type;
+    protected static readonly Type? s_boxedValueRefType = TypeLibrary.GetType("BoxedValueRef")?.Type;
 
     protected static readonly string s_ebxNamespace = "Frostbite";
     protected static readonly string s_collectionName = "ObservableCollection`1";
 
-    protected uint m_stringsLength = 0;
-    protected List<string> m_strings = new();
+    protected uint m_stringsLength;
+    protected readonly List<string> m_strings = new();
 
-    protected HashSet<int> m_typesToProcessSet = new();
-    protected List<Type> m_typesToProcess = new();
-    protected HashSet<object> m_processedObjects = new();
-    protected Dictionary<uint, int> m_typeToDescriptor = new();
+    protected readonly Dictionary<uint, int> m_typeToDescriptor = new();
 
-    protected HashSet<EbxImportReference> m_imports = new();
-    protected Dictionary<EbxImportReference, int> m_importOrderFw = new();
-    protected Dictionary<int, EbxImportReference> m_importOrderBw = new();
+    protected readonly HashSet<EbxImportReference> m_imports = new();
+    protected readonly Dictionary<EbxImportReference, int> m_importOrderFw = new();
+
+    protected readonly List<Block<byte>> m_arrayData = new();
+    protected readonly List<Block<byte>> m_boxedValueData = new();
+
+    protected readonly bool m_useSharedTypeDescriptors;
+
+    private readonly HashSet<object> m_processedObjects = new();
 
     protected BaseEbxWriter(DataStream inStream)
     {
         m_stream = inStream;
+        m_useSharedTypeDescriptors = FileSystemManager.HasFileInMemoryFs("SharedTypeDescriptors.ebx");
     }
 
     public static BaseEbxWriter CreateWriter(DataStream inStream)
@@ -47,103 +52,176 @@ public abstract class BaseEbxWriter
 
     public void WriteAsset(EbxAsset inAsset)
     {
-        foreach (object ebxObj in inAsset.Objects)
+        List<object> exportedObjs = new(inAsset.objects.Count);
+        List<object> otherObjs = new(inAsset.objects.Count);
+        List<object> rootObjects = new(1);
+
+        int i = 0;
+        foreach (dynamic obj in inAsset.objects)
         {
-            ExtractType(ebxObj.GetType(), ebxObj);
-            m_objs.Insert(0, ebxObj);
+            AssetClassGuid guid = obj.GetInstanceGuid();
+            if (guid.IsExported)
+            {
+                exportedObjs.Add(obj);
+            }
+            else
+            {
+                otherObjs.Add(obj);
+            }
+
+            if (i++ != 0 && inAsset.refCounts[i - 1] == 0)
+            {
+                rootObjects.Add(obj);
+            }
+        }
+
+        int exportedInstanceCount = exportedObjs.Count;
+        object root = exportedObjs[0];
+        exportedObjs.RemoveAt(0);
+
+        exportedObjs.Sort((dynamic a, dynamic b) =>
+        {
+            AssetClassGuid guidA = a.GetInstanceGuid();
+            AssetClassGuid guidB = b.GetInstanceGuid();
+
+            byte[] bA = guidA.ExportedGuid.ToByteArray();
+            byte[] bB = guidB.ExportedGuid.ToByteArray();
+
+            uint idA = (uint)(bA[0] << 24 | bA[1] << 16 | bA[2] << 8 | bA[3]);
+            uint idB = (uint)(bB[0] << 24 | bB[1] << 16 | bB[2] << 8 | bB[3]);
+
+            return idA.CompareTo(idB);
+        });
+
+        rootObjects.Sort((dynamic a, dynamic b) =>
+        {
+            AssetClassGuid guidA = a.GetInstanceGuid();
+            AssetClassGuid guidB = b.GetInstanceGuid();
+
+            byte[] bA = guidA.ExportedGuid.ToByteArray();
+            byte[] bB = guidB.ExportedGuid.ToByteArray();
+
+            uint idA = (uint)(bA[0] << 24 | bA[1] << 16 | bA[2] << 8 | bA[3]);
+            uint idB = (uint)(bB[0] << 24 | bB[1] << 16 | bB[2] << 8 | bB[3]);
+
+            return idA.CompareTo(idB);
+        });
+
+        otherObjs.Sort(CompareObjects);
+
+        m_objsSorted.Add(root);
+        m_objsSorted.AddRange(exportedObjs);
+        m_objsSorted.AddRange(otherObjs);
+
+        rootObjects.Insert(0, root);
+
+        foreach (object ebxObj in rootObjects)
+        {
+            ProcessType(ebxObj.GetType(), ebxObj);
         }
 
         GenerateImportOrder();
-        InternalWriteEbx(inAsset.PartitionGuid);
+        InternalWriteEbx(inAsset.PartitionGuid, exportedInstanceCount);
     }
 
-    protected abstract void InternalWriteEbx(Guid inPartitionGuid);
+    protected abstract void InternalWriteEbx(Guid inPartitionGuid, int inExportedInstanceCount);
 
-    private void ExtractType(Type type, object obj, bool add = true)
+    protected abstract int CompareObjects(object inA, object inB);
+
+    protected abstract int AddType(Type inType);
+
+    protected void ProcessType(Type inType, object inObj)
     {
-        if (typeof(IPrimitive).IsAssignableFrom(type))
+        // make sure we dont add the same type multiple times
+        bool addType = FindExistingType(inType) == -1;
+        if (!m_processedObjects.Add(inObj))
         {
-            // ignore primitive types
             return;
         }
 
-        if (add && !m_processedObjects.Add(obj))
+        if (inType == s_pointerType)
         {
-            // dont get caught in a infinite loop
-            return;
-        }
+            PointerRef value = (PointerRef)inObj;
 
-        if (type.BaseType != s_objectType && type.BaseType != s_valueType)
-        {
-            ExtractType(type.BaseType!, obj, false);
-        }
-
-        if (add)
-        {
-            int hash = type.GetHashCode();
-            if (!m_typesToProcessSet.Contains(hash))
-            {
-                m_typesToProcess.Add(type);
-                m_typesToProcessSet.Add(hash);
-            }
-        }
-
-        PropertyInfo[] ebxObjFields = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-
-        foreach (PropertyInfo ebxField in ebxObjFields)
-        {
-            if (ebxField.GetCustomAttribute<IsTransientAttribute>() is not null)
-            {
-                // transient field, do not write
-                continue;
-            }
-            ExtractField(ebxField.PropertyType, ebxField.GetValue(obj)!);
-        }
-    }
-
-    private void ExtractField(Type type, object obj)
-    {
-        // pointerRefs
-        if (type == s_pointerType)
-        {
-            PointerRef value = (PointerRef)obj;
-            if (value.Type == PointerRefType.Internal)
-            {
-                ExtractType(value.Internal!.GetType(), value.Internal);
-            }
-            else if (value.Type == PointerRefType.External)
+            if (value.Type == PointerRefType.External)
             {
                 m_imports.Add(value.External);
             }
-        }
-
-        // structs
-        else if (type.BaseType == s_valueType && type.Namespace!.StartsWith(s_ebxNamespace))
-        {
-            object structObj = obj;
-            ExtractType(structObj.GetType(), structObj);
-        }
-
-        // arrays (stored as ObservableCollections in the sdk)
-        else if (type.Name.Equals(s_collectionName))
-        {
-            Type arrayType = type;
-            int count = (int)arrayType.GetMethod("get_Count")!.Invoke(obj, null)!;
-
-            for (int arrayIter = 0; arrayIter < count; arrayIter++)
+            else if (value.Type == PointerRefType.Internal && value.Internal is not null)
             {
-                ExtractField(arrayType.GenericTypeArguments[0], arrayType.GetMethod("get_Item")!.Invoke(obj, new object[] { arrayIter })!);
+                ProcessType(value.Internal.GetType(), value.Internal);
             }
         }
-
-        // boxed value refs
-        else if (type == s_boxedValueRefType)
+        else if (inType == s_boxedValueRefType)
         {
-            BoxedValueRef boxedValueRef = (BoxedValueRef)((IPrimitive)obj).ToActualType();
+            BoxedValueRef boxedValueRef = (BoxedValueRef)((IPrimitive)inObj).ToActualType();
 
             if (boxedValueRef.Value is not null)
             {
-                ExtractType(boxedValueRef.Value!.GetType(), boxedValueRef.Value);
+                ProcessType(boxedValueRef.Value!.GetType(), boxedValueRef.Value);
+            }
+        }
+        else if (inType.IsAssignableTo(typeof(IPrimitive)))
+        {
+            // skip other primitive types
+        }
+        else if (inType.IsEnum)
+        {
+            if (addType)
+            {
+                AddType(inType);
+            }
+        }
+        else if (inType.Name.Equals(s_collectionName))
+        {
+            IList list = (IList)inObj;
+
+            foreach (object o in list)
+            {
+                ProcessType(o.GetType(), o);
+            }
+
+            if (addType)
+            {
+                AddType(inType);
+            }
+        }
+        else if (inType.IsClass)
+        {
+            if (addType)
+            {
+                AddType(inType);
+            }
+
+            PropertyInfo[] allProps = inType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (PropertyInfo pi in allProps)
+            {
+                // ignore transients if saving to project
+                if (pi.GetCustomAttribute<IsTransientAttribute>() is not null)
+                {
+                    continue;
+                }
+
+                ProcessType(pi.PropertyType, pi.GetValue(inObj)!);
+            }
+        }
+        else if (inType.IsValueType)
+        {
+            if (addType)
+            {
+                AddType(inType);
+            }
+
+            PropertyInfo[] allProps = inType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            foreach (PropertyInfo pi in allProps)
+            {
+                // ignore transients if saving to project
+                if (pi.GetCustomAttribute<IsTransientAttribute>() is not null)
+                {
+                    continue;
+                }
+
+                ProcessType(pi.PropertyType, pi.GetValue(inObj)!);
             }
         }
     }
@@ -154,37 +232,45 @@ public abstract class BaseEbxWriter
         foreach (EbxImportReference import in m_imports)
         {
             m_importOrderFw[import] = iter;
-            m_importOrderBw[iter] = import;
             iter++;
         }
     }
 
     protected uint AddString(string stringToAdd)
     {
-        if (stringToAdd == "")
-        {
-            return 0xFFFFFFFF;
-        }
-
         uint offset = 0;
         if (m_strings.Contains(stringToAdd))
         {
-            for (int i = 0; i < m_strings.Count; i++)
+            foreach (string s in m_strings)
             {
-                if (m_strings[i] == stringToAdd)
+                if (s == stringToAdd)
                 {
                     break;
                 }
-                offset += (uint)(m_strings[i].Length + 1);
+                offset += (uint)(Encoding.UTF8.GetByteCount(s) + 1);
             }
         }
         else
         {
             offset = m_stringsLength;
             m_strings.Add(stringToAdd);
-            m_stringsLength += (uint)(stringToAdd.Length + 1);
+            m_stringsLength += (uint)(Encoding.UTF8.GetByteCount(stringToAdd) + 1);
         }
 
         return offset;
+    }
+
+    protected int FindExistingType(Type inType)
+    {
+        uint hash = m_useSharedTypeDescriptors ? inType.GetNameHash() : (uint)Utils.Utils.HashString(inType.GetName());
+
+        return m_typeToDescriptor.GetValueOrDefault(hash, -1);
+    }
+
+    protected int FindExistingType(IType inType)
+    {
+        uint hash = m_useSharedTypeDescriptors ? inType.NameHash : (uint)Utils.Utils.HashString(inType.Name);
+
+        return m_typeToDescriptor.GetValueOrDefault(hash, -1);
     }
 }

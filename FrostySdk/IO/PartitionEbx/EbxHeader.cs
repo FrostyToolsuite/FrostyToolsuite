@@ -82,12 +82,12 @@ internal struct EbxHeader
         {
             EbxImportReference import = new()
             {
-                FileGuid = inStream.ReadGuid(),
-                ClassGuid = inStream.ReadGuid()
+                PartitionGuid = inStream.ReadGuid(),
+                InstanceGuid = inStream.ReadGuid()
             };
 
             header.Imports[i] = import;
-            header.Dependencies.Add(import.FileGuid);
+            header.Dependencies.Add(import.PartitionGuid);
         }
 
         Dictionary<int, string> typeNames = new();
@@ -167,7 +167,7 @@ internal struct EbxHeader
             header.Arrays[i] = new EbxArray
             {
                 Offset = inStream.ReadUInt32(),
-                Count = inStream.ReadUInt32(),
+                Count = inStream.ReadInt32(),
                 TypeDescriptorRef = inStream.ReadInt32()
             };
         }

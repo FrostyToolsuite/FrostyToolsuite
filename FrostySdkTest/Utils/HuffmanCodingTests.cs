@@ -60,7 +60,7 @@ public class HuffmanEncodingTests
         }
 
         List<string> decoded = new();
-        foreach (var textId in encodingResult.EncodedTextPositions)
+        foreach (IdentifierPositionTuple<int> textId in encodingResult.EncodedTextPositions)
         {
             string decodedText = decoder.ReadHuffmanEncodedString(textId.Position);
 

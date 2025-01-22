@@ -11,6 +11,8 @@ internal class PrimitiveInfoData : TypeInfoData
     {
         switch (m_flags.GetTypeEnum())
         {
+            case TypeFlags.TypeEnum.Void:
+                break;
             case TypeFlags.TypeEnum.String:
                 break;
             case TypeFlags.TypeEnum.CString:
@@ -52,7 +54,7 @@ internal class PrimitiveInfoData : TypeInfoData
                     return "default";
                 }
 
-                return $"new Frosty.Sdk.Ebx.TypeRef(typeof({type.GetFullName()}))";
+                return $"new Frosty.Sdk.Ebx.TypeRef(new SdkType(typeof({type.GetFullName()})))";
             case TypeFlags.TypeEnum.BoxedValueRef:
                 ptr = reader.ReadLong();
                 long valuePtr = reader.ReadLong();
@@ -79,6 +81,13 @@ internal class PrimitiveInfoData : TypeInfoData
 
         switch (m_flags.GetTypeEnum())
         {
+            case TypeFlags.TypeEnum.Void:
+                sb.AppendLine($$"""
+                        public struct {{m_name}}
+                        {
+                        }
+                        """);
+                return;
             case TypeFlags.TypeEnum.String:
             case TypeFlags.TypeEnum.CString:
                 actualType = "System.String";

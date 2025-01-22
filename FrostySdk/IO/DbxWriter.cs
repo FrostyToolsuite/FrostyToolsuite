@@ -1,16 +1,14 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Xml;
 using System.Reflection;
-using System.Diagnostics;
 using Frosty.Sdk.Ebx;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Interfaces;
 using static Frosty.Sdk.Sdk.TypeFlags;
-using System.Text.RegularExpressions;
-using System.Globalization;
 using System.IO;
 
 namespace Frosty.Sdk.IO;
@@ -20,7 +18,7 @@ public sealed class DbxWriter : IDisposable
     private static readonly string s_instanceGuidName = "__InstanceGuid";
     private static readonly string s_instanceIdName = "__Id";
 
-    private readonly XmlWriterSettings m_settings = new() { Indent = true, IndentChars = "\t" };
+    private readonly XmlWriterSettings m_settings = new() { Indent = true, IndentChars = "\t", NewLineChars = "\n"};
 
     private string m_filePath;
     private XmlWriter? m_xmlWriter;
@@ -96,9 +94,7 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter.WriteAttributeString("id", id);
         }
-        m_xmlWriter.WriteAttributeString("guid", classGuid.IsExported
-            ? classGuid.ExportedGuid.ToString()
-            : CreateGuidFromInternalId(classGuid.InternalId).ToString());
+        m_xmlWriter.WriteAttributeString("guid", classGuid.ToString());
 
         m_xmlWriter.WriteAttributeString("type", type);
         m_xmlWriter.WriteAttributeString("exported", classGuid.IsExported.ToString());
@@ -119,8 +115,7 @@ public sealed class DbxWriter : IDisposable
         Type ebxType = ebxObj.GetType();
 
         WriteInstanceStart(guid,
-            $"{ebxType.Namespace}.{ebxType.GetName()}",
-            ((dynamic)ebxObj).__Id);
+            $"{ebxType.Namespace}.{ebxType.GetName()}");
 
         if (ebxType.IsClass)
         {
@@ -135,14 +130,6 @@ public sealed class DbxWriter : IDisposable
     }
 
     #endregion
-
-    private static Guid CreateGuidFromInternalId(int internalId)
-    {
-        Span<byte> guid = stackalloc byte[16];
-        guid[15] = (byte)internalId;
-
-        return new Guid(guid);
-    }
 
     #region Field Writing
 
@@ -173,68 +160,71 @@ public sealed class DbxWriter : IDisposable
         switch (fieldType)
         {
             case TypeEnum.Boolean:
-                WriteFieldWithValue(fieldName!, GetFieldValue<bool>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<bool>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Int8:
-                WriteFieldWithValue(fieldName!, GetFieldValue<sbyte>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<sbyte>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Int16:
-                WriteFieldWithValue(fieldName!, GetFieldValue<short>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<short>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Int32:
-                WriteFieldWithValue(fieldName!, GetFieldValue<int>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<int>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Int64:
-                WriteFieldWithValue(fieldName!, GetFieldValue<long>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<long>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.UInt8:
-                WriteFieldWithValue(fieldName!, GetFieldValue<byte>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<byte>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.UInt16:
-                WriteFieldWithValue(fieldName!, GetFieldValue<ushort>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<ushort>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.UInt32:
-                WriteFieldWithValue(fieldName!, GetFieldValue<uint>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<uint>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.UInt64:
-                WriteFieldWithValue(fieldName!, GetFieldValue<ulong>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<ulong>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Float32:
-                WriteFieldWithValue(fieldName!, GetFieldValue<float>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<float>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Float64:
-                WriteFieldWithValue(fieldName!, GetFieldValue<double>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<double>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.CString:
             case TypeEnum.String:
-                WriteFieldWithValue(fieldName!, GetFieldValue<string>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<string>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Guid:
-                WriteFieldWithValue(fieldName!, GetFieldValue<Guid>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<Guid>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Enum:
-                WriteFieldWithValue(fieldName!, Enum.GetName(objType, GetFieldValue<object>(obj))!, isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, Enum.GetName(objType, GetFieldValue<object>(obj))!, isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.ResourceRef:
-                WriteFieldWithValue(fieldName!, GetFieldValue<ResourceRef>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<ResourceRef>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Sha1:
-                WriteFieldWithValue(fieldName!, GetFieldValue<Sha1>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<Sha1>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Class:
-                WriteFieldWithValue(fieldName!, (PointerRef)obj, isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, (PointerRef)obj, isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.Array:
-                WriteArray(fieldName!, obj, objType, arrayBaseType);
+                WriteArray(fieldName, obj, objType, arrayBaseType);
                 break;
             case TypeEnum.Struct:
-                WriteStruct(fieldName!, obj, objType, isArrayItem);
+                WriteStruct(fieldName, obj, objType, isArrayItem);
                 break;
             case TypeEnum.FileRef:
-                WriteFieldWithValue(fieldName!, GetFieldValue<string>(obj), isArrayItem, isTransient, isHidden);
+                WriteFieldWithValue(fieldName, GetFieldValue<FileRef>(obj), isArrayItem, isTransient, isHidden);
                 break;
             case TypeEnum.TypeRef:
                 WriteTypeRef(fieldName!, GetFieldValue<TypeRef>(obj));
+                break;
+            case TypeEnum.Delegate:
+                WriteDelegate(fieldName!, (IDelegate)obj);
                 break;
             case TypeEnum.BoxedValueRef:
                 WriteBoxedValueRef(fieldName!, GetFieldValue<BoxedValueRef>(obj));
@@ -269,127 +259,250 @@ public sealed class DbxWriter : IDisposable
 
     #region Field Value Writing
 
-    private void WriteFieldWithValue(string fieldName, sbyte value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, sbyte value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value);
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, short value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, short value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value);
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, int value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, int value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value);
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, long value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, long value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value);
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, byte value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, byte value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value);
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, ushort value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, ushort value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value);
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, uint value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, uint value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value);
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, ulong value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, ulong value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value.ToString());
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, ResourceRef value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, ResourceRef value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(((ulong)value).ToString("X"));
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, Sha1 value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, Sha1 value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value.ToString());
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, float value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, float value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value.ToString("0.0######"));
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, double value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, double value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value.ToString("0.0##############"));
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, bool value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, bool value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value.ToString());
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, string? value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, string? value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         // temp? remove potential garbage from strings before writing them
-        m_xmlWriter!.WriteValue(value is not null ? Regex.Replace(value, @"[^\u001F-\u007F]+", string.Empty) : value);
-        WriteFieldEnd();
+        m_xmlWriter!.WriteValue(value?.Replace("\v", string.Empty));
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, Guid value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, Guid value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         m_xmlWriter!.WriteValue(value.ToString("D"));
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
-    private void WriteFieldWithValue(string fieldName, PointerRef value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
+    private void WriteFieldWithValue(string? fieldName, PointerRef value, bool isArrayField = false, bool isTransient = false, bool isHidden = false)
     {
-        WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        if (fieldName is not null)
+        {
+            WriteFieldStart(fieldName, isArrayField, isTransient, isHidden);
+        }
+
         if (value.Type == PointerRefType.Internal)
         {
             AssetClassGuid classGuid = ((dynamic)value.Internal!).GetInstanceGuid();
-            Guid guid = classGuid.IsExported ? classGuid.ExportedGuid : CreateGuidFromInternalId(classGuid.InternalId);
-            m_xmlWriter!.WriteAttributeString("ref", guid.ToString());
+            m_xmlWriter!.WriteAttributeString("ref", classGuid.ToString());
         }
         else if (value.Type == PointerRefType.External)
         {
-            EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(value.External.FileGuid);
+            EbxAssetEntry? entry = AssetManager.GetEbxAssetEntry(value.External.PartitionGuid);
             if (entry is not null)
             {
-                m_xmlWriter!.WriteAttributeString("ref", $"{entry.Name}\\{value.External.ClassGuid}");
+                m_xmlWriter!.WriteAttributeString("ref", $"{entry.Name}\\{value.External.InstanceGuid}");
                 m_xmlWriter.WriteAttributeString("partitionGuid", entry.Guid.ToString());
             }
             else
@@ -402,13 +515,17 @@ public sealed class DbxWriter : IDisposable
         {
             m_xmlWriter!.WriteAttributeString("ref", "null");
         }
-        WriteFieldEnd();
+
+        if (fieldName is not null)
+        {
+            WriteFieldEnd();
+        }
     }
 
     #endregion
 
     #region Array Writing
-    private void WriteArray(string arrayName, object arrayObj, Type arrayType, Type? arrayBaseType)
+    private void WriteArray(string? arrayName, object arrayObj, Type arrayType, Type? arrayBaseType)
     {
         bool isRef = arrayType.GenericTypeArguments[0].Name == "PointerRef";
 
@@ -419,21 +536,27 @@ public sealed class DbxWriter : IDisposable
 
         WriteArrayStart(arrayName, isRef ? $"ref({typeDisplayName})" : typeDisplayName);
 
-        int count = (int)arrayType.GetMethod("get_Count")!.Invoke(arrayObj, null)!;
+        IList list = (IList)arrayObj;
+
+        int count = list.Count;
 
         for (int i = 0; i < count; i++)
         {
-            object subValue = arrayType.GetMethod("get_Item")!.Invoke(arrayObj, new object[] { i })!;
-            WriteField(memberMeta.Flags.GetTypeEnum(), subValue, subValue.GetType(), null, null, true);
+            object subValue = list[i]!;
+            WriteField(memberMeta.Flags.GetTypeEnum(), subValue, subValue.GetType(), null, string.Empty, true);
         }
 
         WriteArrayEnd();
     }
 
-    private void WriteArrayStart(string name, string? memberType = null)
+    private void WriteArrayStart(string? name, string? memberType = null)
     {
         m_xmlWriter!.WriteStartElement("array");
-        m_xmlWriter.WriteAttributeString("name", name);
+        if (name is not null)
+        {
+            m_xmlWriter.WriteAttributeString("name", name);
+        }
+
         if (memberType is not null)
         {
             m_xmlWriter.WriteAttributeString("type", memberType);
@@ -449,12 +572,12 @@ public sealed class DbxWriter : IDisposable
 
     #region Struct (Complex) Writing
 
-    private void WriteStruct(string structName,
+    private void WriteStruct(string? structName,
         object structObj,
         Type structType,
         bool isArrayItem = false)
     {
-        WriteStructStart(structName, isArrayItem ? null : structObj.GetType().Name);
+        WriteStructStart(structName, isArrayItem ? null : structObj.GetType().GetName());
 
         List<PropertyInfo> structProperties = new();
         GetAllProperties(structType, ref structProperties);
@@ -481,10 +604,11 @@ public sealed class DbxWriter : IDisposable
         if (type is not null)
         {
             m_xmlWriter.WriteAttributeString("type", type);
-        }
-        if (name is not null)
-        {
-            m_xmlWriter.WriteAttributeString("name", name);
+
+            if (name is not null)
+            {
+                m_xmlWriter.WriteAttributeString("name", name);
+            }
         }
     }
 
@@ -497,11 +621,14 @@ public sealed class DbxWriter : IDisposable
 
     #region BoxedValueRef Writing
 
-    private void WriteBoxedValueRefStart(string name, string valueType)
+    private void WriteBoxedValueRefStart(string name, string? valueType)
     {
         m_xmlWriter!.WriteStartElement("boxed");
         m_xmlWriter.WriteAttributeString("name", name);
-        m_xmlWriter.WriteAttributeString("type", valueType);
+        if (valueType is not null)
+        {
+            m_xmlWriter.WriteAttributeString("typeName", valueType);
+        }
     }
 
     private void WriteBoxedValueRefEnd()
@@ -511,14 +638,16 @@ public sealed class DbxWriter : IDisposable
 
     private void WriteBoxedValueRef(string name, BoxedValueRef boxedValue)
     {
-        WriteBoxedValueRefStart(name, boxedValue.Type.ToString());
+        WriteBoxedValueRefStart(name, boxedValue.Value?.GetType().GetName());
         if (boxedValue.Value is not null)
         {
-            m_xmlWriter!.WriteValue(GetFieldValue<object>(boxedValue.Value).ToString());
-        }
-        else
-        {
-            m_xmlWriter!.WriteValue("null");
+            TypeEnum type = boxedValue.Type;
+            if (boxedValue.Category == CategoryEnum.Array)
+            {
+                // riff ebx stores array in category
+                type = TypeEnum.Array;
+            }
+            WriteField(type, boxedValue.Value, boxedValue.Value.GetType(), null);
         }
         WriteBoxedValueRefEnd();
     }
@@ -541,9 +670,38 @@ public sealed class DbxWriter : IDisposable
     private void WriteTypeRef(string name, TypeRef typeRef)
     {
         WriteTypeRefStart(name);
-        m_xmlWriter!.WriteAttributeString("typeName", typeRef.Name);
-        m_xmlWriter.WriteAttributeString("typeGuid", typeRef.Guid.ToString("D"));
+        if (typeRef.Name is not null)
+        {
+            m_xmlWriter!.WriteAttributeString("typeName", typeRef.Name);
+        }
+
         WriteTypeRefEnd();
+    }
+
+    #endregion
+
+    #region Delegate Writing
+
+    private void WriteDelegateStart(string name)
+    {
+        m_xmlWriter!.WriteStartElement("delegate");
+        m_xmlWriter.WriteAttributeString("name", name);
+    }
+
+    private void WriteDelegateEnd()
+    {
+        m_xmlWriter!.WriteEndElement();
+    }
+
+    private void WriteDelegate(string name, IDelegate @delegate)
+    {
+        WriteDelegateStart(name);
+        if (@delegate.FunctionType is not null)
+        {
+            m_xmlWriter!.WriteAttributeString("typeName", @delegate.FunctionType.Name);
+        }
+
+        WriteDelegateEnd();
     }
 
     #endregion

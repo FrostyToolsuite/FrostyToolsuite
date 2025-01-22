@@ -9,6 +9,7 @@ public class RiffStream
     public bool Eof { get; private set; }
 
     private readonly DataStream m_stream;
+    private long m_curPos;
 
     public RiffStream(DataStream inStream)
     {
@@ -53,5 +54,35 @@ public class RiffStream
         {
             Eof = true;
         }
+    }
+
+    public void WriteHeader(FourCC inFourCc, FourCC inFileFourCc)
+    {
+        m_curPos = m_stream.Position;
+        if (inFourCc != "RIFF" && inFourCc != "RIFX")
+        {
+            throw new FormatException("Not a valid RIFF format.");
+        }
+        m_stream.WriteUInt32(inFourCc);
+
+        // fixup after all chunks are written
+        m_stream.WriteUInt32(0xdeadbeef);
+
+        m_stream.WriteUInt32(inFileFourCc);
+    }
+
+    public void WriteChunk(FourCC inFourCc, Block<byte> inData)
+    {
+        m_stream.WriteUInt32(inFourCc);
+        m_stream.WriteInt32(inData.Size);
+        m_stream.Write(inData);
+        m_stream.Pad(2);
+    }
+
+    public void Fixup()
+    {
+        m_stream.Position = m_curPos + sizeof(uint);
+        m_stream.WriteUInt32((uint)(m_stream.Length - m_stream.Position - 4));
+        m_stream.Position = m_stream.Length;
     }
 }
