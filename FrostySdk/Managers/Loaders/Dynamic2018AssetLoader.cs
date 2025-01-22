@@ -583,7 +583,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         if (extraSize != 0)
         {
-            FrostyLogger.Logger?.LogInformation($"{extraSize} decompressed bytes ignored at the end of bundle {inBundle.Name}");
+            FrostyLogger.Logger?.LogDebug($"{extraSize} decompressed bytes ignored at the end of bundle {inBundle.Name}");
         }
     }
 

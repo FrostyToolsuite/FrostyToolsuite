@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Frosty.Sdk;
 using Frosty.Sdk.Attributes;
 using Frosty.Sdk.Ebx;
+using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Managers.Entries;
@@ -64,9 +65,9 @@ internal static partial class Program
         resTypes.SetHandler(() =>
         {
             Dictionary<uint, List<string>> types = new();
-            foreach (Type type in TypeLibrary.EnumerateTypes())
+            foreach (IType type in TypeLibrary.EnumerateTypes())
             {
-                string name = type.GetName();
+                string name = type.Name;
                 uint hash = (uint)Utils.HashString(name, true);
                 if (!types.TryAdd(hash, [name]))
                 {

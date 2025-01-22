@@ -48,8 +48,25 @@ public static class TypeLibrary
         {
             if (type.GetCustomAttribute<EbxTypeMetaAttribute>() is null)
             {
-                // should only happen for types that only contain another type
-                FrostyLogger.Logger?.LogDebug("Ignoring type \"{}\" from sdk", type.Name);
+                bool hasNestedType = false, hasFields = false;
+                foreach (MemberInfo member in type.GetMembers())
+                {
+                    if (member.MemberType == MemberTypes.NestedType)
+                    {
+                        hasNestedType = true;
+                    }
+                    else if (member.MemberType == MemberTypes.Field || member.MemberType == MemberTypes.Property)
+                    {
+                        hasFields = true;
+                    }
+                }
+
+                if (hasFields || !hasNestedType)
+                {
+                    // should only happen for types that only contain another type
+                    FrostyLogger.Logger?.LogDebug("Ignoring weird type \"{}\" from sdk, check sdk generation there might be some issue", type.Name);
+                }
+
                 continue;
             }
 

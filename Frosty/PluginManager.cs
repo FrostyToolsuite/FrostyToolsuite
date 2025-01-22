@@ -14,6 +14,11 @@ public static class PluginManager
 
     public static void LoadPlugins(string inPath)
     {
+        if (!Directory.Exists(inPath))
+        {
+            return;
+        }
+
         foreach (string file in Directory.EnumerateFiles(inPath, "*.dll", SearchOption.AllDirectories))
         {
             Assembly assembly = Assembly.LoadFrom(file);
