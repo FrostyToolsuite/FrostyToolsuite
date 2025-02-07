@@ -64,7 +64,7 @@ internal static partial class Program
     {
         if (inAsDbx)
         {
-            EbxPartition partition = AssetManager.GetEbxPartiion(entry);
+            EbxPartition partition = AssetManager.GetEbxPartition(entry);
 
             using (DbxWriter writer = new(inFile.FullName))
             {
