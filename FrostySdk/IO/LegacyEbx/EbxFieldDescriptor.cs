@@ -1,6 +1,6 @@
 ﻿using Frosty.Sdk.Sdk;
 
-namespace Frosty.Sdk.IO.PartitionEbx;
+namespace Frosty.Sdk.IO.LegacyEbx;
 
 public struct EbxFieldDescriptor
 {

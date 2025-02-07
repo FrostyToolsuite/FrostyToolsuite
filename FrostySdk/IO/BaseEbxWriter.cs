@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 using Frosty.Sdk.Attributes;
@@ -48,7 +47,7 @@ public abstract class BaseEbxWriter
 
     public static BaseEbxWriter CreateWriter(DataStream inStream)
     {
-        return ProfilesLibrary.EbxVersion == 6 ? new RiffEbx.EbxWriter(inStream) : new PartitionEbx.EbxWriter(inStream);
+        return ProfilesLibrary.EbxVersion == 6 ? new RiffEbx.EbxWriter(inStream) : new LegacyEbx.EbxWriter(inStream);
     }
 
     public void WritePartition(EbxPartition inPartition)

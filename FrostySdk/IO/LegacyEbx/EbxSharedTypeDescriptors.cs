@@ -4,7 +4,7 @@ using System.IO;
 using Frosty.Sdk.Managers;
 using Frosty.Sdk.Utils;
 
-namespace Frosty.Sdk.IO.PartitionEbx;
+namespace Frosty.Sdk.IO.LegacyEbx;
 
 public static class EbxSharedTypeDescriptors
 {

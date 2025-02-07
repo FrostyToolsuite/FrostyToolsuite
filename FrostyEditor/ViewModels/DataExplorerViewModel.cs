@@ -156,9 +156,9 @@ public partial class DataExplorerViewModel : ViewModelBase
             {
                 case ".dbx":
                 {
-                    EbxAsset asset = AssetManager.GetEbxAsset(entry);
+                    EbxPartition partition = AssetManager.GetEbxPartiion(entry);
                     using DbxWriter writer = new(stream);
-                    writer.Write(asset);
+                    writer.Write(partition);
                     break;
                 }
                 case ".ebx":

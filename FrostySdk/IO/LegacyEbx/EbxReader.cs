@@ -11,7 +11,7 @@ using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
 using Frosty.Sdk.Sdk;
 
-namespace Frosty.Sdk.IO.PartitionEbx;
+namespace Frosty.Sdk.IO.LegacyEbx;
 
 public class EbxReader : BaseEbxReader
 {

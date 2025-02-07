@@ -44,7 +44,7 @@ public abstract class BaseEbxReader
 
     public static BaseEbxReader CreateReader(DataStream inStream)
     {
-        return ProfilesLibrary.EbxVersion == 6 ? new RiffEbx.EbxReader(inStream) : new PartitionEbx.EbxReader(inStream);
+        return ProfilesLibrary.EbxVersion == 6 ? new RiffEbx.EbxReader(inStream) : new LegacyEbx.EbxReader(inStream);
     }
 
     public T ReadPartition<T>() where T : EbxPartition, new()

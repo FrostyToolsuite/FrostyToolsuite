@@ -13,7 +13,7 @@ using Frosty.Sdk.Utils;
 using static Frosty.Sdk.Sdk.TypeFlags;
 using TypeInfo = Frosty.Sdk.Sdk.TypeInfo;
 
-namespace Frosty.Sdk.IO.PartitionEbx;
+namespace Frosty.Sdk.IO.LegacyEbx;
 
 public class EbxWriter : BaseEbxWriter
 {
