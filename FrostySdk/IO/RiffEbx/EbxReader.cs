@@ -84,7 +84,7 @@ public class EbxReader : BaseEbxReader
             ushort typeRef = m_stream.ReadUInt16();
             typeRefs[j++] = typeRef;
 
-            m_objects.Add(TypeLibrary.CreateObject(m_typeResolver.ResolveType(typeRef).NameHash));
+            m_instances.Add((IEbxInstance)TypeLibrary.CreateObject(m_typeResolver.ResolveType(typeRef).NameHash)!);
             m_refCounts.Add(0);
         }
 
@@ -100,8 +100,8 @@ public class EbxReader : BaseEbxReader
 
             Debug.Assert(m_stream.Position - m_payloadOffset == m_fixup.InstanceOffsets[i]);
 
-            object? obj = m_objects[i];
-            ((dynamic?)obj)?.SetInstanceGuid(new AssetClassGuid(instanceGuid, i));
+            IEbxInstance? obj = m_instances[i];
+            obj?.SetInstanceGuid(new AssetClassGuid(instanceGuid, i));
             ReadType(typeDescriptor, obj, m_stream.Position);
         }
     }
@@ -428,7 +428,7 @@ public class EbxReader : BaseEbxReader
         long instanceOffset = m_stream.Position - 8 + index - m_payloadOffset;
         int objIndex = m_fixup.InstanceMapping[(uint)instanceOffset];
 
-        object? obj = m_objects[objIndex];
+        IEbxInstance? obj = m_instances[objIndex];
         if (obj is not null)
         {
             m_refCounts[objIndex]++;

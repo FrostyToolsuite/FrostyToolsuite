@@ -1,4 +1,5 @@
 using System;
+using Frosty.Sdk.Interfaces;
 using Frosty.Sdk.IO.Ebx;
 
 namespace Frosty.Sdk.Ebx;
@@ -6,7 +7,7 @@ namespace Frosty.Sdk.Ebx;
 public readonly struct PointerRef : IEquatable<PointerRef>
 {
     public EbxImportReference External { get; }
-    public object? Internal { get; }
+    public IEbxInstance? Internal { get; }
     public PointerRefType Type { get; }
 
     public PointerRef()
@@ -30,7 +31,7 @@ public readonly struct PointerRef : IEquatable<PointerRef>
         Type = (guid != Guid.Empty) ? PointerRefType.External : PointerRefType.Null;
     }
 
-    public PointerRef(object internalRef)
+    public PointerRef(IEbxInstance internalRef)
     {
         External = new EbxImportReference();
         Internal = internalRef;
