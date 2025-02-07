@@ -267,7 +267,7 @@ internal static partial class Program
 		fileInfo.Directory?.Create();
 		if (inConvert)
 		{
-			EbxPartition partition = AssetManager.GetEbxPartiion(inEntry);
+			EbxPartition partition = AssetManager.GetEbxPartition(inEntry);
 
             if (PluginManager.EbxExportDelegates.TryGetValue(inEntry.Type, out ExportEbxDelegate? export))
             {
