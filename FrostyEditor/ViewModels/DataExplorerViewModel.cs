@@ -156,7 +156,7 @@ public partial class DataExplorerViewModel : ViewModelBase
             {
                 case ".dbx":
                 {
-                    EbxPartition partition = AssetManager.GetEbxPartiion(entry);
+                    EbxPartition partition = AssetManager.GetEbxPartition(entry);
                     using DbxWriter writer = new(stream);
                     writer.Write(partition);
                     break;

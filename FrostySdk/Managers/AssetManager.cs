@@ -281,7 +281,7 @@ public static class AssetManager
 
     #region -- GetAsset --
 
-    public static EbxPartition GetEbxPartiion(EbxAssetEntry entry)
+    public static EbxPartition GetEbxPartition(EbxAssetEntry entry)
     {
         using (BlockStream stream = new(GetAsset(entry)))
         {
