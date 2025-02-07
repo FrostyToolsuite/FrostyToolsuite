@@ -15,7 +15,7 @@ namespace Frosty.Sdk.IO;
 public abstract class BaseEbxWriter
 {
     protected readonly DataStream m_stream;
-    protected readonly List<object> m_objsSorted = new();
+    protected readonly List<IEbxInstance> m_sortedInstances = new();
 
     protected static readonly Type s_pointerType = typeof(PointerRef);
     protected static readonly Type s_dataContainerType = TypeLibrary.GetType("DataContainer")!.Type;
@@ -29,7 +29,7 @@ public abstract class BaseEbxWriter
 
     protected readonly Dictionary<uint, int> m_typeToDescriptor = new();
 
-    protected readonly HashSet<EbxImportReference> m_imports = new();
+    protected readonly SortedSet<EbxImportReference> m_imports = new();
     protected readonly Dictionary<EbxImportReference, int> m_importOrderFw = new();
 
     protected readonly List<Block<byte>> m_arrayData = new();
@@ -47,93 +47,71 @@ public abstract class BaseEbxWriter
 
     public static BaseEbxWriter CreateWriter(DataStream inStream)
     {
-        return ProfilesLibrary.EbxVersion == 6 ? new RiffEbx.EbxWriter(inStream) : new PartitionEbx.EbxWriter(inStream);
+        return ProfilesLibrary.EbxVersion == 6 ? new RiffEbx.EbxWriter(inStream) : new LegacyEbx.EbxWriter(inStream);
     }
 
-    public void WriteAsset(EbxAsset inAsset)
+    public void WritePartition(EbxPartition inPartition)
     {
-        List<object> exportedObjs = new(inAsset.objects.Count);
-        List<object> otherObjs = new(inAsset.objects.Count);
-        List<object> rootObjects = new(1);
+        List<IEbxInstance> exportedInstances = new(1);
+        List<IEbxInstance> internalInstances = new(inPartition.instances.Count);
 
-        int i = 0;
-        foreach (dynamic obj in inAsset.objects)
+        foreach (IEbxInstance instance in inPartition.instances)
         {
-            AssetClassGuid guid = obj.GetInstanceGuid();
-            if (guid.IsExported)
-            {
-                exportedObjs.Add(obj);
-            }
-            else
-            {
-                otherObjs.Add(obj);
-            }
-
-            if (i++ != 0 && inAsset.refCounts[i - 1] == 0)
-            {
-                rootObjects.Add(obj);
-            }
+        	if (instance.GetInstanceGuid().IsExported)
+        	{
+        		exportedInstances.Add(instance);
+        	}
+        	else
+        	{
+        		internalInstances.Add(instance);
+        	}
         }
 
-        int exportedInstanceCount = exportedObjs.Count;
-        object root = exportedObjs[0];
-        exportedObjs.RemoveAt(0);
-
-        exportedObjs.Sort((dynamic a, dynamic b) =>
+        int exportedInstanceCount = exportedInstances.Count;
+        exportedInstances.Sort((a, b) =>
         {
-            AssetClassGuid guidA = a.GetInstanceGuid();
-            AssetClassGuid guidB = b.GetInstanceGuid();
-
-            byte[] bA = guidA.ExportedGuid.ToByteArray();
-            byte[] bB = guidB.ExportedGuid.ToByteArray();
-
-            uint idA = (uint)(bA[0] << 24 | bA[1] << 16 | bA[2] << 8 | bA[3]);
-            uint idB = (uint)(bB[0] << 24 | bB[1] << 16 | bB[2] << 8 | bB[3]);
-
-            return idA.CompareTo(idB);
+        	AssetClassGuid guidA = a.GetInstanceGuid();
+        	AssetClassGuid guidB = b.GetInstanceGuid();
+        	if (guidA.ExportedGuid == inPartition.PrimaryInstanceGuid)
+        	{
+        		return 1;
+        	}
+        	return guidB.ExportedGuid == inPartition.PrimaryInstanceGuid ? -1 : guidA.ExportedGuid.CompareTo(guidB.ExportedGuid);
         });
 
-        rootObjects.Sort((dynamic a, dynamic b) =>
+        internalInstances.Sort(CompareInstances);
+
+        m_sortedInstances.AddRange(exportedInstances);
+        m_sortedInstances.AddRange(internalInstances);
+
+        foreach (IEbxInstance instance in m_sortedInstances)
         {
-            AssetClassGuid guidA = a.GetInstanceGuid();
-            AssetClassGuid guidB = b.GetInstanceGuid();
+        	Type type = instance.GetType();
+        	if (FindExistingType(type) == -1)
+        	{
+        		AddType(type);
+        	}
+        }
 
-            byte[] bA = guidA.ExportedGuid.ToByteArray();
-            byte[] bB = guidB.ExportedGuid.ToByteArray();
-
-            uint idA = (uint)(bA[0] << 24 | bA[1] << 16 | bA[2] << 8 | bA[3]);
-            uint idB = (uint)(bB[0] << 24 | bB[1] << 16 | bB[2] << 8 | bB[3]);
-
-            return idA.CompareTo(idB);
-        });
-
-        otherObjs.Sort(CompareObjects);
-
-        m_objsSorted.Add(root);
-        m_objsSorted.AddRange(exportedObjs);
-        m_objsSorted.AddRange(otherObjs);
-
-        rootObjects.Insert(0, root);
-
-        foreach (object ebxObj in rootObjects)
+        foreach (IEbxInstance instance in m_sortedInstances)
         {
-            ProcessType(ebxObj.GetType(), ebxObj);
+        	ProcessType(instance.GetType(), instance);
         }
 
         GenerateImportOrder();
-        InternalWriteEbx(inAsset.PartitionGuid, exportedInstanceCount);
+        InternalWriteEbx(inPartition.PartitionGuid, exportedInstanceCount);
     }
 
     protected abstract void InternalWriteEbx(Guid inPartitionGuid, int inExportedInstanceCount);
 
-    protected abstract int CompareObjects(object inA, object inB);
+    protected abstract int CompareInstances(IEbxInstance inA, IEbxInstance inB);
 
     protected abstract int AddType(Type inType);
 
-    protected void ProcessType(Type inType, object inObj)
+    private void ProcessType(Type inType, object inObj, bool ignore = false)
     {
         // make sure we dont add the same type multiple times
-        bool addType = FindExistingType(inType) == -1;
+        bool addType = FindExistingType(inType) == -1 && !ignore;
         if (!m_processedObjects.Add(inObj))
         {
             return;
@@ -202,7 +180,7 @@ public abstract class BaseEbxWriter
                     continue;
                 }
 
-                ProcessType(pi.PropertyType, pi.GetValue(inObj)!);
+                ProcessType(pi.PropertyType, pi.GetValue(inObj)!, m_useSharedTypeDescriptors);
             }
         }
         else if (inType.IsValueType)
@@ -221,7 +199,7 @@ public abstract class BaseEbxWriter
                     continue;
                 }
 
-                ProcessType(pi.PropertyType, pi.GetValue(inObj)!);
+                ProcessType(pi.PropertyType, pi.GetValue(inObj)!, m_useSharedTypeDescriptors);
             }
         }
     }

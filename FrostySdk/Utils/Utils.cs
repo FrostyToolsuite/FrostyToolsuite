@@ -107,4 +107,23 @@ public static class Utils
 
         return (ulongRand % uRange + min) | 1;
     }
+
+    public static int CompareToBigEndian(this Guid a, Guid b)
+    {
+        Span<byte> bytes = stackalloc byte[0x20];
+
+        a.TryWriteBytes(bytes);
+        b.TryWriteBytes(bytes[0x10..]);
+
+        for (int i = 0; i < 0x10; i++)
+        {
+            int c = bytes[i].CompareTo(bytes[i + 0x10]);
+            if (c != 0)
+            {
+                return c;
+            }
+        }
+
+        return 0;
+    }
 }

@@ -115,15 +115,31 @@ public class EbxWriter : BaseEbxWriter
         stream.Fixup();
     }
 
-    protected override int CompareObjects(object inA, object inB)
+    protected override int CompareInstances(IEbxInstance inA, IEbxInstance inB)
     {
-        byte[] bA = inA.GetType().GetGuid().ToByteArray();
-        byte[] bB = inB.GetType().GetGuid().ToByteArray();
+        Type typeA = inA.GetType();
+        Type typeB = inB.GetType();
 
-        uint idA = (uint)(bA[0] << 24 | bA[1] << 16 | bA[2] << 8 | bA[3]);
-        uint idB = (uint)(bB[0] << 24 | bB[1] << 16 | bB[2] << 8 | bB[3]);
+        Guid typeGuidA = typeA.GetGuid();
+        Guid typeGuidB = typeB.GetGuid();
 
-        return idA.CompareTo(idB);
+        // sort for highest alignment first
+        int a = typeB.GetCustomAttribute<EbxTypeMetaAttribute>()!.Alignment.CompareTo(
+            typeA.GetCustomAttribute<EbxTypeMetaAttribute>()!.Alignment);
+        if (a != 0)
+        {
+            return a;
+        }
+
+        // then sort for type
+        a = typeGuidA.CompareTo(typeGuidB);
+        if (a != 0)
+        {
+            return a;
+        }
+
+        // lastly just the id
+        return inA.GetInstanceGuid().InternalId.CompareTo(inB.GetInstanceGuid().InternalId);
     }
 
     protected override int AddType(Type inType)
@@ -140,11 +156,11 @@ public class EbxWriter : BaseEbxWriter
         Block<byte> data = new(1);
         using (BlockStream writer = new(data, true))
         {
-            for (int i = 0; i < m_objsSorted.Count; i++)
+            for (int i = 0; i < m_sortedInstances.Count; i++)
             {
-                AssetClassGuid guid = ((dynamic)m_objsSorted[i]).GetInstanceGuid();
+                AssetClassGuid guid = ((dynamic)m_sortedInstances[i]).GetInstanceGuid();
 
-                Type type = m_objsSorted[i].GetType();
+                Type type = m_sortedInstances[i].GetType();
                 int typeDescriptorRef = FindExistingType(type);
                 EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(typeDescriptorRef);
 
@@ -173,7 +189,7 @@ public class EbxWriter : BaseEbxWriter
 
                 writer.WriteUInt32((uint)flags);
 
-                WriteType(m_objsSorted[i], m_typeResolver.ResolveType(typeDescriptorRef), writer, classStartOffset);
+                WriteType(m_sortedInstances[i], m_typeResolver.ResolveType(typeDescriptorRef), writer, classStartOffset);
             }
 
             writer.Pad(16);
@@ -372,7 +388,7 @@ public class EbxWriter : BaseEbxWriter
                 }
                 else if (pointer.Type == PointerRefType.Internal)
                 {
-                    pointerIndex = (ulong)m_objsSorted.IndexOf(pointer.Internal!);
+                    pointerIndex = (ulong)m_sortedInstances.IndexOf(pointer.Internal!);
                 }
 
                 writer.WriteUInt64(pointerIndex);
@@ -612,9 +628,9 @@ public class EbxWriter : BaseEbxWriter
 
     private void FixupPointers(DataStream writer)
     {
-        for (int i = 0; i < m_objsSorted.Count; i++)
+        for (int i = 0; i < m_sortedInstances.Count; i++)
         {
-            Type type = m_objsSorted[i].GetType();
+            Type type = m_sortedInstances[i].GetType();
             int classIdx = FindExistingType(type);
             EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(classIdx);
 
@@ -629,7 +645,7 @@ public class EbxWriter : BaseEbxWriter
             writer.Position += sizeof(int);
             writer.Position += sizeof(int);
 
-            FixupType(m_objsSorted[i], typeDescriptor, writer, m_fixup.InstanceOffsets[i]);
+            FixupType(m_sortedInstances[i], typeDescriptor, writer, m_fixup.InstanceOffsets[i]);
         }
     }
 

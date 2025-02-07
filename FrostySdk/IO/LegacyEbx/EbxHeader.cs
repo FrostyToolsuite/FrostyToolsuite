@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Frosty.Sdk.IO.Ebx;
 
-namespace Frosty.Sdk.IO.PartitionEbx;
+namespace Frosty.Sdk.IO.LegacyEbx;
 
 internal struct EbxHeader
 {

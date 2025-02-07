@@ -40,28 +40,28 @@ public sealed class DbxWriter : IDisposable
         m_xmlWriter = XmlWriter.Create(inStream, m_settings);
     }
 
-    public void Write(EbxAsset inAsset)
+    public void Write(EbxPartition inPartition)
     {
-        if (!inAsset.IsValid)
+        if (!inPartition.IsValid)
         {
             return;
         }
 
-        WriteAsset(inAsset);
+        WriteAsset(inPartition);
     }
 
-    public void Write(EbxAsset inAsset, string inFilePath)
+    public void Write(EbxPartition inPartition, string inFilePath)
     {
         m_xmlWriter?.Close();
         m_xmlWriter = XmlWriter.Create(inFilePath, m_settings);
         m_filePath = inFilePath;
 
-        if (!inAsset.IsValid)
+        if (!inPartition.IsValid)
         {
             return;
         }
 
-        WriteAsset(inAsset);
+        WriteAsset(inPartition);
     }
 
     public void Dispose()
@@ -706,7 +706,7 @@ public sealed class DbxWriter : IDisposable
 
     #endregion
 
-    private void WriteAsset(EbxAsset inAsset)
+    private void WriteAsset(EbxPartition inPartition)
     {
 #if FROSTY_DEVELOPER
         //Stopwatch w = new();
@@ -714,9 +714,9 @@ public sealed class DbxWriter : IDisposable
 #endif
         m_xmlWriter!.WriteStartDocument();
 
-        WritePartitionStart(inAsset.PartitionGuid, inAsset.RootInstanceGuid);
+        WritePartitionStart(inPartition.PartitionGuid, inPartition.PrimaryInstanceGuid);
 
-        foreach (object ebxObj in inAsset.objects)
+        foreach (object ebxObj in inPartition.instances)
         {
             WriteInstance(ebxObj);
         }

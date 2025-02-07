@@ -1,8 +1,9 @@
 ﻿using System;
+using Frosty.Sdk.Utils;
 
 namespace Frosty.Sdk.IO.Ebx;
 
-public struct EbxImportReference : IEquatable<EbxImportReference>
+public struct EbxImportReference : IEquatable<EbxImportReference>, IComparable<EbxImportReference>
 {
     public Guid PartitionGuid;
     public Guid InstanceGuid;
@@ -17,9 +18,8 @@ public struct EbxImportReference : IEquatable<EbxImportReference>
     {
         if (obj is EbxImportReference b)
         {
-            return (PartitionGuid == b.PartitionGuid && InstanceGuid == b.InstanceGuid);
+            return PartitionGuid == b.PartitionGuid && InstanceGuid == b.InstanceGuid;
         }
-
         return false;
     }
 
@@ -37,5 +37,15 @@ public struct EbxImportReference : IEquatable<EbxImportReference>
     public bool Equals(EbxImportReference other)
     {
         return PartitionGuid.Equals(other.PartitionGuid) && InstanceGuid.Equals(other.InstanceGuid);
+    }
+
+    public int CompareTo(EbxImportReference other)
+    {
+        int partitionGuidComparison = PartitionGuid.CompareToBigEndian(other.PartitionGuid);
+        if (partitionGuidComparison != 0)
+        {
+            return partitionGuidComparison;
+        }
+        return InstanceGuid.CompareToBigEndian(other.InstanceGuid);
     }
 }

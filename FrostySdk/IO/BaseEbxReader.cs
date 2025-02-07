@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using Frosty.Sdk.Ebx;
+using Frosty.Sdk.Interfaces;
 
 namespace Frosty.Sdk.IO;
 
 public abstract class BaseEbxReader
 {
     protected readonly DataStream m_stream;
-    protected readonly List<object?> m_objects = new();
+    protected readonly List<IEbxInstance?> m_instances = new();
     protected readonly List<int> m_refCounts = new();
 
     #region -- PrimitiveTypes --
@@ -43,28 +44,28 @@ public abstract class BaseEbxReader
 
     public static BaseEbxReader CreateReader(DataStream inStream)
     {
-        return ProfilesLibrary.EbxVersion == 6 ? new RiffEbx.EbxReader(inStream) : new PartitionEbx.EbxReader(inStream);
+        return ProfilesLibrary.EbxVersion == 6 ? new RiffEbx.EbxReader(inStream) : new LegacyEbx.EbxReader(inStream);
     }
 
-    public T ReadAsset<T>() where T : EbxAsset, new()
+    public T ReadPartition<T>() where T : EbxPartition, new()
     {
         T asset = new();
         InternalReadObjects();
 
-        for (int i = m_objects.Count - 1; i >= 0 ; i--)
+        for (int i = m_instances.Count - 1; i >= 0 ; i--)
         {
-            if (m_objects[i] is not null)
+            if (m_instances[i] is not null)
             {
                 continue;
             }
 
             // instance type is not in type info
-            m_objects.RemoveAt(i);
+            m_instances.RemoveAt(i);
             m_refCounts.RemoveAt(i);
         }
 
         asset.partitionGuid = GetPartitionGuid();
-        asset.objects = m_objects!;
+        asset.instances = m_instances!;
         asset.refCounts = m_refCounts;
         asset.dependencies = GetDependencies();
         asset.OnLoadComplete();

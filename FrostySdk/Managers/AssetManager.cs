@@ -282,11 +282,11 @@ public static class AssetManager
 
     #region -- GetAsset --
 
-    public static EbxAsset GetEbxAsset(EbxAssetEntry entry)
+    public static EbxPartition GetEbxPartiion(EbxAssetEntry entry)
     {
         using (BlockStream stream = new(GetAsset(entry)))
         {
-            return EbxAsset.Deserialize(stream);
+            return EbxPartition.Deserialize(stream);
         }
     }
 
@@ -545,8 +545,8 @@ public static class AssetManager
 
                     if (TypeLibrary.IsSubClassOf(entry.Type, "TypeInfoAsset"))
                     {
-                        EbxAsset asset = reader.ReadAsset<EbxAsset>();
-                        TypeLibrary.AddTypeInfoAsset(asset.RootInstanceGuid, asset.RootObject);
+                        EbxPartition asset = reader.ReadPartition<EbxPartition>();
+                        TypeLibrary.AddTypeInfoAsset(asset.PrimaryInstanceGuid, asset.PrimaryInstance);
                     }
                 }
             }

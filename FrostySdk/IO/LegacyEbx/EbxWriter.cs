@@ -13,7 +13,7 @@ using Frosty.Sdk.Utils;
 using static Frosty.Sdk.Sdk.TypeFlags;
 using TypeInfo = Frosty.Sdk.Sdk.TypeInfo;
 
-namespace Frosty.Sdk.IO.PartitionEbx;
+namespace Frosty.Sdk.IO.LegacyEbx;
 
 public class EbxWriter : BaseEbxWriter
 {
@@ -216,7 +216,7 @@ public class EbxWriter : BaseEbxWriter
         m_stream.Position = stringsOffset + stringsAndDataLen;
     }
 
-    protected override int CompareObjects(object inA, object inB)
+    protected override int CompareInstances(IEbxInstance inA, IEbxInstance inB)
     {
         return string.Compare(inA.GetType().GetName(), inB.GetType().GetName(), StringComparison.Ordinal);
     }
@@ -481,12 +481,12 @@ public class EbxWriter : BaseEbxWriter
 
     private void ProcessData()
     {
-        HashSet<Type> uniqueTypes = new(m_objsSorted.Count);
+        HashSet<Type> uniqueTypes = new(m_sortedInstances.Count);
 
         m_data = new Block<byte>(0);
         using (BlockStream writer = new(m_data, true))
         {
-            Type type = m_objsSorted[0].GetType();
+            Type type = m_sortedInstances[0].GetType();
             int typeDescriptorRef = FindExistingType(type);
 
             EbxInstance inst = new()
@@ -499,11 +499,11 @@ public class EbxWriter : BaseEbxWriter
             ushort count = 0;
             m_numExports++;
 
-            for (int i = 0; i < m_objsSorted.Count; i++)
+            for (int i = 0; i < m_sortedInstances.Count; i++)
             {
-                AssetClassGuid guid = ((dynamic)m_objsSorted[i]).GetInstanceGuid();
+                AssetClassGuid guid = ((dynamic)m_sortedInstances[i]).GetInstanceGuid();
 
-                type = m_objsSorted[i].GetType();
+                type = m_sortedInstances[i].GetType();
                 typeDescriptorRef = FindExistingType(type);
                 EbxTypeDescriptor typeDescriptor = m_typeResolver.ResolveType(typeDescriptorRef);
 
@@ -536,7 +536,7 @@ public class EbxWriter : BaseEbxWriter
                     writer.WriteUInt64(0);
                 }
 
-                WriteType(m_objsSorted[i], typeDescriptor, writer, writer.Position - 8);
+                WriteType(m_sortedInstances[i], typeDescriptor, writer, writer.Position - 8);
                 count++;
             }
 
@@ -685,7 +685,7 @@ public class EbxWriter : BaseEbxWriter
                 }
                 else if (pointer.Type == PointerRefType.Internal)
                 {
-                    pointerIndex = (uint)(m_objsSorted.IndexOf(pointer.Internal!) + 1);
+                    pointerIndex = (uint)(m_sortedInstances.IndexOf(pointer.Internal!) + 1);
                 }
 
                 writer.WriteUInt32(pointerIndex);
