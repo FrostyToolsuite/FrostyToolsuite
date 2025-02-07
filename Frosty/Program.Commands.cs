@@ -267,15 +267,15 @@ internal static partial class Program
 		fileInfo.Directory?.Create();
 		if (inConvert)
 		{
-			EbxAsset asset = AssetManager.GetEbxAsset(inEntry);
+			EbxPartition partition = AssetManager.GetEbxPartiion(inEntry);
 
             if (PluginManager.EbxExportDelegates.TryGetValue(inEntry.Type, out ExportEbxDelegate? export))
             {
-                export(asset, inPath);
+                export(partition, inPath);
             }
 
 			using DbxWriter dbxWriter = new(fileInfo.FullName + ".dbx");
-			dbxWriter.Write(asset);
+			dbxWriter.Write(partition);
 			return;
 		}
 		using Block<byte> block = AssetManager.GetAsset(inEntry);

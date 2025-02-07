@@ -3,7 +3,7 @@ using Frosty.Sdk.Ebx;
 
 namespace Frosty.Sdk.Attributes;
 
-public delegate bool ExportEbxDelegate(EbxAsset inEntry, string inPath);
+public delegate bool ExportEbxDelegate(EbxPartition inEntry, string inPath);
 
 [AttributeUsage(AttributeTargets.Method)]
 public class ExportEbxFunctionAttribute : Attribute
