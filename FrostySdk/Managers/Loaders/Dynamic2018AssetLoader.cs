@@ -587,7 +587,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
     }
 
     private static long GetOriginalSize(AssetEntry inEntry) => inEntry is ChunkAssetEntry chunk
-        ? (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize
+        ? (chunk.LogicalOffset & 0xFFFF) + chunk.LogicalSize
         : inEntry.OriginalSize;
 
     private static void AddAsset(DataStream inDeltaStream, DataStream? inBaseStream, BundleInfo inBundle, AssetEntry? entry,
@@ -658,7 +658,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
         {
             long offset = stream.Position;
             // the size of the range is different than the logical size, since the range wont get decreased further once it fits in one block
-            uint size = (uint)Cas.GetCompressedSize(stream, (chunk.LogicalOffset & 0xFFFF) | chunk.LogicalSize);
+            uint size = (uint)Cas.GetCompressedSize(stream, (chunk.LogicalOffset & 0xFFFF) + chunk.LogicalSize);
             chunk.AddFileInfo(new NonCasFileInfo(inSuperBundlePath, offset, size, chunk.LogicalOffset));
 
             AssetManager.AddChunk(chunk, bundle.Id);
