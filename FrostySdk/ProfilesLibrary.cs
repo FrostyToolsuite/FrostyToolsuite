@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using Frosty.Sdk.Profiles;
 using Frosty.Sdk.IO.Compression;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk;
 
@@ -90,7 +91,7 @@ public static class ProfilesLibrary
                 SharedBundles.Add(Utils.Utils.HashString(bundle, true), bundle);
             }
 
-            FrostyLogger.Logger?.LogInfo($"Loading profile {s_effectiveProfile.DisplayName}");
+            FrostyLogger.Logger?.LogInformation($"Loading profile {s_effectiveProfile.DisplayName}");
 
             IsInitialized = true;
             return true;

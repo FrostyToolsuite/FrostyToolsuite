@@ -40,6 +40,11 @@ jobs:
         cd FrostyCli
         dotnet publish -c Release --runtime win-x64 --self-contained /p:DebugType=None /p:DebugSymbols=false /p:DefineConstants=NIGHTLY
         dotnet publish -c Release --runtime linux-x64 --self-contained /p:DebugType=None /p:DebugSymbols=false /p:DefineConstants=NIGHTLY
+    - name: Build Frosty
+      run: |
+        cd Frosty
+        dotnet publish -c Release --runtime win-x64 --self-contained /p:DebugType=None /p:DebugSymbols=false /p:DefineConstants=NIGHTLY
+        dotnet publish -c Release --runtime linux-x64 --self-contained /p:DebugType=None /p:DebugSymbols=false /p:DefineConstants=NIGHTLY
     - name: Upload linux
       uses: actions/upload-artifact@v4.3.0
       with: 
@@ -50,5 +55,15 @@ jobs:
       with: 
         name: FrostyCli-win-x64
         path: FrostyCli/bin/Release/net8.0/win-x64/publish
+    - name: Upload linux
+      uses: actions/upload-artifact@v4.3.0
+      with:
+        name: Frosty-linux-x64
+        path: Frosty/bin/Release/net8.0/linux-x64/publish
+    - name: Upload windows
+      uses: actions/upload-artifact@v4.3.0
+      with:
+        name: Frosty-win-x64
+        path: Frosty/bin/Release/net8.0/win-x64/publish
     - name: Test
       run: dotnet test --no-build --verbosity normal

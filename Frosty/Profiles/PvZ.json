@@ -1,0 +1,14 @@
+{
+  "Name": "PVZ.Main_Win64_Retail",
+  "DisplayName": "Plants vs Zombies™ Garden Warfare",
+  "InternalName": "pvz1",
+  "TypeInfoSignature": "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? C3",
+  "DataVersion": 20140623,
+  "FrostbiteVersion": "2013.2",
+  "EbxVersion": 2,
+  "EbxCompression": 21,
+  "ResCompression": 21,
+  "ChunkCompression": 21,
+  "TextureChunkCompression": 21,
+  "MaxBufferSize": 65536
+}
