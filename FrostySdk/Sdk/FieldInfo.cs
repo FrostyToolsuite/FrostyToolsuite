@@ -65,18 +65,16 @@ internal class FieldInfo : IComparable
 
         p_typeInfo = reader.ReadLong();
 
-        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings)
+        if (ProfilesLibrary.HasStrippedTypeNames && Strings.HasStrings &&
+            Strings.FieldMapping!.TryGetValue(inTypeHash, out Dictionary<uint, string>? dict) &&
+            dict.TryGetValue(m_nameHash, out string? resolvedName))
         {
-            if (Strings.FieldMapping!.TryGetValue(inTypeHash, out Dictionary<uint, string>? dict) &&
-                dict.TryGetValue(m_nameHash, out string? resolvedName))
-            {
-                Debug.Assert(!string.IsNullOrEmpty(resolvedName));
-                m_name = resolvedName;
-            }
-            else
-            {
-                m_name = $"Field_{m_nameHash:x8}";
-            }
+            Debug.Assert(!string.IsNullOrEmpty(resolvedName));
+            m_name = resolvedName;
+        }
+        else
+        {
+            m_name = $"Field_{m_nameHash:x8}";
         }
     }
 

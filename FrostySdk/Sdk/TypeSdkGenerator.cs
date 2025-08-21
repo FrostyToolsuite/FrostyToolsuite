@@ -81,44 +81,50 @@ public class TypeSdkGenerator
         string fieldNamesPath = Path.Combine(stringsDir, $"{ProfilesLibrary.InternalName}_fields.json");
         Strings.TypeNames = new HashSet<string>();
         Strings.FieldNames = new Dictionary<string, HashSet<string>>();
-        if (ProfilesLibrary.HasStrippedTypeNames && File.Exists(typeNamesPath))
+
+        if (ProfilesLibrary.HasStrippedTypeNames)
         {
             Strings.TypeMapping = new Dictionary<uint, string>();
             Strings.FieldMapping = new Dictionary<uint, Dictionary<uint, string>>();
+            Strings.TypeHashes = new HashSet<uint>();
+            Strings.FieldHashes = new Dictionary<uint, HashSet<uint>>();
 
-            // load previously created string file
-            HashSet<string>? typeNames = JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(typeNamesPath));
-            if (typeNames is null)
+            if (File.Exists(typeNamesPath))
             {
-                return false;
-            }
-
-            // create our type mapping
-            foreach (string name in typeNames)
-            {
-                Strings.TypeMapping.Add(HashTypeName(name), name);
-            }
-
-            Dictionary<string, HashSet<string>>? fieldNames =
-                JsonSerializer.Deserialize<Dictionary<string, HashSet<string>>>(File.ReadAllText(fieldNamesPath));
-            if (fieldNames is null)
-            {
-                return false;
-            }
-
-            // create our field mapping
-            foreach (KeyValuePair<string, HashSet<string>> kv in fieldNames)
-            {
-                Dictionary<uint, string> dict = new();
-                foreach (string name in kv.Value)
+                // load previously created string file
+                HashSet<string>? typeNames = JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(typeNamesPath));
+                if (typeNames is null)
                 {
-                    dict.Add(HashTypeName(name), name);
+                    return false;
                 }
 
-                Strings.FieldMapping.Add(HashTypeName(kv.Key), dict);
-            }
+                // create our type mapping
+                foreach (string name in typeNames)
+                {
+                    Strings.TypeMapping.Add(HashTypeName(name), name);
+                }
 
-            Strings.HasStrings = true;
+                Dictionary<string, HashSet<string>>? fieldNames =
+                    JsonSerializer.Deserialize<Dictionary<string, HashSet<string>>>(File.ReadAllText(fieldNamesPath));
+                if (fieldNames is null)
+                {
+                    return false;
+                }
+
+                // create our field mapping
+                foreach (KeyValuePair<string, HashSet<string>> kv in fieldNames)
+                {
+                    Dictionary<uint, string> dict = new();
+                    foreach (string name in kv.Value)
+                    {
+                        dict.Add(HashTypeName(name), name);
+                    }
+
+                    Strings.FieldMapping.Add(HashTypeName(kv.Key), dict);
+                }
+
+                Strings.HasStrings = true;
+            }
         }
 
         reader.Position = typeInfoOffset;
@@ -136,11 +142,6 @@ public class TypeSdkGenerator
 
         if (ProfilesLibrary.HasStrippedTypeNames && !Strings.HasStrings)
         {
-            Strings.TypeMapping = new Dictionary<uint, string>();
-            Strings.FieldMapping = new Dictionary<uint, Dictionary<uint, string>>();
-            Strings.TypeHashes = new HashSet<uint>();
-            Strings.FieldHashes = new Dictionary<uint, HashSet<uint>>();
-
             // try to resolve type hashes from other games
             foreach (string file in Directory.EnumerateFiles(stringsDir, "*_types.json"))
             {
