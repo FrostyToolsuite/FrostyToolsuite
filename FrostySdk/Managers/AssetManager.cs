@@ -585,9 +585,17 @@ public static class AssetManager
             }
             else if (entry.LogicalSize == 0)
             {
-                a++;
-                entry.OriginalSize = entry.FileInfo.GetOriginalSize();
-                entry.LogicalSize = (uint)entry.OriginalSize;
+                try
+                {
+                    entry.OriginalSize = entry.FileInfo.GetOriginalSize();
+                    entry.LogicalSize = (uint)entry.OriginalSize;
+                    a++;
+                }
+                catch (FileNotFoundException)
+                {
+                    s_chunkGuidMapping.Remove(entry.Id);
+                    FrostyLogger.Logger?.LogWarning($"Skipping chunk {entry.Id}, bc the file it's stored in does not exist!");
+                }
             }
         }
         FrostyLogger.Logger?.LogInfo($"Had to resolve OriginalSize for {a} chunks");
