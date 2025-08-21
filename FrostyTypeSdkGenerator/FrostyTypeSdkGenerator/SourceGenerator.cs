@@ -111,14 +111,18 @@ public sealed partial class SourceGenerator : IIncrementalGenerator
 
         string name = type.Name;
         bool isValueType = type.IsValueType;
-        ImmutableArray<FieldContext> fields = type.GetMembers()
+        ImmutableArray<MemberContext> fields = type.GetMembers()
             .Where(static member => member.Kind == SymbolKind.Field)
             .Select(TransformField).ToImmutableArray();
 
-        return new TypeContext(@namespace, name, isValueType, fields, type.ContainingType is null ? null : TransformType(type.ContainingType));
+        ImmutableArray<MemberContext> properties = type.GetMembers()
+            .Where(static member => member.Kind == SymbolKind.Property)
+            .Select(TransformProperty).ToImmutableArray();
+
+        return new TypeContext(@namespace, name, isValueType, fields, properties, type.ContainingType is null ? null : TransformType(type.ContainingType));
     }
 
-    private static FieldContext TransformField(ISymbol member)
+    private static MemberContext TransformField(ISymbol member)
     {
         if (member is not IFieldSymbol field)
         {
@@ -130,7 +134,22 @@ public sealed partial class SourceGenerator : IIncrementalGenerator
         ImmutableArray<string> attributes =
             field.GetAttributes().Select(static attr => attr.ToString()!).ToImmutableArray();
 
-        return new FieldContext(name, type, attributes);
+        return new MemberContext(name, type, attributes);
+    }
+
+    private static MemberContext TransformProperty(ISymbol member)
+    {
+        if (member is not IPropertySymbol property)
+        {
+            throw new Exception("Not a property.");
+        }
+
+        string name = property.Name;
+        string type = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        ImmutableArray<string> attributes =
+            property.GetAttributes().Select(static attr => attr.ToString()!).ToImmutableArray();
+
+        return new MemberContext(name, type, attributes);
     }
 
     private static void CreateINotifyPropertyChanged(SourceProductionContext context, TypeContext typeContext)
@@ -199,7 +218,7 @@ public partial struct {structContext.Name}
 {{
     public bool Equals({structContext.Name} b)
     {{
-        return {string.Join(" && ", structContext.Fields.Select(static field => field.Type.Contains("global::System.Collections.ObjectModel.ObservableCollection<") ? $"{field.Name}.SequenceEqual(b.{field.Name})" : $"{field.Name} == b.{field.Name}"))};
+        return {string.Join(" && ", structContext.Fields.Where(static field => !field.Name.Contains("k__BackingField")).Concat(structContext.Properties).Select(static field => field.Type.Contains("global::System.Collections.ObjectModel.ObservableCollection<") ? $"{field.Name}.SequenceEqual(b.{field.Name})" : $"{field.Name} == b.{field.Name}"))};
     }}
 
     public override bool Equals(object? obj)
@@ -222,7 +241,7 @@ public partial struct {structContext.Name}
         {{
             int hash = (int)2166136261;
 
-            {string.Join("\n            ", structContext.Fields.Select(static field => $"hash = (hash * 16777619) ^ {field.Name}.GetHashCode();"))}
+            {string.Join("\n            ", structContext.Fields.Where(static field => !field.Name.Contains("k__BackingField")).Concat(structContext.Properties).Select(static field => $"hash = (hash * 16777619) ^ {field.Name}.GetHashCode();"))}
 
             return hash;
         }}
@@ -331,7 +350,7 @@ public partial class {classContext.Name}
         }
 
         bool added = false;
-        foreach (FieldContext field in classContext.Fields)
+        foreach (MemberContext field in classContext.Fields)
         {
             if (classContext.Name != "Asset" && field.Name.Equals("_Name", StringComparison.OrdinalIgnoreCase) &&
                 field.Type.Contains("CString"))
@@ -396,7 +415,7 @@ public partial class {classContext.Name}
 
     private static void CreateIdOverride(SourceProductionContext context, TypeContext classContext)
     {
-        FieldContext field = classContext.Fields.First(f => f.Name == "_Name");
+        MemberContext field = classContext.Fields.First(f => f.Name == "_Name");
 
         if (!field.Type.Contains("CString"))
         {
@@ -446,7 +465,7 @@ using Frosty.Sdk.Sdk;
 public partial {(typeContext.IsValueType ? "struct" : "class")} {typeContext.Name}
 {{";
         string constructor = string.Empty;
-        foreach (FieldContext field in typeContext.Fields)
+        foreach (MemberContext field in typeContext.Fields)
         {
             string prop, name = field.Name.Remove(0, 1);
             if (meta is not null && meta.TryGetValue(name, out MetaProperty metaProp) && metaProp.IsOverride)
