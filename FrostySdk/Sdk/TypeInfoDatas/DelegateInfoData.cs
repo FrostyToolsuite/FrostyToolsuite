@@ -68,7 +68,7 @@ internal class DelegateInfoData : TypeInfoData
 
         sb.AppendLine($$"""
                         [{{nameof(FunctionAttribute)}}({{arguments}})]
-                        public struct {{CleanUpName()}} : {{nameof(IDelegate)}}
+                        public partial struct {{CleanUpName()}} : {{nameof(IDelegate)}}
                         {
                             public IType? {{nameof(IDelegate.FunctionType)}} { get; set; }
                         }
