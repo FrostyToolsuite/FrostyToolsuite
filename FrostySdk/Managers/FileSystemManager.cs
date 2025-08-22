@@ -38,6 +38,7 @@ public static class FileSystemManager
     private static readonly List<InstallChunkInfo> s_installChunks = new();
     private static readonly Dictionary<int, SuperBundleInstallChunk> s_sbIcMapping = new();
     private static readonly Dictionary<int, string> s_casFiles = new();
+    private static readonly Dictionary<CasFileIdentifier, bool> s_casFileExistenceCache = new();
 
     private static readonly Dictionary<string, Block<byte>> s_memoryFs = new();
 
@@ -212,6 +213,18 @@ public static class FileSystemManager
     public static string GetFilePath(int casIndex)
     {
         return s_casFiles[casIndex];
+    }
+
+    public static bool CasFileExists(CasFileIdentifier casFileIdentifier)
+    {
+        bool casExists = false;
+        if (!s_casFileExistenceCache.TryGetValue(casFileIdentifier, out casExists))
+        {
+            casExists = File.Exists(GetFilePath(casFileIdentifier));
+            s_casFileExistenceCache[casFileIdentifier] = casExists;
+        }
+
+        return casExists;
     }
 
     public static IEnumerable<SuperBundleInfo> EnumerateSuperBundles()

@@ -21,7 +21,7 @@ public class CasResourceInfo
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
         m_path = FileSystemManager.GetFilePath(m_casFileIdentifier);
-        m_fileExists = File.Exists(m_path);
+        m_fileExists = FileSystemManager.CasFileExists(m_casFileIdentifier);
     }
 
     public CasResourceInfo(bool inIsPatch, uint inInstallChunkIndex, int inCasIndex, uint inOffset, uint inSize, uint inLogicalOffset)
@@ -31,7 +31,7 @@ public class CasResourceInfo
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
         m_path = FileSystemManager.GetFilePath(m_casFileIdentifier);
-        m_fileExists = File.Exists(m_path);
+        m_fileExists = FileSystemManager.CasFileExists(m_casFileIdentifier);
     }
 
     public bool IsComplete() => m_logicalOffset == 0;
