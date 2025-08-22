@@ -68,10 +68,33 @@ internal class DelegateInfoData : TypeInfoData
 
         sb.AppendLine($$"""
                         [{{nameof(FunctionAttribute)}}({{arguments}})]
-                        public partial struct {{CleanUpName()}} : {{nameof(IDelegate)}}
+                        public struct {{cleanName}} : {{nameof(IDelegate)}}, IEquatable<{{cleanName}}>
                         {
-                            private IType? m_functionType;
-                            public IType? {{nameof(IDelegate.FunctionType)}} { get => m_functionType; set => m_functionType = value; }
+                            public IType? {{nameof(IDelegate.FunctionType)}} { get; set; }
+
+                            public override bool Equals(object? obj)
+                            {
+                                if (obj is not {{cleanName}} b)
+                                {
+                                    return false;
+                                }
+
+                                return Equals(b);
+                            }
+
+                            public bool Equals({{cleanName}} b)
+                            {
+                                return {{nameof(IDelegate.FunctionType)}} == b.{{nameof(IDelegate.FunctionType)}};
+                            }
+
+                            public static bool operator ==({{cleanName}} a, object b) => a.Equals(b);
+
+                            public static bool operator !=({{cleanName}} a, object b) => !a.Equals(b);
+
+                            public override int GetHashCode()
+                            {
+                                return {{nameof(IDelegate.FunctionType)}}?.GetHashCode() ?? 0;
+                            }
                         }
                         """);
     }
