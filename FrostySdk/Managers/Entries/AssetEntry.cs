@@ -91,6 +91,11 @@ public abstract class AssetEntry
             return;
         }
 
+        if (!inFileInfo.FileExists())
+        {
+            return;
+        }
+
         if (m_fileInfo is null)
         {
             m_fileInfo = inFileInfo;

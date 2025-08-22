@@ -12,6 +12,8 @@ public interface IFileInfo
 
     public bool IsComplete();
 
+    public bool FileExists();
+
     public long GetOriginalSize();
 
     public Block<byte> GetRawData();
