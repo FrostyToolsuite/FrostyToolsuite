@@ -8,6 +8,7 @@ namespace Frosty.Sdk.Managers.Infos.FileInfos.ResourceInfo;
 public class CasResourceInfo
 {
     protected readonly string m_path;
+    private readonly bool m_fileExists;
     private readonly CasFileIdentifier m_casFileIdentifier;
     private readonly uint m_offset;
     private readonly uint m_size;
@@ -20,6 +21,7 @@ public class CasResourceInfo
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
         m_path = FileSystemManager.GetFilePath(m_casFileIdentifier);
+        m_fileExists = FileSystemManager.CasFileExists(m_casFileIdentifier);
     }
 
     public CasResourceInfo(bool inIsPatch, uint inInstallChunkIndex, int inCasIndex, uint inOffset, uint inSize, uint inLogicalOffset)
@@ -29,9 +31,12 @@ public class CasResourceInfo
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
         m_path = FileSystemManager.GetFilePath(m_casFileIdentifier);
+        m_fileExists = FileSystemManager.CasFileExists(m_casFileIdentifier);
     }
 
     public bool IsComplete() => m_logicalOffset == 0;
+
+    public bool FileExists() => m_fileExists;
 
     protected uint GetOffset() => m_offset;
 

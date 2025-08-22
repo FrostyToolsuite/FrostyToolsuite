@@ -7,6 +7,16 @@ namespace Frosty.Sdk.Sdk.TypeInfoDatas;
 
 internal class PrimitiveInfoData : TypeInfoData
 {
+    public override void Read(MemoryReader reader)
+    {
+        base.Read(reader);
+
+        if (ProfilesLibrary.HasStrippedTypeNames && string.IsNullOrEmpty(m_name))
+        {
+            m_name = $"Primitive_{m_nameHash:x8}";
+        }
+    }
+
     public string ReadDefaultValue(MemoryReader reader)
     {
         switch (m_flags.GetTypeEnum())

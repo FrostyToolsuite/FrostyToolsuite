@@ -31,6 +31,24 @@ public class CasFileInfo : IFileInfo
 
     public bool IsDelta() => m_delta is not null;
     public bool IsComplete() => (m_delta?.IsComplete() == true) || (m_base?.IsComplete() == true);
+
+    public bool FileExists()
+    {
+        if (m_base is null)
+        {
+            throw new Exception("Base CasResourceInfo can't be null.");
+        }
+
+        bool exists = m_base.FileExists();
+
+        if (m_delta is not null)
+        {
+            exists &= m_delta.FileExists();
+        }
+
+        return exists;
+    }
+
     public long GetSize() => m_base?.GetSize() ?? 0;
 
     public long GetOriginalSize()

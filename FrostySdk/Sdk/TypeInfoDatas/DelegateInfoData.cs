@@ -72,26 +72,26 @@ internal class DelegateInfoData : TypeInfoData
                         public struct {{cleanName}} : {{nameof(IDelegate)}}, IEquatable<{{cleanName}}>
                         {
                             public IType? {{nameof(IDelegate.FunctionType)}} { get; set; }
-                            
+
                             public override bool Equals(object? obj)
                             {
                                 if (obj is not {{cleanName}} b)
                                 {
                                     return false;
                                 }
-                            
+
                                 return Equals(b);
                             }
-                            
+
                             public bool Equals({{cleanName}} b)
                             {
                                 return {{nameof(IDelegate.FunctionType)}} == b.{{nameof(IDelegate.FunctionType)}};
                             }
-                            
+
                             public static bool operator ==({{cleanName}} a, object b) => a.Equals(b);
-                            
+
                             public static bool operator !=({{cleanName}} a, object b) => !a.Equals(b);
-                            
+
                             public override int GetHashCode()
                             {
                                 return {{nameof(IDelegate.FunctionType)}}?.GetHashCode() ?? 0;

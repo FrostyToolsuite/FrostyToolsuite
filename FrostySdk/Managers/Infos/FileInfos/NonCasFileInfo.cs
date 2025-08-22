@@ -50,6 +50,8 @@ public class NonCasFileInfo : IFileInfo
 
     public bool IsComplete() => m_logicalOffset == 0;
 
+    public bool FileExists() => true;
+
     public long GetOriginalSize()
     {
         if (m_isDelta)

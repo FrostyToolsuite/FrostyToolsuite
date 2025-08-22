@@ -27,6 +27,8 @@ public class KelvinFileInfo : IFileInfo
 
     public bool IsComplete() => m_logicalOffset != 0;
 
+    public bool FileExists() => true;
+
     public long GetOriginalSize()
     {
         using (BlockStream stream = BlockStream.FromFile(m_path, m_offset, (int)m_size))
