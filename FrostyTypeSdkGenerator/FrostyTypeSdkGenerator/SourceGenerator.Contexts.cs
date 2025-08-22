@@ -7,9 +7,9 @@ namespace FrostyTypeSdkGenerator;
 
 public sealed partial class SourceGenerator
 {
-    private record TypeContext(string? Namespace, string Name, bool IsValueType, ImmutableArray<MemberContext> Fields, ImmutableArray<MemberContext> Properties, TypeContext? ContainingType);
+    private record TypeContext(string? Namespace, string Name, bool IsValueType, ImmutableArray<FieldContext> Fields, TypeContext? ContainingType);
 
-    private readonly record struct MemberContext(string Name, string Type, ImmutableArray<string> Attributes);
+    private readonly record struct FieldContext(string Name, string Type, ImmutableArray<string> Attributes);
 
     private sealed class TypeContextEqualityComparer : IEqualityComparer<TypeContext>
     {
@@ -31,20 +31,20 @@ public sealed partial class SourceGenerator
         }
     }
 
-    private sealed class FieldContextEqualityComparer : IEqualityComparer<MemberContext>
+    private sealed class FieldContextEqualityComparer : IEqualityComparer<FieldContext>
     {
         private FieldContextEqualityComparer() { }
 
         public static FieldContextEqualityComparer Instance { get; } = new();
 
-        public bool Equals(MemberContext x, MemberContext y)
+        public bool Equals(FieldContext x, FieldContext y)
         {
             return x.Name == y.Name &&
                    x.Type == y.Type &&
                    x.Attributes.SequenceEqual(y.Attributes);
         }
 
-        public int GetHashCode(MemberContext obj)
+        public int GetHashCode(FieldContext obj)
         {
             throw new NotImplementedException();
         }

@@ -15,7 +15,7 @@ public sealed partial class SourceGenerator
 
     private static bool EmptyStructPredicate(SyntaxNode node, CancellationToken cancellationToken)
     {
-        return node is StructDeclarationSyntax structDeclarationSyntax && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword) && (structDeclarationSyntax.Members.Count == 0 || !structDeclarationSyntax.Members.Any(m => m is FieldDeclarationSyntax or PropertyDeclarationSyntax));
+        return node is StructDeclarationSyntax structDeclarationSyntax && structDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword) && (structDeclarationSyntax.Members.Count == 0 || !structDeclarationSyntax.Members.Any(m => m is FieldDeclarationSyntax));
     }
 
     private static bool BaseClassPredicate(SyntaxNode node, CancellationToken cancellationToken)
