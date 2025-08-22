@@ -1,0 +1,14 @@
+﻿{
+  "Name": "NFS14",
+  "DisplayName": "Need for Speed™ Rivals",
+  "InternalName": "nfs14",
+  "TypeInfoSignature" : "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? C3",
+  "DataVersion": 20131118,
+  "FrostbiteVersion": "2013.2",
+  "EbxVersion": 2,
+  "EbxCompression": 9,
+  "ResCompression": 9,
+  "ChunkCompression": 9,
+  "TextureChunkCompression": 9,
+  "MaxBufferSize": 65536
+}

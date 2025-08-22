@@ -1,4 +1,4 @@
-using Frosty.Sdk.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk;
 

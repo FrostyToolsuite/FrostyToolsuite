@@ -1,0 +1,15 @@
+{
+  "Name": "FIFA17",
+  "DisplayName": "FIFA 17",
+  "InternalName": "fifa17",
+  "TypeInfoSignature": "",
+  "DataVersion": 20160927,
+  "FrostbiteVersion": "2015.4",
+  "EbxVersion": 2,
+  "EbxCompression": 15,
+  "ResCompression": 15,
+  "ChunkCompression": 15,
+  "TextureChunkCompression": 15,
+  "MaxBufferSize": 65536,
+  "ZStdCompressionLevel": 16
+}

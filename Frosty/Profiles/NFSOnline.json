@@ -1,0 +1,14 @@
+{
+  "Name": "NFSOL",
+  "DisplayName": "Need for Speed™ ONLINE",
+  "InternalName": "nfsedge",
+  "TypeInfoSignature": "",
+  "DataVersion": 20160000,
+  "FrostbiteVersion": "2014.4.11",
+  "EbxVersion": 2,
+  "EbxCompression": 9,
+  "ResCompression": 9,
+  "ChunkCompression": 9,
+  "TextureChunkCompression": 9,
+  "MaxBufferSize": 65536
+}

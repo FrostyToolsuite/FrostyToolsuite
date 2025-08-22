@@ -1,0 +1,14 @@
+﻿{
+  "Name": "GW2.Main_Win64_Retail",
+  "DisplayName": "Plants vs Zombies™ Garden Warfare 2",
+  "InternalName": "pvz2",
+  "TypeInfoSignature" : "48 8B 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? 48 8D 05 ?? ?? ?? ?? 48 89 05 ?? ?? ?? ?? E9",
+  "DataVersion": 20160222,
+  "FrostbiteVersion": "2014.4.11",
+  "EbxVersion": 2,
+  "EbxCompression": 9,
+  "ResCompression": 9,
+  "ChunkCompression": 9,
+  "TextureChunkCompression": 9,
+  "MaxBufferSize": 65536
+}

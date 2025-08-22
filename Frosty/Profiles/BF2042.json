@@ -1,0 +1,18 @@
+{
+  "Name": "BF2042",
+  "DisplayName": "Battlefield™ 2042",
+  "InternalName": "bf2042",
+  "TypeInfoSignature": "48 39 1D ?? ?? ?? ?? ?? ?? 48 8b 43 10",
+  "TypeHashSeed": "1030",
+  "DataVersion": 20211119,
+  "FrostbiteVersion": "2021.1.1",
+  "HasStrippedTypeNames": true,
+  "EbxVersion": 6,
+  "RequiresInitFsKey": true,
+  "HasAntiCheat": true,
+  "EbxCompression": 25,
+  "ResCompression": 25,
+  "ChunkCompression": 25,
+  "TextureChunkCompression": 25,
+  "MaxBufferSize": 65536
+}

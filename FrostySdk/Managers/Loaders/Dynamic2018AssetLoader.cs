@@ -8,6 +8,7 @@ using Frosty.Sdk.IO;
 using Frosty.Sdk.Managers.Entries;
 using Frosty.Sdk.Managers.Infos;
 using Frosty.Sdk.Managers.Infos.FileInfos;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk.Managers.Loaders;
 
@@ -582,7 +583,7 @@ public class Dynamic2018AssetLoader : IAssetLoader
 
         if (extraSize != 0)
         {
-            FrostyLogger.Logger?.LogInfo($"{extraSize} decompressed bytes ignored at the end of bundle {inBundle.Name}");
+            FrostyLogger.Logger?.LogDebug($"{extraSize} decompressed bytes ignored at the end of bundle {inBundle.Name}");
         }
     }
 

@@ -1,0 +1,14 @@
+{
+  "Name": "starwarsbattlefront",
+  "DisplayName": "STAR WARS™ Battlefront™",
+  "InternalName": "starwars",
+  "TypeInfoSignature": "48 8b 05 ?? ?? ?? ?? 48 89 41 08 48 89 0d ?? ?? ?? ?? 48 ?? ?? C3",
+  "DataVersion": 20151117,
+  "FrostbiteVersion": "2014.4.17",
+  "EbxVersion": 2,
+  "EbxCompression": 9,
+  "ResCompression": 9,
+  "ChunkCompression": 9,
+  "TextureChunkCompression": 9,
+  "MaxBufferSize": 65536
+}

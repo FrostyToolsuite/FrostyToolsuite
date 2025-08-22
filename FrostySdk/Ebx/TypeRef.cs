@@ -1,5 +1,6 @@
 using System;
 using Frosty.Sdk.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace Frosty.Sdk.Ebx;
 
@@ -23,11 +24,19 @@ public readonly struct TypeRef : IEquatable<TypeRef>
             return;
         }
         m_type = TypeLibrary.GetType(inName);
+        if (m_type is null)
+        {
+            FrostyLogger.Logger?.LogDebug("Type {} does not exist in TypeLibrary", inName);
+        }
     }
 
     public TypeRef(Guid inGuid)
     {
         m_type = TypeLibrary.GetType(inGuid);
+        if (m_type is null)
+        {
+            FrostyLogger.Logger?.LogDebug("Type {} does not exist in TypeLibrary", inGuid);
+        }
     }
 
     public TypeRef(IType? inType)
