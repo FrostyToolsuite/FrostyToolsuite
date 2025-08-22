@@ -66,6 +66,7 @@ internal class DelegateInfoData : TypeInfoData
             arguments = arguments.Remove(0, 2);
         }
 
+        string cleanName = CleanUpName();
         sb.AppendLine($$"""
                         [{{nameof(FunctionAttribute)}}({{arguments}})]
                         public struct {{cleanName}} : {{nameof(IDelegate)}}, IEquatable<{{cleanName}}>
