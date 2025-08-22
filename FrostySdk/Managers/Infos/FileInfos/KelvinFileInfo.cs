@@ -9,7 +9,6 @@ namespace Frosty.Sdk.Managers.Infos.FileInfos;
 public class KelvinFileInfo : IFileInfo
 {
     private readonly string m_path;
-    private readonly bool m_fileExists;
     private readonly int m_casIndex;
     private readonly uint m_offset;
     private readonly uint m_size;
@@ -22,14 +21,13 @@ public class KelvinFileInfo : IFileInfo
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
         m_path = FileSystemManager.GetFilePath(m_casIndex);
-        m_fileExists =  File.Exists(m_path);
     }
 
     public bool IsDelta() => false;
 
     public bool IsComplete() => m_logicalOffset != 0;
 
-    public bool FileExists() => m_fileExists;
+    public bool FileExists() => true;
 
     public long GetOriginalSize()
     {

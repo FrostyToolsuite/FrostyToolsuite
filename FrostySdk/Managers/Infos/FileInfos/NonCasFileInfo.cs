@@ -22,9 +22,6 @@ public class NonCasFileInfo : IFileInfo
     private readonly string m_fullPath;
     private readonly string? m_fullBasePath;
 
-    private readonly bool m_fullPathExists;
-    private readonly bool? m_fullBasePathExists;
-
     public NonCasFileInfo(string inSuperBundlePath, long inOffset, uint inSize, uint inLogicalOffset = 0)
     {
         m_superBundlePath = inSuperBundlePath;
@@ -32,7 +29,6 @@ public class NonCasFileInfo : IFileInfo
         m_size = inSize;
         m_logicalOffset = inLogicalOffset;
         m_fullPath = Path.Combine(FileSystemManager.BasePath, m_superBundlePath);
-        m_fullPathExists = File.Exists(m_fullPath);
     }
 
     public NonCasFileInfo(string inSuperBundlePath, string? inSuperBundleBasePath, long inDeltaOffset, uint inDeltaSize, long inBaseOffset, uint inBaseSize, int inMidInstructionSize, uint inLogicalOffset = 0)
@@ -48,25 +44,13 @@ public class NonCasFileInfo : IFileInfo
         m_logicalOffset = inLogicalOffset;
         m_fullPath = Path.Combine(FileSystemManager.BasePath, m_superBundlePath);
         m_fullBasePath = m_superBundleBasePath is not null ? Path.Combine(FileSystemManager.BasePath, m_superBundleBasePath) : null;
-        m_fullPathExists = File.Exists(m_fullPath);
-        m_fullBasePathExists = m_fullBasePath is not null ? File.Exists(m_fullBasePath) : null;
     }
 
     public bool IsDelta() => m_isDelta;
 
     public bool IsComplete() => m_logicalOffset == 0;
 
-    public bool FileExists()
-    {
-        bool exists = m_fullPathExists;
-
-        if (m_fullBasePathExists is not null)
-        {
-            exists &= (bool) m_fullBasePathExists;
-        }
-
-        return exists;
-    }
+    public bool FileExists() => true;
 
     public long GetOriginalSize()
     {
